@@ -1,0 +1,41 @@
+#0 SUCCESS
+
+-1 DONE: There is no error or no work to do.
+
+-2 BUFFER_TO_SHORT: The provided buffer is too short.
+
+-3 INTERNAL_ERROR: Internal error in the HTTP/3 stack.
+
+-4 EXCESSIVE_LOAD: Endpoint detected that the peer is exhibiting behavior that causes excessive load.
+
+-5 ID_ERROR: Stream ID or Push ID greater that current maximum was used incorrectly, such as exceeding a limit, reducing a limit, or being reused.
+
+-6 STREAM_CREATION_ERROR: The endpoint detected that its peer created a stream that it will not accept.
+
+-7 CLOSED_CRITICAL_STREAM: A required critical stream was closed.
+
+-8 MISSING_SETTINGS: No SETTINGS frame at beginning of control stream.
+
+-9 FRAME_UNEXPECTED: A frame was received which is not permitted in the current state.
+
+-10 FRAME_ERROR: Frame violated layout or size rules.
+
+-11 QPACK_DECOMPRESSION_FAILED: QPACK Header block decompression failure.
+
+-12 TRANSPORT_ERROR: Error originated from the transport layer.
+
+-13 STREAM_BLOCKED: The underlying QUIC stream (or connection) doesn't have enough capacity for the operation to complete. The application should retry later on.
+
+-14 Settings error: Error in the payload of a SETTINGS frame.
+
+-15 Request rejected: Server rejected request.
+
+-16 Request canceled: Request or its response cancelled.
+
+-17 Request incomplete: Client's request stream terminated without containing a full-formed request.
+
+-18 Message error: An HTTP message was malformed and cannot be processed.
+
+-19 Connect error: The TCP connection established in response to a CONNECT request was reset or abnormally closed.
+
+-20 Version fallback: The requested operation cannot be served over HTTP/3. Peer should retry over HTTP/1.1.

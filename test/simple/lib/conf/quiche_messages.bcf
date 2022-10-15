@@ -1,0 +1,33 @@
+0 SUCCESS: No errors. All good.
+
+-1 DONE: There is no more work to do.
+
+-2 BUFFER_TOO_SHORT: The provided buffer is too short.
+
+-3 UNKNOWN_VERSION: The provided packet cannot be parsed because its version is unknown.
+
+-4 INVALID_FRAME: The provided packet cannot be parsed because it contains an invalid frame.
+
+-5 INVALID_PACKET: The provided packet cannot be parsed.
+
+-6 INVALID_STATE: The operation cannot be completed because the connection is in an invalid state.
+
+-7 INVALID_STREAM_STATE: The operation cannot be completed because the stream is in an invalid state.
+
+-8 INVALID_TRANSPORT_PARAM: The peer's transport params cannot be parsed.
+
+-9 CRYPTO_FAIL: cryptographic operation failed.
+
+-10 TLS_FAIL: The TLS handshake failed.
+
+-11 FLOW_CONTROL: The peer violated the local flow control limits.
+
+-12 STREAM_LIMIT: The peer violated the local stream limits.
+
+-13 STREAM_STOPPED: The specified stream was stopped by the peer. The error code sent as part of the `STOP_SENDING` frame is provided as associated data.
+
+-14 STREAM_RESET: The specified stream was reset by the peer. The error code sent as part of the `RESET_STREAM` frame is provided as associated data.
+
+-15 FINAL_SIZE: The received data exceeds the stream's final size.
+
+-16 CONGESTION_CONTROL: Error in congestion control.

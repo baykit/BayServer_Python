@@ -1,0 +1,2 @@
+class UpgradeException(IOError):
+    pass
