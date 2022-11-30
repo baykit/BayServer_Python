@@ -311,7 +311,7 @@ class H2InboundHandler(H2ProtocolHandler, InboundHandler):
         return NextSocketAction.CONTINUE
 
     def handle_go_away(self, cmd):
-        BayLog.error("%s received GoAway: lastStm=%d code=%d desc=%s debug=%s",
+        BayLog.debug("%s received GoAway: lastStm=%d code=%d desc=%s debug=%s",
                      self.ship, cmd.last_stream_id, cmd.error_code, H2ErrorCode.msg.get(str(cmd.error_code)),
                      cmd.debug_data);
         return NextSocketAction.CLOSE
@@ -324,7 +324,7 @@ class H2InboundHandler(H2ProtocolHandler, InboundHandler):
         return NextSocketAction.CONTINUE
 
     def handle_rst_stream(self, cmd):
-        BayLog.error("%s received RstStream: stmid=%d code=%d desc=%s",
+        BayLog.debug("%s received RstStream: stmid=%d code=%d desc=%s",
                      self.ship, cmd.stream_id, cmd.error_code, H2ErrorCode.msg.get(str(cmd.error_code)))
         return NextSocketAction.CONTINUE
 
