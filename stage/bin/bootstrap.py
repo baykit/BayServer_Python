@@ -3,6 +3,8 @@ import sys
 
 base_dir = os.path.dirname(__file__)
 bserv_home = os.path.dirname(base_dir)
+if bserv_home == "":
+    bserv_home = "."
 os.environ["BSERV_HOME"] = bserv_home
 
 core = os.path.join(bserv_home, 'lib', 'core')
