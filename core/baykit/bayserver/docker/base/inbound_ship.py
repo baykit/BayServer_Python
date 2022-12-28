@@ -154,6 +154,10 @@ class InboundShip(Ship):
 
         if tur.is_zombie() or tur.is_aborted():
             # Don't send peer any data
+            BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, tur, tur.state)
+            tur.change_state(check_id, Tour.TourState.ENDED);
+            if callback is not None:
+                callback()
             return
 
         max_len = self.protocol_handler.max_res_packet_data_size()
