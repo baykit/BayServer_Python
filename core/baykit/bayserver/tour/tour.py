@@ -107,6 +107,8 @@ class Tour(Reusable):
         else:
             try:
                 city.enter(self)
+            except Sink as e:
+                raise e
             except HttpException as e:
                 BayLog.error_e(e)
                 raise e

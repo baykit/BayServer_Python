@@ -121,13 +121,13 @@ class CgiStdOutYacht(Yacht, Reusable):
     ######################################################
     # Custom methods
     ######################################################
-    def init(self, tur, tp):
+    def init(self, tur, vv):
         self.init_yacht()
         self.tour = tur
         self.tour_id = tur.tour_id
 
         def callback(len, resume):
             if resume:
-                tp.open_valve()
+                vv.open_valve()
         tur.res.set_consume_listener(callback)
 
