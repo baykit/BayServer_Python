@@ -80,14 +80,14 @@ class WarpDocker(ClubBase, metaclass=ABCMeta):
         if self.warp_base is None:
             self.warp_base = "/"
 
-        if self.port == -1:
-            self.port = 80
-
         if self.host and self.host.startswith(":unix:"):
             self.host_addr = [None, None, None, None, None]
             self.host_addr[0] = socket.AF_UNIX
             self.host_addr[4] = self.host[6:]
+            self.port = -1
         else:
+            if self.port <= 0:
+                self.port = 80
             addrs = socket.getaddrinfo(self.host, self.port)
             inet4_addr = None
             inet6_addr = None
@@ -152,6 +152,7 @@ class WarpDocker(ClubBase, metaclass=ABCMeta):
             BayLog.trace("%s got from store", wsip)
             need_connect = False
 
+            tp = None
             if not wsip.initialized:
                 if self.host_addr[0] == socket.AF_UNIX:
                     skt = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
@@ -174,7 +175,7 @@ class WarpDocker(ClubBase, metaclass=ABCMeta):
             wsip.start_warp_tour(tour)
 
             if need_connect:
-                agt.non_blocking_handler.add_channel_listener(wsip.socket, wsip.postman)
+                agt.non_blocking_handler.add_channel_listener(wsip.socket, tp)
                 agt.non_blocking_handler.ask_to_connect(wsip.socket, self.host_addr[4])
 
         except HttpException as e:
