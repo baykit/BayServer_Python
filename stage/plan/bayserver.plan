@@ -14,12 +14,10 @@
 #          refuse ip *
 
 [port 2024]
-    secure    yes
-    #keyStore  cert/oreore.p12
-    cert      cert/oreore.crt
-    key       cert/oreore_key.p8
-    keyStorePass orepas
-    supportH2  on
+    [secure]
+        cert      cert/oreore.crt
+        key       cert/oreore_key.p8
+        keyStorePass orepas
 
 [port 2025]
     docker ajp
@@ -61,7 +59,7 @@
 
 
     [log log/access.log]
-        format %h %l %u %t "%r" %>s %b
+        format %a %l %u %t "%r" %>s %b
 
     [log log/agent.log]
         format %{User-Agent}i
