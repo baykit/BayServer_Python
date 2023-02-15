@@ -57,7 +57,7 @@ class WarpDocker(ClubBase, metaclass=ABCMeta):
         super().__init__()
         self.scheme = None
         self.host = None
-        self.port = 80
+        self.port = -1
         self.warp_base = None
         self.max_ships = -1
         self.cur_ships = 0
@@ -119,9 +119,9 @@ class WarpDocker(ClubBase, metaclass=ABCMeta):
         elif key == "destport":
             self.port = int(kv.value)
 
-        elif key == "destown":
+        elif key == "desttown":
             self.warp_base = kv.value
-            if not self.warp_base.end_with("/"):
+            if not self.warp_base.endswith("/"):
                 self.warp_base += "/"
 
         elif key == "maxships":
