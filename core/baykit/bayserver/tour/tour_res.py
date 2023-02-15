@@ -329,6 +329,7 @@ class TourRes:
         except HttpException as e:
             raise e
         except Exception as e:
+            BayLog.error_e(e)
             raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, file)
 
     def get_compressor(self):
