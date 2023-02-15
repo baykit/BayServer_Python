@@ -45,6 +45,10 @@ class BayLog:
         BayLog.log(BayLog.LOG_LEVEL_INFO, 3, None, fmt, args)
 
     @classmethod
+    def info_e(cls, err, fmt=None, *args):
+        BayLog.log(BayLog.LOG_LEVEL_INFO, 3, err, fmt, args)
+
+    @classmethod
     def trace(cls, fmt, *args):
         BayLog.log(BayLog.LOG_LEVEL_TRACE, 3, None, fmt, args)
 
