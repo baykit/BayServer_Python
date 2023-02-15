@@ -273,7 +273,7 @@ class BayServer:
 
                 selkeys = sel.select()
                 for key, events in selkeys:
-                    if key.fd == server_skt.fileno():
+                    if server_skt and key.fd == server_skt.fileno():
                         SignalAgent.signal_agent.on_socket_readable()
                     else:
                         mon = pip_to_mon_map[key.fd]
