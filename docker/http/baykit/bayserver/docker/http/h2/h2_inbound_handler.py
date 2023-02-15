@@ -164,7 +164,10 @@ class H2InboundHandler(H2ProtocolHandler, InboundHandler):
             if BayServer.harbor.trace_header:
                 BayLog.info("%s req header: %s=%s :%s", tur, self.analyzer.name, self.analyzer.value, blk);
 
-            if self.analyzer.name[0] != ":":
+            if self.analyzer.name is None:
+                next
+
+            elif self.analyzer.name[0] != ":":
                 tur.req.headers.add(self.analyzer.name, self.analyzer.value)
 
             elif self.analyzer.method is not None:
