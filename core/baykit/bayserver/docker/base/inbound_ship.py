@@ -206,13 +206,13 @@ class InboundShip(Ship):
 
 
 
-    def send_error(self, check_id, tour, status, message, e):
-        self.check_ship_id(check_id)
+    def send_error(self, chk_id, tour, status, message, e):
+        self.check_ship_id(chk_id)
 
-        BayLog.debug("%s send error: status=%d, message=%s ex=%s", self, status, message, ExceptionUtil.message(e) if e else "");
+        BayLog.info("%s send error: status=%d, message=%s ex=%s", self, status, message, ExceptionUtil.message(e) if e else "");
 
         if e is not None:
-            BayLog.error_e(e, "Error: %s", message)
+            BayLog.debug_e(e)
 
         # Create body
         desc = HttpStatus.description(status)
@@ -226,9 +226,9 @@ class InboundShip(Ship):
         body += "</h1>\r\n"
 
         tour.res.headers.status = status
-        self.send_error_content(check_id, tour, StringUtil.to_bytes(body))
+        self.send_error_content(chk_id, tour, StringUtil.to_bytes(body))
 
-    def send_error_content(self, check_id, tour, content):
+    def send_error_content(self, chk_id, tour, content):
 
         # Get charset
         charset = tour.res.charset
@@ -242,10 +242,10 @@ class InboundShip(Ship):
         if StringUtil.is_set(content):
             tour.res.headers.set_content_length(len(content))
 
-        self.send_headers(check_id, tour)
+        self.send_headers(chk_id, tour)
 
         if StringUtil.is_set(content):
-            self.send_res_content(check_id, tour, content, 0, len(content), None)
+            self.send_res_content(chk_id, tour, content, 0, len(content), None)
 
 
     def end_ship(self):
