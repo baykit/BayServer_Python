@@ -52,7 +52,7 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
     def write_nonblock(self, buf, adr):
         pass
 
-    def __init__(self, server_mode, bufsize, trace_ssl):
+    def __init__(self, server_mode, bufsize, trace_ssl, write_only):
         self.server_mode = server_mode
         self.trace_ssl = trace_ssl
         self.data_listener = None
@@ -67,6 +67,7 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
         self.lock = threading.RLock()
         self.non_blocking_handler = None
         self.reset()
+        self.write_only = write_only
 
     def __str__(self):
         return f"tpt[{self.data_listener}]"
@@ -87,6 +88,23 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
         self.set_valid(True)
         self.handshaked = False
         self.non_blocking_handler.add_channel_listener(ch, self)
+
+    ######################################################
+    # Implements Reusable
+    ######################################################
+    def reset(self):
+
+        # Check write queue
+        if len(self.write_queue) > 0:
+            raise Sink("Write queue is not empty")
+
+        self.finale = False
+        self.initialized = False
+        self.ch = None
+        self.set_valid(False)
+        self.handshaked = False
+        self.socket_io = None
+        self.write_only = False
 
     ######################################################
     # Implements Postman
@@ -114,22 +132,6 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
         BayLog.debug("%s resume", self)
         self.non_blocking_handler.ask_to_read(self.ch)
 
-    ######################################################
-    # Implements Reusable
-    ######################################################
-
-    def reset(self):
-
-        # Check write queue
-        if len(self.write_queue) > 0:
-            raise Sink("Write queue is not empty")
-
-        self.finale = False
-        self.initialized = False
-        self.ch = None
-        self.set_valid(False)
-        self.handshaked = False
-        self.socket_io = None
 
 
     def abort(self):
@@ -269,8 +271,10 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
             if self.finale:
                 BayLog.trace("%s finale return Close", self)
                 state = NextSocketAction.CLOSE
+            elif self.write_only:
+                state = NextSocketAction.SUSPEND
             else:
-                state = NextSocketAction.READ
+                state = NextSocketAction.READ # will be handled as "Write Off"
         else:
             state = NextSocketAction.CONTINUE
 

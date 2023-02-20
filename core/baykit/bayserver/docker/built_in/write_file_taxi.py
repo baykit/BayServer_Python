@@ -57,7 +57,7 @@ class WriteFileTaxi(Taxi, Valve):
         except BaseException as e:
             BayLog.error_e(e)
 
-    def post(self, buf, tag):
+    def post(self, buf, adr, tag):
         with self.lock:
             empty = len(self.write_queue) == 0
             self.write_queue.append(buf)

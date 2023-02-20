@@ -52,6 +52,8 @@ class H1PacketUnPacker(PacketUnPacker):
         pos = 0
         buf_start = 0
         line_len = 0
+        suspend = False
+
         if self.state == H1PacketUnPacker.STATE_READ_HEADERS:
             while pos < len(buf):
                 b = buf[pos]
@@ -70,7 +72,7 @@ class H1PacketUnPacker(PacketUnPacker):
                         finally:
                             self.pkt_store.Return(pkt)
 
-                        if next_act == NextSocketAction.CONTINUE:
+                        if next_act == NextSocketAction.CONTINUE or next_act == NextSocketAction.SUSPEND:
                             if self.cmd_upacker.req_finished():
                                 self.change_state(H1PacketUnPacker.STATE_END)
                             else:
@@ -84,6 +86,7 @@ class H1PacketUnPacker(PacketUnPacker):
                         else:
                             raise RuntimeError(f"Invalid next action: {next_act}")
 
+                        suspend = (next_act == NextSocketAction.SUSPEND)
                         break
 
                     line_len = 0
@@ -93,7 +96,6 @@ class H1PacketUnPacker(PacketUnPacker):
                 if line_len >= H1PacketUnPacker.MAX_LINE_LEN:
                     raise ProtocolException("Http/1 Line is too long")
 
-        suspend = False
         if self.state == H1PacketUnPacker.STATE_READ_CONTENT:
             while pos < len(buf):
                 pkt = self.pkt_store.rent(H1Type.CONTENT)
@@ -124,7 +126,7 @@ class H1PacketUnPacker(PacketUnPacker):
 
 
         if suspend:
-            BayLog.debug("%s read suspend", self)
+            BayLog.debug("H1 read suspend")
             return NextSocketAction.SUSPEND
         else:
             return NextSocketAction.CONTINUE

@@ -76,7 +76,8 @@ class PacketPartAccessor:
         return b1 << 24 | b2 << 16 | b3 << 8 | b4
 
     def check_read(self, length):
-        if self.max_len > 0 and self.pos + length > self.max_len:
+        max_len = self.max_len if (self.max_len >= 0) else (self.packet.buf_len - self.start)
+        if self.pos + length > max_len:
             raise Sink("Invalid array index")
 
     def check_write(self, length):

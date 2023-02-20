@@ -31,7 +31,7 @@ class BuiltInLogDocker(DockerBase, Log):
             boat = LogBoat()
 
             if self.log_docker.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_SELECT:
-                tp = PlainTransporter(False, 0)  # write only
+                tp = PlainTransporter(False, 0, True)  # write only
                 tp.init(agt.non_blocking_handler, open(file_name, "ab"), boat)
 
             elif self.log_docker.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_SPIN:

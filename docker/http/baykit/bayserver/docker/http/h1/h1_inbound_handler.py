@@ -127,9 +127,11 @@ class H1InboundHandler(H1ProtocolHandler, InboundHandler):
     def send_end_tour(self, tur, keep_alive, cb):
         BayLog.debug("%s %s sendEndTour: tur=%s keep=%s", threading.current_thread().name, self.ship, tur, keep_alive)
 
+        sid = self.ship.ship_id
         def ensure_func():
             if keep_alive and not self.ship.postman.is_zombie():
                 self.ship.keeping = True
+                self.ship.resume(sid)
             else:
                 self.command_packer.end(self.ship)
 
@@ -231,7 +233,7 @@ class H1InboundHandler(H1ProtocolHandler, InboundHandler):
 
             if req_cont_len <= 0:
                 self.end_req_content(self.cur_tour_id, tur)
-                return NextSocketAction.CONTINUE
+                return NextSocketAction.SUSPEND  # end reading
             else:
                 self.change_state(H1InboundHandler.STATE_READ_CONTENT)
                 return NextSocketAction.CONTINUE
@@ -272,7 +274,7 @@ class H1InboundHandler(H1ProtocolHandler, InboundHandler):
             else:
                 try:
                     self.end_req_content(tur_id, tur)
-                    return NextSocketAction.CONTINUE
+                    return NextSocketAction.SUSPEND  # end reading
                 except HttpException as e:
                     tur.res.send_http_exception(tur_id, e)
                     self.reset_state()

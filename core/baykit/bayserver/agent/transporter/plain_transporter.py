@@ -4,8 +4,8 @@ from baykit.bayserver.sink import Sink
 from baykit.bayserver.agent.transporter.transporter import Transporter
 
 class PlainTransporter(Transporter):
-    def __init__(self, server_mode, bufsiz):
-        super().__init__(server_mode, bufsiz, False)
+    def __init__(self, server_mode, bufsiz, write_only=False):
+        super().__init__(server_mode, bufsiz, False, write_only)
 
     def init(self, nb_hnd, ch, lis):
         super().init(nb_hnd, ch, lis)

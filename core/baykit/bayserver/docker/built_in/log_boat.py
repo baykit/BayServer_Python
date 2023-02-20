@@ -45,4 +45,4 @@ class LogBoat(Boat):
 
         data += CharUtil.LF
 
-        self.postman.post(StringUtil.to_bytes(data), self.file_name)
+        self.postman.post(StringUtil.to_bytes(data), None, self.file_name)

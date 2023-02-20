@@ -98,7 +98,9 @@ class NonBlockingHandler:
                     if next_action is None:
                         raise Sink("unknown next action")
                     elif next_action == NextSocketAction.WRITE:
-                        self.ask_to_write(ch)
+                        key = self.agent.selector.get_key(ch)
+                        op = key.events | selectors.EVENT_WRITE
+                        self.agent.selector.modify(ch, op)
 
                 if (next_action != NextSocketAction.CLOSE) and (events & selectors.EVENT_WRITE != 0):
                     # writable
@@ -106,7 +108,13 @@ class NonBlockingHandler:
                     if next_action is None:
                         raise Sink("unknown next action")
                     elif next_action == NextSocketAction.READ:
-                        self.ask_to_read(ch)
+                        # Handle as "Write Off"
+                        key = self.agent.selector.get_key(ch)
+                        op = key.events & ~selectors.EVENT_WRITE
+                        if op != selectors.EVENT_READ:
+                            self.agent.selector.unregister(ch)
+                        else:
+                            self.agent.selector.modify(ch, op)
 
 
             if next_action is None:
@@ -133,12 +141,12 @@ class NonBlockingHandler:
         if next_action == NextSocketAction.CLOSE:
             self.close_channel(ch, ch_state)
             cancel = False  # already canceled in close_channel method
-        elif(next_action == NextSocketAction.SUSPEND or
-                next_action == NextSocketAction.READ or
-                next_action == NextSocketAction.WRITE):
+        elif next_action == NextSocketAction.SUSPEND:
             cancel = True
 
-        elif next_action == NextSocketAction.CONTINUE:
+        elif (next_action == NextSocketAction.CONTINUE or
+                next_action == NextSocketAction.READ or
+                next_action == NextSocketAction.WRITE):
             pass
 
         else:
@@ -161,8 +169,12 @@ class NonBlockingHandler:
             nch = len(self.operations)
             for ch_op in self.operations:
                 st = self.find_channel_state(ch_op.ch)
-                if ch_op.ch.fileno() == -1:
-                    BayLog.debug("%s Try to register closed socket (Ignore)", self.agent)
+                try:
+                    if ch_op.ch.fileno() == -1:
+                        BayLog.debug("%s Try to register closed socket (Ignore)", self.agent)
+                        continue
+                except BaseException as e:
+                    BayLog.error_e(e, "%s get fileno error %s", self.agent, ch_op.ch)
                     continue
 
                 try:
@@ -210,6 +222,9 @@ class NonBlockingHandler:
                     if ch_state.listener.check_timeout(ch_state.channel, duration):
                         BayLog.debug("%s timeout: skt=%s", self.agent, ch_state.channel)
                         close_list.append(ch_state)
+
+                except Sink as e:
+                    raise e
 
                 except BaseException as e:
                     BayLog.error_e(e)
@@ -282,7 +297,7 @@ class NonBlockingHandler:
         ch_state = self.find_channel_state(ch)
         BayLog.trace("%s askToWrite chState=%s", self.agent, ch_state);
 
-        self.add_operation(ch, selectors.EVENT_READ | selectors.EVENT_WRITE)
+        self.add_operation(ch, selectors.EVENT_WRITE)
 
         if ch_state is None:
             BayLog.error("Unknown channel (or closed)")
