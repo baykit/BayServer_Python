@@ -141,7 +141,7 @@ class CmdHeader(H1Command):
                 line_len += 1
 
         if state == CmdHeader.STATE_READ_FIRST_LINE:
-            raise RuntimeError("Invalid HTTP header format")
+            raise ProtocolException("Invalid HTTP header format")
 
     def pack(self, pkt):
         acc = pkt.new_data_accessor()
