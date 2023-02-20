@@ -26,8 +26,7 @@ class InboundDataListener(DataListener):
 
     def notify_read(self, buf, adr):
         BayLog.debug("%s notify_read", self)
-        act = self.ship.protocol_handler.bytes_received(buf)
-        return act
+        return self.ship.protocol_handler.bytes_received(buf)
 
     def notify_eof(self):
         BayLog.debug("%s notify_eof", self)

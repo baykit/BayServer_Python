@@ -181,6 +181,10 @@ class TourReq(Reusable):
 
 
     def abort(self):
+        if not self.tour.is_preparing():
+            BayLog.debug("%s cannot abort non-preparing tour", self.tour)
+            return
+
         BayLog.debug("%s req abort", self.tour)
         if self.tour.is_aborted():
             raise Sink("tour is already aborted")

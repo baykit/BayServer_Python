@@ -204,19 +204,12 @@ class GrandAgent:
                         self.non_blocking_handler.close_timeout_sockets()
                         self.spin_handler.stop_timeout_spins()
 
-                except Sink as e:
-                    raise e
-
                 except KeyboardInterrupt as e:
                     BayLog.error("%s interrupted: %s", self, e)
                     break
 
-                except BaseException as e:
-                    BayLog.error("%s error: %s", self, e)
-                    BayLog.error_e(e)
-                    break
-
         except BaseException as e:
+            BayLog.error_e(e)
             raise e
 
         finally:

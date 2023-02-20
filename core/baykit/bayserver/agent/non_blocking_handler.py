@@ -130,8 +130,9 @@ class NonBlockingHandler:
                 BayLog.info("%s O/S error: %s (skt=%s)", self.agent, ExceptionUtil.message(e), ch)
             else:
                 BayLog.info("%s Unhandled error error: %s (skt=%s)", self.agent, e, ch)
+                raise e
 
-            # Cannot handle Exception any more
+            # Cannot handle Exception anymore
             ch_state.listener.on_error(ch, e)
             next_action = NextSocketAction.CLOSE
 

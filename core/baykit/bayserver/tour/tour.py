@@ -100,7 +100,7 @@ class Tour(Reusable):
         city = self.ship.port_docker.find_city(self.req.req_host)
         if city is None:
             city = bs.BayServer.find_city(self.req.req_host)
-        BayLog.debug("%s GO TOUR! ...( ^_^)/: url=%s", self, self.req.uri);
+        BayLog.debug("%s GO TOUR! ...( ^_^)/: city=%s url=%s", self, self.req.req_host, self.req.uri);
 
         if city is None:
             raise HttpException(HttpStatus.NOT_FOUND, self.req.uri)
@@ -118,6 +118,9 @@ class Tour(Reusable):
 
     def is_valid(self):
         return self.state == Tour.TourState.PREPARING or self.state == Tour.TourState.RUNNING
+
+    def is_preparing(self):
+        return self.state == Tour.TourState.PREPARING
 
     def is_running(self):
         return self.state == Tour.TourState.RUNNING

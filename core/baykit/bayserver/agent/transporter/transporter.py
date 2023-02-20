@@ -52,7 +52,7 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
     def write_nonblock(self, buf, adr):
         pass
 
-    def __init__(self, server_mode, bufsize, trace_ssl, write_only):
+    def __init__(self, server_mode, bufsize, trace_ssl, write_only=False):
         self.server_mode = server_mode
         self.trace_ssl = trace_ssl
         self.data_listener = None
@@ -250,8 +250,8 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
                         # Data remains
                         break
 
-                except ssl.SSLWantWriteError:
-                    BayLog.debug("%s Write more", self)
+                except (BlockingIOError, ssl.SSLWantWriteError):
+                    BayLog.debug("%s Write will be pended", self)
                     # Wait next chance to write
                     break
 
