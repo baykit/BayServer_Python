@@ -249,8 +249,8 @@ class TourRes:
 
 
         if self.header_sent:
-            BayLog.error("Try to send error after response header is sent (Ignore)");
-            BayLog.error("%s: status=%d, message=%s", self, status, msg);
+            BayLog.warn("Try to send error after response header is sent (Ignore)");
+            BayLog.warn("%s: status=%d, message=%s", self, status, msg);
             if err:
                 BayLog.error_e(err);
         else:
