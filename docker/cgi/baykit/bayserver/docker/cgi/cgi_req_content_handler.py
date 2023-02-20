@@ -99,14 +99,14 @@ class CgiReqContentHandler(ReqContentHandler):
     def process_finished(self):
         self.process.wait()
 
-        BayLog.debug("CGI Process finished: pid=%d code=%d", self.process.pid, self.process.returncode)
+        BayLog.debug("%s CGI Process finished: pid=%d code=%d", self.tour, self.process.pid, self.process.returncode)
 
         try:
             if self.process.returncode != 0:
                 # Exec failed
-                BayLog.error("CGI Exec error pid=%d code=%d", self.process.pid, self.process.returncode & 0xff)
+                BayLog.error("%s CGI Exec error pid=%d code=%d", self.tour, self.process.pid, self.process.returncode & 0xff)
 
-                self.tour.res.send_error(self.tour_id, HttpStatus.INTERNAL_SERVER_ERROR, "Exec failed")
+                self.tour.res.send_error(self.tour_id, HttpStatus.INTERNAL_SERVER_ERROR, "Invalid exit status")
             else:
                 self.tour.res.end_content(self.tour_id)
         except IOError as e:
