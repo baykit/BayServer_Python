@@ -9,7 +9,8 @@ class URLEncoder:
         buf = bytearray()
         for c in url:
             if c == "~":
-                buf.append(cls.ENCODED_TILDE_BYTES)
+                for n in cls.ENCODED_TILDE_BYTES:
+                    buf.append(n)
             else:
                 buf.append(ord(c))
 
