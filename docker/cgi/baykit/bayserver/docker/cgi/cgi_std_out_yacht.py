@@ -115,7 +115,7 @@ class CgiStdOutYacht(Yacht, Reusable):
         self.tour.req.content_handler.on_std_out_closed()
 
     def check_timeout(self, duration):
-        raise Sink()
+        raise Sink("%s invalid timeout check", self)
 
 
     ######################################################
