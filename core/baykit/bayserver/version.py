@@ -1,2 +1,2 @@
 class Version:
-    VERSION='2.A.3'
+    VERSION='2.0.2'

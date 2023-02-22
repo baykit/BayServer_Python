@@ -24,5 +24,6 @@ cp -r stage/* ${target_dir}
 
 
 cd /tmp
+rm -r `find ${target_name} -name "__pycache__"`
 tar czf ${target_name}.tgz ${target_name}
 
