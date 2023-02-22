@@ -225,7 +225,7 @@ class TourRes:
                          self.bytes_consumed);
             resume = True
 
-        if not self.tour.is_zombie():
+        if self.tour.is_running():
             ContentConsumeListener.call(self.consume_listener, length, resume)
 
 
