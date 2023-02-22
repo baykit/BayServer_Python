@@ -237,7 +237,7 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
             if empty:
                 break
 
-            BayLog.trace("%s Try to write: pkt=%s buflen=%d ch=%d chValid=%s adr=%s", self, wunit.tag,
+            BayLog.debug("%s Try to write: pkt=%s buflen=%d ch=%d chValid=%s adr=%s", self, wunit.tag,
                          len(wunit.buf), self.ch.fileno(), self.ch_valid, wunit.adr)
             #BayLog.info("buf=%s", wunit.buf)
 
