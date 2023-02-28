@@ -112,7 +112,8 @@ class H1PacketUnPacker(PacketUnPacker):
                 finally:
                     self.pkt_store.Return(pkt)
 
-                if next_act == NextSocketAction.CONTINUE:
+                if next_act == NextSocketAction.CONTINUE or \
+                        next_act == NextSocketAction.WRITE:
                     if self.cmd_upacker.req_finished():
                         self.change_state(H1PacketUnPacker.STATE_END)
                 elif next_act == NextSocketAction.SUSPEND:
