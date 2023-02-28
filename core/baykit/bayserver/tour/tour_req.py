@@ -1,6 +1,8 @@
 from baykit.bayserver import bayserver as bs
 
 from baykit.bayserver.bay_log import BayLog
+from baykit.bayserver.bay_message import BayMessage
+from baykit.bayserver.symbol import Symbol
 from baykit.bayserver.protocol.protocol_exception import ProtocolException
 from baykit.bayserver.sink import Sink
 from baykit.bayserver.tour import tour
@@ -118,7 +120,11 @@ class TourReq(Reusable):
             raise Sink("Request consume listener is null")
 
         if self.bytes_posted + length > self.bytes_limit:
-            raise ProtocolException("Read data exceed content-length: %d/%d", self.bytes_posted + length, self.bytes_limit)
+            raise ProtocolException(
+                BayMessage.get(
+                    Symbol.HTP_READ_DATA_EXCEEDED,
+                    self.bytes_posted + length,
+                    self.bytes_limit))
 
         # If has error, only read content. (Do not call content handler)
         if self.tour.error is None:
@@ -183,7 +189,7 @@ class TourReq(Reusable):
     def abort(self):
         if not self.tour.is_preparing():
             BayLog.debug("%s cannot abort non-preparing tour", self.tour)
-            return
+            return False
 
         BayLog.debug("%s req abort", self.tour)
         if self.tour.is_aborted():
@@ -195,6 +201,8 @@ class TourReq(Reusable):
 
         if aborted:
             self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+
+        return aborted
 
     def set_content_handler(self, hnd):
         BayLog.debug("%s set content handler", self.tour)
