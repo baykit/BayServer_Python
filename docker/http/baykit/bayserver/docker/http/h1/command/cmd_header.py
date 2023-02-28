@@ -141,7 +141,10 @@ class CmdHeader(H1Command):
                 line_len += 1
 
         if state == CmdHeader.STATE_READ_FIRST_LINE:
-            raise ProtocolException("Invalid HTTP header format")
+            raise ProtocolException(
+                BayMessage.get(
+                    Symbol.HTP_INVALID_HEADER_FORMAT,
+                    StringUtil.from_bytes(pkt.buf[line_start_pos: line_start_pos + line_len])))
 
     def pack(self, pkt):
         acc = pkt.new_data_accessor()
@@ -210,7 +213,10 @@ class CmdHeader(H1Command):
                 skipping = False
 
         if name is None:
-            raise ProtocolException(BayMessage.get(Symbol.HTP_INVALID_HEADER_FORMAT, ""))
+            raise ProtocolException(
+                BayMessage.get(
+                    Symbol.HTP_INVALID_HEADER_FORMAT,
+                    StringUtil.from_bytes(buf[start: start + length])))
 
         value = buf
 
