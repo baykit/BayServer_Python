@@ -63,7 +63,10 @@ class WarpDataListener(DataListener):
             else:
                 # NOT treat EOF as Error
                 BayLog.debug("%s EOF is not an error: tur=%s", self, tur)
-                tur.res.end_content(Tour.TOUR_ID_NOCHECK)
+                try:
+                    tur.res.end_content(Tour.TOUR_ID_NOCHECK)
+                except IOError as e:
+                    BayLog.debug_e(e, "%s end content error: tur=%s", self, tur)
 
         self.ship.tour_map.clear()
         return NextSocketAction.CLOSE
