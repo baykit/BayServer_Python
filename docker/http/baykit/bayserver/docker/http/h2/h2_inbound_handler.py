@@ -253,7 +253,7 @@ class H2InboundHandler(H2ProtocolHandler, InboundHandler):
                     try:
                         self.end_req_content(tur.id(), tur)
                     except BaseException as e:
-                        tur.res.s_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                        tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
                         return NextSocketAction.CONTINUE
 
         if not success:
