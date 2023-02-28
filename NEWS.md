@@ -1,6 +1,12 @@
 # BayServer for Python
 
 
+# 2.0.3
+
+- Fixes Problem of POST request which causes 404
+- Translates some messages to Japanese
+- Fixes potential bugs
+
 # 2.0.2
 
 - Fixes HTTP/2 bugs
