@@ -24,7 +24,12 @@ class IOUtil:
     @classmethod
     def recv_int32(cls, skt):
         data = skt.recv(4)
-        return data[0] << 24 | (data[1] << 16 & 0xFF0000) | (data[2] << 8 & 0xFF00) | (data[3] & 0xFF)
+        if len(data) == 0:
+            return None
+        elif len(data) < 4:
+            raise IOError("Not enough bytes: len=%d", len(data))
+        else:
+            return data[0] << 24 | (data[1] << 16 & 0xFF0000) | (data[2] << 8 & 0xFF00) | (data[3] & 0xFF)
 
 
     @classmethod

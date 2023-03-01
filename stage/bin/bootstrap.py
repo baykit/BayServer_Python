@@ -20,5 +20,5 @@ if os.path.isdir(docker):
 
 
 from baykit.bayserver.bayserver import BayServer
-
-BayServer.main(sys.argv)
+if __name__ == "__main__":
+    BayServer.main(sys.argv)

@@ -64,7 +64,7 @@ class BuiltInCityDocker(DockerBase, City):
         self.towns.sort(key=lambda x: len(x.name), reverse=True)
 
         for t in self.towns:
-            BayLog.info(BayMessage.get(Symbol.MSG_SETTING_UP_TOWN, t.name, t.location))
+            BayLog.debug(BayMessage.get(Symbol.MSG_SETTING_UP_TOWN, t.name, t.location))
 
         self.default_town = BuiltInTownDocker()
         self.default_club = FileDocker()

@@ -18,6 +18,7 @@ from baykit.bayserver.bay_message import BayMessage
 from baykit.bayserver.symbol import Symbol
 
 from baykit.bayserver.agent.grand_agent import GrandAgent
+from baykit.bayserver.agent.grand_agent_monitor import GrandAgentMonitor
 from baykit.bayserver.agent.signal.signal_agent import SignalAgent
 from baykit.bayserver.agent.signal.signal_sender import SignalSender
 
@@ -30,6 +31,8 @@ from baykit.bayserver.docker.port import Port
 from baykit.bayserver.protocol.packet_store import PacketStore
 from baykit.bayserver.protocol.protocol_handler_store import ProtocolHandlerStore
 from baykit.bayserver.tour.tour_store import TourStore
+from baykit.bayserver.taxi.taxi_runner import TaxiRunner
+from baykit.bayserver.train.train_runner import TrainRunner
 from baykit.bayserver.util.http_status import HttpStatus
 from baykit.bayserver.util.locale import Locale
 from baykit.bayserver.util.md5_password import MD5Password
@@ -84,9 +87,22 @@ class BayServer:
     # Software name
     software_name = None
 
+    # Command line arguments
+    commandline_args = None
+
+    # for child process mode
+    channels = None
+    communication_channel = None
+
+
     def __init__(self):
         # No instance
         pass
+
+    @classmethod
+    def init_child(cls, chs, com_ch):
+        cls.channels = chs
+        cls.communication_channel = com_ch
 
     @classmethod
     def get_version(cls):
@@ -94,12 +110,14 @@ class BayServer:
 
     @classmethod
     def main(cls, args):
+        cls.commandline_args = args
 
         cmd = None
         home = os.environ.get(cls.ENV_BAYSERVER_HOME)
         plan = os.environ.get(cls.ENV_BAYSERVER_PLAN)
         mkpass = None
         BayLog.set_full_path(SysUtil.run_on_pycharm())
+        agt_id = -1
 
         for arg in args:
             larg = arg.lower()
@@ -123,6 +141,8 @@ class BayServer:
                 mkpass = arg[8:]
             elif larg.startswith("-loglevel="):
                 BayLog.set_log_level(arg[10:])
+            elif larg.startswith("-agentid="):
+                agt_id = int(larg[9:])
 
         if mkpass:
             print(MD5Password.encode(mkpass))
@@ -131,7 +151,7 @@ class BayServer:
         cls.init(home, plan)
 
         if cmd is None:
-            cls.start()
+            cls.start(agt_id)
         else:
             SignalSender().send_command(cmd)
 
@@ -166,7 +186,7 @@ class BayServer:
         BayLog.info("BayServer Plan: " + cls.bserv_plan)
 
     @classmethod
-    def start(cls):
+    def start(cls, agt_id):
         try:
             BayMessage.init(cls.bserv_home + "/lib/conf/messages", Locale('ja', 'JP'))
 
@@ -192,64 +212,13 @@ class BayServer:
                 sys.stdout = f
                 sys.stderr = f
 
-            cls.print_version()
-            cls.create_pid_file(SysUtil.pid())
-
-            cls.my_host_name = socket.gethostname()
-
-            BayLog.debug("Host name    : " + cls.my_host_name)
-
-            anchored_port_map = {}
-            unanchored_port_map = {}
-            for dkr in cls.port_docker_list:
-                # open port
-                adr = dkr.address()
-
-                if dkr.anchored:
-                    # Open TCP port
-                    BayLog.info(BayMessage.get(Symbol.MSG_OPENING_TCP_PORT, dkr.host, dkr.port, dkr.protocol()))
-
-                    if isinstance(adr, str):
-                        os.unlink(adr)
-                        skt = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                    else:
-                        skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-                    if not SysUtil.run_on_windows():
-                        skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    skt.setblocking(False)
-                    try:
-                        skt.bind(adr)
-                    except OSError as e:
-                        BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host, dkr.port, ExceptionUtil.message(e)))
-                        return
-                    skt.listen(0)
-
-                    anchored_port_map[skt] = dkr
-                else:
-                    # Open UDP port
-                    BayLog.info(BayMessage.get(Symbol.MSG_OPENING_UDP_PORT, dkr.host, dkr.port, dkr.protocol()))
-                    skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    if not SysUtil.run_on_windows():
-                        skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    skt.setblocking(False)
-                    try:
-                        skt.bind(adr)
-                    except OSError as e:
-                        BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host, dkr.port, ExceptionUtil.message(e)))
-                        return
-
-                    unanchored_port_map[skt] = dkr
-
-
             # Init stores, memory usage managers
             PacketStore.init()
             InboundShipStore.init()
             ProtocolHandlerStore.init()
             TourStore.init(TourStore.MAX_TOURS)
             MemUsage.init()
-            GrandAgent.init(cls.harbor.grand_agents, anchored_port_map, unanchored_port_map, cls.harbor.max_ships, cls.harbor.multi_core)
-            SignalAgent.init(cls.harbor.control_port)
+
 
             if SysUtil.run_on_pycharm():
                 def int_handler(sig, stk):
@@ -258,13 +227,24 @@ class BayServer:
 
                 signal.signal(signal.SIGINT, int_handler)
 
-            while len(GrandAgent.monitors) > 0:
+            BayLog.debug("Command line: %s", cls.commandline_args)
+
+            if agt_id == -1:
+                cls.print_version()
+                cls.my_host_name = socket.gethostname()
+                BayLog.info("Host name    : " + cls.my_host_name)
+                cls.parent_start()
+
+            else:
+                cls.child_start(agt_id)
+
+            while len(GrandAgentMonitor.monitors) > 0:
                 sel = selectors.DefaultSelector()
-                pip_to_mon_map = {}
-                for mon in GrandAgent.monitors:
+                mon_map = {}
+                for mon in GrandAgentMonitor.monitors.values():
                     BayLog.debug("Monitoring pipe of %s", mon)
-                    sel.register(mon.recv_pipe[0], selectors.EVENT_READ)
-                    pip_to_mon_map[mon.recv_pipe[0]] = mon
+                    sel.register(mon.communication_channel, selectors.EVENT_READ)
+                    mon_map[mon.communication_channel] = mon
 
                 server_skt = None
                 if SignalAgent.signal_agent:
@@ -276,7 +256,7 @@ class BayServer:
                     if server_skt and key.fd == server_skt.fileno():
                         SignalAgent.signal_agent.on_socket_readable()
                     else:
-                        mon = pip_to_mon_map[key.fd]
+                        mon = mon_map[key.fileobj]
                         mon.on_readable()
 
             SignalAgent.term()
@@ -286,6 +266,106 @@ class BayServer:
             BayLog.fatal_e(e, "%s", trc[0].rstrip("\n"))
 
         exit(1)
+
+    @classmethod
+    def open_ports(cls, anchored_port_map, unanchored_port_map):
+        for dkr in cls.port_docker_list:
+            # open port
+            adr = dkr.address()
+
+            if dkr.anchored:
+                # Open TCP port
+                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_TCP_PORT, dkr.host, dkr.port, dkr.protocol()))
+
+                if isinstance(adr, str):
+                    os.unlink(adr)
+                    skt = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                else:
+                    skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+                #if not SysUtil.run_on_windows():
+                    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                #skt.setblocking(False)
+                try:
+                    skt.bind(adr)
+                except OSError as e:
+                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host, dkr.port,
+                                                     ExceptionUtil.message(e)))
+                    return
+                skt.listen(0)
+                BayLog.info("Bind OK")
+                anchored_port_map[skt] = dkr
+            else:
+                # Open UDP port
+                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_UDP_PORT, dkr.host, dkr.port, dkr.protocol()))
+                skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                if not SysUtil.run_on_windows():
+                    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                skt.setblocking(False)
+                try:
+                    skt.bind(adr)
+                except OSError as e:
+                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host, dkr.port,
+                                                     ExceptionUtil.message(e)))
+                    return
+
+                unanchored_port_map[skt] = dkr
+
+    @classmethod
+    def parent_start(cls):
+        anchored_port_map = {}
+        unanchored_port_map = {}
+        cls.open_ports(anchored_port_map, unanchored_port_map)
+
+        if not cls.harbor.multi_core:
+            # Thread mode
+
+            GrandAgent.init(
+                list(range(1, cls.harbor.grand_agents)),
+                anchored_port_map,
+                unanchored_port_map,
+                cls.harbor.max_ships,
+                cls.harbor.multi_core)
+
+            cls.invoke_runners()
+
+        GrandAgentMonitor.init(cls.harbor.grand_agents, anchored_port_map)
+        SignalAgent.init(cls.harbor.control_port)
+        cls.create_pid_file(SysUtil.pid())
+
+    @classmethod
+    def child_start(cls, agt_id):
+        cls.invoke_runners()
+
+        anchored_port_map = {}
+        unanchored_port_map = {}
+
+        for skt in cls.channels:
+            server_addr = skt.getsockname()
+            port_no = server_addr[1]
+            port_dkr = None
+
+            for p in cls.port_docker_list:
+                if p.port == port_no:
+                    port_dkr = p
+                    break
+
+            if port_dkr is None:
+                BayLog.fatal("Cannot find port docker: %d", port_no)
+                os.exit(1)
+
+            anchored_port_map[skt] = port_dkr
+
+        GrandAgent.init(
+            [agt_id],
+            anchored_port_map,
+            unanchored_port_map,
+            cls.harbor.max_ships,
+            cls.harbor.multi_core
+        )
+        agt = GrandAgent.get(agt_id)
+        agt.run_command_receiver(cls.communication_channel)
+        agt.run()
 
     @classmethod
     def find_city(cls, name):
@@ -357,6 +437,16 @@ class BayServer:
         with open(cls.harbor.pid_file, "w") as f:
             f.write(str(pid))
 
+    #
+    # Run train runners and taxi runners inner process
+    #   ALl the train runners and taxi runners run in each process (not thread)
+    #
+    @classmethod
+    def invoke_runners(cls):
+        TrainRunner.init(cls.harbor.train_runners)
+        TaxiRunner.init(cls.harbor.taxi_runners)
 
 
+if __name__ == "__main__":
+    next
 
