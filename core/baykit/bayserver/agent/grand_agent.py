@@ -84,6 +84,7 @@ class GrandAgent:
         self.aborted = False
         self.unanchorable_transporters = {}
         self.command_receiver = None
+        self.lock = threading.RLock()
 
 
     def __str__(self):
@@ -137,17 +138,21 @@ class GrandAgent:
                     #for key in selkeys:
                     #    BayLog.debug("%s key=%s", self, key)
 
+                    # Consume wakeup queue first
+                    with self.lock:
+                        for key, events in selkeys:
+                            if key.fd == self.select_wakeup_pipe[0].fileno():
+                                # Waked up by ask_to_*
+                                self.on_waked_up(key.fileobj)
+
                     processed = self.non_blocking_handler.register_channel_ops() > 0
 
                     if len(selkeys) == 0:
                         processed |= self.spin_handler.process_data();
 
-                    # BayLog.trace("%s Selected keys: %s", self, selkeys)
                     for key, events in selkeys:
-                        #BayLog.debug("%s Handle key: %s", self, key)
                         if key.fd == self.select_wakeup_pipe[0].fileno():
-                            # Waked up by ask_to_*
-                            self.on_waked_up(key.fileobj)
+                            continue
                         elif key.fd == self.command_receiver.communication_channel.fileno():
                             self.command_receiver.on_pipe_readable()
                         elif self.accept_handler and self.accept_handler.is_server_socket(key.fileobj):
@@ -220,18 +225,16 @@ class GrandAgent:
     def on_waked_up(self, ch):
         BayLog.trace("%s On Waked Up", self)
         try:
-            IOUtil.recv_int32(self.select_wakeup_pipe[0])
+            while True:
+                IOUtil.recv_int32(self.select_wakeup_pipe[0])
         except BlockingIOError as e:
             pass
 
     def wakeup(self):
-        BayLog.trace("%s Wake Up", self)
-        #if self.wakingup:
-        #    BayLog.debug("Not Wake Up")
-        #    return
-
-        # pipe emuration by socket
-        IOUtil.send_int32(self.select_wakeup_pipe[1], 0)
+        with self.lock:
+            BayLog.trace("%s Wake Up", self)
+            # pipe emuration by socket
+            IOUtil.send_int32(self.select_wakeup_pipe[1], 0)
 
     def run_command_receiver(self, com_channel):
         self.command_receiver = CommandReceiver(self, com_channel)
