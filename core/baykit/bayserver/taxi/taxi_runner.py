@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import threading
 
 from baykit.bayserver.bay_log import BayLog
 
@@ -12,6 +13,7 @@ class TaxiRunner:
 
     @classmethod
     def post(cls, taxi):
+        BayLog.debug("%s post taxi: %s", threading.current_thread().name, taxi)
         try:
             cls.exe.submit(TaxiRunner.run, taxi)
             return True
@@ -22,4 +24,5 @@ class TaxiRunner:
 
     @classmethod
     def run(cls, taxi):
+        BayLog.debug("%s Run taxi: %s", threading.current_thread().name, taxi)
         taxi.run()

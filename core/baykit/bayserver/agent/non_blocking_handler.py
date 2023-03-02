@@ -79,7 +79,7 @@ class NonBlockingHandler:
                 BayLog.debug("%s Unregister error (Ignore): %s", self, e)
             return
 
-        BayLog.trace("%s chState=%s Handle channel: readable=%s writable=%s connecting=%s closing=%s",
+        BayLog.debug("%s chState=%s Handle channel: readable=%s writable=%s connecting=%s closing=%s",
                      self.agent, ch_state, events & selectors.EVENT_READ, events & selectors.EVENT_WRITE,
                      ch_state.connecting, ch_state.closing)
 
@@ -171,7 +171,7 @@ class NonBlockingHandler:
         if len(self.operations) == 0:
             return 0
 
-        #BayLog.info("op list: %s", self.operations)
+        #BayLog.info("%s register op list: %s", self, self.operations)
         with self.operations_lock:
             nch = len(self.operations)
             for ch_op in self.operations:
@@ -185,16 +185,16 @@ class NonBlockingHandler:
                     continue
 
                 try:
-                    BayLog.trace("%s register op=%s chState=%s", self, NonBlockingHandler.op_mode(ch_op.op), st)
+                    BayLog.debug("%s register op=%s chState=%s", self, NonBlockingHandler.op_mode(ch_op.op), st)
                     try:
                         key = self.agent.selector.get_key(ch_op.ch)
                         op = key.events;
                         new_op = op | ch_op.op;
-                        BayLog.debug("%s Already registered op=%s update to %s", self, NonBlockingHandler.op_mode(op), NonBlockingHandler.op_mode(new_op));
+                        BayLog.trace("%s Already registered op=%s update to %s", self, NonBlockingHandler.op_mode(op), NonBlockingHandler.op_mode(new_op));
                         self.agent.selector.modify(ch_op.ch, new_op)
                     except KeyError:
                         # channel is not registered in selector
-                        BayLog.debug("%s Not registered", self);
+                        BayLog.trace("%s Not registered", self);
                         self.agent.selector.register(ch_op.ch, ch_op.op)
 
                     if ch_op.connect:
@@ -289,7 +289,7 @@ class NonBlockingHandler:
             raise IOError("Channel is closed")
 
         ch_state = self.find_channel_state(ch)
-        BayLog.trace("%s askToRead chState=%s", self, ch_state);
+        BayLog.debug("%s askToRead chState=%s", self, ch_state);
 
         self.add_operation(ch, selectors.EVENT_READ)
 
@@ -304,7 +304,7 @@ class NonBlockingHandler:
             return
 
         ch_state = self.find_channel_state(ch)
-        BayLog.trace("%s askToWrite chState=%s", self, ch_state);
+        BayLog.debug("%s askToWrite chState=%s", self, ch_state);
 
         self.add_operation(ch, selectors.EVENT_WRITE)
 
@@ -340,9 +340,9 @@ class NonBlockingHandler:
                     ch_op.close = ch_op.close or close
                     ch_op.connect = ch_op.connect or connect
                     found = True
-                    BayLog.trace("%s Update operation: %s ch=%d", self, NonBlockingHandler.op_mode(ch_op.op), ch_op.ch.fileno())
+                    BayLog.debug("%s Update operation: %s ch=%d", self, NonBlockingHandler.op_mode(ch_op.op), ch_op.ch.fileno())
             if not found:
-                BayLog.trace("%s New operation: %s ch=%d", self, NonBlockingHandler.op_mode(op), ch.fileno());
+                BayLog.debug("%s New operation: %s ch=%d", self, NonBlockingHandler.op_mode(op), ch.fileno());
                 self.operations.append(NonBlockingHandler.ChannelOperation(ch, op, connect=connect, close=close))
 
         self.agent.wakeup()
