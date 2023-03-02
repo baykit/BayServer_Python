@@ -126,7 +126,7 @@ class GrandAgent:
                         BayLog.debug("%s End loop", self)
                         break
 
-                    #BayLog.debug("%s select: %s", self, self.selector.get_map())
+                    #BayLog.debug("%s select", self)
                     #for k in self.selector.get_map().keys():
                     #    BayLog.debug("ch: %s", k)
                     if not self.spin_handler.is_empty():
@@ -135,7 +135,7 @@ class GrandAgent:
                         selkeys = self.selector.select(self.select_timeout_sec)
                     #BayLog.debug("%s selected %d keys", self, len(selkeys))
                     #for key in selkeys:
-                    #    BayLog.debug("key=%s", key)
+                    #    BayLog.debug("%s key=%s", self, key)
 
                     processed = self.non_blocking_handler.register_channel_ops() > 0
 
@@ -144,6 +144,7 @@ class GrandAgent:
 
                     # BayLog.trace("%s Selected keys: %s", self, selkeys)
                     for key, events in selkeys:
+                        #BayLog.debug("%s Handle key: %s", self, key)
                         if key.fd == self.select_wakeup_pipe[0].fileno():
                             # Waked up by ask_to_*
                             self.on_waked_up(key.fileobj)
@@ -219,13 +220,16 @@ class GrandAgent:
     def on_waked_up(self, ch):
         BayLog.trace("%s On Waked Up", self)
         try:
-            while True:
-                IOUtil.recv_int32(self.select_wakeup_pipe[0])
+            IOUtil.recv_int32(self.select_wakeup_pipe[0])
         except BlockingIOError as e:
             pass
 
     def wakeup(self):
-        BayLog.debug("%s Waked Up", self)
+        BayLog.trace("%s Wake Up", self)
+        #if self.wakingup:
+        #    BayLog.debug("Not Wake Up")
+        #    return
+
         # pipe emuration by socket
         IOUtil.send_int32(self.select_wakeup_pipe[1], 0)
 
