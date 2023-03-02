@@ -284,8 +284,8 @@ class BayServer:
                     skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
                 #if not SysUtil.run_on_windows():
-                    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                #skt.setblocking(False)
+                skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                skt.setblocking(False)
                 try:
                     skt.bind(adr)
                 except OSError as e:
@@ -293,7 +293,6 @@ class BayServer:
                                                      ExceptionUtil.message(e)))
                     return
                 skt.listen(0)
-                BayLog.info("Bind OK")
                 anchored_port_map[skt] = dkr
             else:
                 # Open UDP port
