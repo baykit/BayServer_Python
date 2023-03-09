@@ -105,10 +105,6 @@ class BuiltInHarborDocker(DockerBase, Harbor):
             self.max_ships = BuiltInHarborDocker.DEFAULT_MAX_SHIPS
             BayLog.warn(BayMessage.get(Symbol.CFG_MAX_SHIPS_IS_TO_SMALL, self.max_ships))
 
-        if self.multi_core and not SysUtil.support_fork():
-            BayLog.warn(BayMessage.get(Symbol.CFG_MULTI_CORE_NOT_SUPPORTED))
-            self.multi_core = False
-
         if self.file_send_method == Harbor.FILE_SEND_METHOD_SELECT and not SysUtil.support_select_file():
             BayLog.warn(BayMessage.get(Symbol.CFG_FILE_SEND_METHOD_SELECT_NOT_SUPPORTED))
             self.file_send_method = Harbor.FILE_SEND_METHOD_TAXI
