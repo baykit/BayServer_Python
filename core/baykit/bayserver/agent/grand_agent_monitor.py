@@ -1,5 +1,6 @@
 import socket
-from multiprocessing import Process, Queue
+import threading
+from multiprocessing import Process
 import os
 
 from baykit.bayserver import bayserver as bs
@@ -90,9 +91,15 @@ class GrandAgentMonitor:
             p.start()
         else:
             # Thread mode
+            ga.GrandAgent.add(agt_id, anchorable)
             agt = ga.GrandAgent.get(agt_id)
             agt.run_command_receiver(com_ch[1])
-            agt.run()
+
+            def run():
+                agt.run()
+
+            agent_thread = threading.Thread(target=run)
+            agent_thread.start()
 
         cls.monitors[agt_id] = GrandAgentMonitor(agt_id, anchorable, com_ch[0])
 

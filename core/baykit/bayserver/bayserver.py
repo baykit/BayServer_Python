@@ -320,7 +320,7 @@ class BayServer:
             # Thread mode
 
             GrandAgent.init(
-                list(range(1, cls.harbor.grand_agents)),
+                list(range(1, cls.harbor.grand_agents + 1)),
                 anchored_port_map,
                 unanchored_port_map,
                 cls.harbor.max_ships,
