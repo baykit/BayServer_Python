@@ -22,34 +22,19 @@ class SysUtil:
         return os.environ.get("PYCHARM") == "1"
 
     @classmethod
-    def support_fork(cls):
-        try:
-            pid = os.fork()
-            if pid == 0:
-                os._exit(0)
-
-            os.waitpid(pid, 0)
-            return True
-        except AttributeError as e:
-            if BayLog.debug_mode():
-                BayLog.warn("fork() failed: %s ", e)
-
-            return False
-
-
-    @classmethod
     def support_select_file(cls):
         with open(bs.BayServer.bserv_plan) as f:
             try:
                 sel = selectors.DefaultSelector()
                 sel.register(f, selectors.EVENT_READ)
                 n = sel.select(0)
-                sel.close()
                 return True
             except OSError as e:
-                if BayLog.debug_mode():
-                    BayLog.warn("select() failed: %s ", e)
+                BayLog.debug_e(e, "select() failed")
                 return False
+            finally:
+                if sel is not None:
+                    sel.close()
 
     @classmethod
     def support_nonblock_file_read(cls):
