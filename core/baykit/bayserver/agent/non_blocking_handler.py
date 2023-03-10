@@ -363,7 +363,7 @@ class NonBlockingHandler:
         self.remove_channel_state(ch)
         try:
             self.agent.selector.unregister(ch)
-        except ValueError as e:
+        except KeyError or ValueError as e:
             BayLog.debug("%s Unregister error (Ignore): %s %s", self, ch, e)
 
         ch.close()
