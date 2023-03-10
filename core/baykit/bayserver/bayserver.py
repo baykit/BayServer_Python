@@ -314,6 +314,7 @@ class BayServer:
     def parent_start(cls):
         anchored_port_map = {}
         unanchored_port_map = {}
+        BayLog.debug("parent_start")
         cls.open_ports(anchored_port_map, unanchored_port_map)
 
         if not cls.harbor.multi_core:
@@ -334,6 +335,7 @@ class BayServer:
 
     @classmethod
     def child_start(cls, agt_id):
+        BayLog.debug("Agt#%d child_start", agt_id)
         cls.invoke_runners()
 
         anchored_port_map = {}
