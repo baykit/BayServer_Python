@@ -34,7 +34,7 @@ class BcfParser:
             enc = "utf-8"
         self.input = open(file, encoding=enc)
         self.parse_same_level(doc.content_list, 0)
-        self.input.close
+        self.input.close()
         return doc
 
     def push_indent(self, sp_count):
