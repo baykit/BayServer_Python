@@ -15,9 +15,9 @@ from baykit.bayserver.util.string_util import StringUtil
 from baykit.bayserver.util.cgi_util import CgiUtil
 from baykit.bayserver.util.exception_util import ExceptionUtil
 
-from baykit.bayserver.docker.banjo.banjo_train import BanjoTrain
+from baykit.bayserver.docker.maccaferri.maccaferri_train import MaccaferriTrain
 
-class BanjoDocker(ClubBase):
+class MaccaferriDocker(ClubBase):
 
     class ErrorWriter:
         def write(self, string):
@@ -36,7 +36,7 @@ class BanjoDocker(ClubBase):
         self.app_callable = None
         self.project = None
         self.module = None
-        self.post_cache_threshold = BanjoDocker.DEFAULT_POST_CACHE_THRESHOLD
+        self.post_cache_threshold = MaccaferriDocker.DEFAULT_POST_CACHE_THRESHOLD
 
 
     def init(self, elm, parent):
@@ -103,7 +103,7 @@ class BanjoDocker(ClubBase):
 
         self.create_wsgi_env(tur, env)
 
-        train = BanjoTrain(self, tur, self.app, env)
+        train = MaccaferriTrain(self, tur, self.app, env)
         train.start_tour()
 
 
@@ -111,7 +111,7 @@ class BanjoDocker(ClubBase):
         env["wsgi.input"] = None
         env["wsgi.file_wrapper"] = wsgiref.util.FileWrapper
         env["wsgi.version"] = (1, 0)
-        env["wsgi.errors"] = BanjoDocker.ErrorWriter()
+        env["wsgi.errors"] = MaccaferriDocker.ErrorWriter()
         env["wsgi.run_once"] = False
         env["wsgi.multithread"] = False
         env["wsgi.multiprocess"] = False

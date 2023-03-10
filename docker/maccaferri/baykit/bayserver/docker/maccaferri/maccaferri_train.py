@@ -16,7 +16,7 @@ from baykit.bayserver.util.http_status import HttpStatus
 from baykit.bayserver.util.class_util import ClassUtil
 
 
-class BanjoTrain(Train):
+class MaccaferriTrain(Train):
     READ_CHUNK_SIZE = 8192
 
     def __init__(self, dkr, tur, app, env):

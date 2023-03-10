@@ -52,7 +52,7 @@
     [town /wsgi-demo/]
         location www/wsgi-demo
         [club *]
-            docker banjo
+            docker maccaferri
             project www/wsgi-demo
             module wsgi
             app application
