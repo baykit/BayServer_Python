@@ -7,7 +7,6 @@ import socket
 import sys
 import threading
 import traceback
-import time
 
 from baykit.bayserver.version import Version
 from baykit.bayserver.bay_log import BayLog
@@ -278,7 +277,10 @@ class BayServer:
                 BayLog.info(BayMessage.get(Symbol.MSG_OPENING_TCP_PORT, dkr.host, dkr.port, dkr.protocol()))
 
                 if isinstance(adr, str):
-                    os.unlink(adr)
+                    try:
+                        os.unlink(adr)
+                    except IOError:
+                        pass
                     skt = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 else:
                     skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -329,7 +331,7 @@ class BayServer:
 
             cls.invoke_runners()
 
-        GrandAgentMonitor.init(cls.harbor.grand_agents, anchored_port_map)
+        GrandAgentMonitor.init(cls.harbor.grand_agents, anchored_port_map, unanchored_port_map)
         SignalAgent.init(cls.harbor.control_port)
         cls.create_pid_file(SysUtil.pid())
 
@@ -343,17 +345,36 @@ class BayServer:
 
         for skt in cls.channels:
             server_addr = skt.getsockname()
-            port_no = server_addr[1]
+            if skt.family == socket.AF_UNIX:
+                unix_domain = True
+                anchorable = True
+                port_path = server_addr
+            elif skt.type == socket.SOCK_DGRAM:
+                # UDP Port
+                unix_domain = False
+                anchorable = False
+                port_no = server_addr[1]
+            else:
+                # TCP port
+                unix_domain = False
+                anchorable = True
+                port_no = server_addr[1]
+
             port_dkr = None
 
             for p in cls.port_docker_list:
-                if p.port == port_no:
-                    port_dkr = p
-                    break
+                if unix_domain:
+                    if p.socket_path == port_path:
+                        port_dkr = p
+                        break
+                else:
+                    if p.anchored == anchorable and p.port == port_no:
+                        port_dkr = p
+                        break
 
             if port_dkr is None:
                 BayLog.fatal("Cannot find port docker: %d", port_no)
-                os.exit(1)
+                sys.exit(1)
 
             anchored_port_map[skt] = port_dkr
 

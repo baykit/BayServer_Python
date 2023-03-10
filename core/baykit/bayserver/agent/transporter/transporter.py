@@ -184,15 +184,15 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
             return self.data_listener.notify_eof()
 
         try:
-            try:
-                next_action = self.data_listener.notify_read(read_buf, adr)
-                if next_action is None:
-                    raise Sink("Next action is empty")
-                BayLog.trace("%s returned from notify_read(). next action=%d", self.data_listener, next_action)
-                return next_action
-            except UpgradeException as e:
-                BayLog.debug("%s Protocol upgrade", self.data_listener)
-                return self.data_listener.notify_read(read_buf, adr)
+            next_action = self.data_listener.notify_read(read_buf, adr)
+            if next_action is None:
+                raise Sink("Next action is empty")
+            BayLog.trace("%s returned from notify_read(). next action=%d", self.data_listener, next_action)
+            return next_action
+
+        except UpgradeException as e:
+            BayLog.debug("%s Protocol upgrade", self.data_listener)
+            return self.data_listener.notify_read(read_buf, adr)
 
         except ProtocolException as e:
             close = self.data_listener.notify_protocol_error(e)
@@ -201,6 +201,12 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
                 return NextSocketAction.CONTINUE
             else:
                 return NextSocketAction.CLOSE
+
+        except IOError as e:
+            # IOError which occur in notify_XXX must be distinguished from
+            # it which occur in handshake or readNonBlock.
+            self.on_error(chk_ch, e)
+            return NextSocketAction.CLOSE
 
     def on_writable(self, chk_ch):
         self.check_channel(chk_ch)

@@ -1,7 +1,7 @@
 import socket
 import threading
 from multiprocessing import Process
-import os
+import sys
 
 from baykit.bayserver import bayserver as bs
 from baykit.bayserver.bay_log import BayLog
@@ -16,6 +16,7 @@ class GrandAgentMonitor:
     cur_id = 0
     monitors = {}
     anchored_port_map = {}
+    unanchored_port_map = {}
     finale = False
 
     def __init__(self, agt_id, anchorable, com_channel):
@@ -65,9 +66,14 @@ class GrandAgentMonitor:
     # Class methods
     ########################################
     @classmethod
-    def init(cls, num_agents, anchored_port_map):
+    def init(cls, num_agents, anchored_port_map, unanchored_port_map):
         cls.num_agents = num_agents
         cls.anchored_port_map = anchored_port_map
+        cls.unanchored_port_map = unanchored_port_map
+
+        if unanchored_port_map is not None and len(unanchored_port_map) > 0:
+            cls.add(False)
+
         for i in range(0, num_agents):
             cls.add(True)
 
@@ -77,7 +83,7 @@ class GrandAgentMonitor:
         agt_id = cls.cur_id
         if agt_id > 100:
             BayLog.error("Too many agents started")
-            os.exit(1)
+            sys.exit(1)
 
         com_ch = socket.socketpair()
         if bs.BayServer.harbor.multi_core:
@@ -85,8 +91,13 @@ class GrandAgentMonitor:
             new_argv.append("-agentid=" + str(agt_id))
 
             chs = []
-            for ch in cls.anchored_port_map.keys():
-                chs.append(ch)
+            if anchorable:
+                for ch in cls.anchored_port_map.keys():
+                    chs.append(ch)
+            else:
+                for ch in cls.unanchored_port_map.keys():
+                    chs.append(ch)
+
             p = Process(target=run_child, args=(new_argv, chs, com_ch[1],))
             p.start()
         else:
