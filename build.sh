@@ -23,6 +23,8 @@ cp -r test/simple/www/wsgi-demo stage/www
 cp -r stage/* ${target_dir}
 
 
+cp LICENSE.* NEWS.md README.md ${target_dir}
+
 cd /tmp
 rm -r `find ${target_name} -name "__pycache__"`
 tar czf ${target_name}.tgz ${target_name}
