@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+import os
 
 from aioquic.h3.connection import H3_ALPN
 from aioquic.quic.configuration import QuicConfiguration
@@ -51,6 +52,8 @@ class H3PortDocker(PortBase, H3Docker):
 
         # create QUIC logger
         if self.quic_log_dir:
+            if not os.path.exists(self.quic_log_dir):
+                os.mkdir(self.quic_log_dir)
             quic_logger = QuicFileLogger(self.quic_log_dir)
         else:
             quic_logger = None

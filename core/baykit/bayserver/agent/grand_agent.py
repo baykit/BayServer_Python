@@ -251,12 +251,13 @@ class GrandAgent:
         GrandAgent.multi_core = multi_core
 
         if bs.BayServer.harbor.multi_core:
+            if len(GrandAgent.unanchorable_port_map) > 0:
+                GrandAgent.add(agt_ids[0], False)
+                agt_ids.pop(0)
+
             for agt_id in agt_ids:
                 GrandAgent.add(agt_id, True)
 
-        if len(GrandAgent.unanchorable_port_map) > 0:
-            GrandAgent.add(False)
-            GrandAgent.agent_count += 1
 
 
     @classmethod

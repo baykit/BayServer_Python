@@ -376,7 +376,11 @@ class BayServer:
                 BayLog.fatal("Cannot find port docker: %d", port_no)
                 sys.exit(1)
 
-            anchored_port_map[skt] = port_dkr
+            if port_dkr.anchored:
+                anchored_port_map[skt] = port_dkr
+            else:
+                unanchored_port_map[skt] = port_dkr
+
 
         GrandAgent.init(
             [agt_id],
