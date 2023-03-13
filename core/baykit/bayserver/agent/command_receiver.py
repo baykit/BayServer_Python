@@ -18,12 +18,12 @@ class CommandReceiver:
 
     def on_pipe_readable(self):
         try:
-            cmd = IOUtil.read_int32(self.communication_channel)
+            cmd = IOUtil.recv_int32(self.communication_channel)
             if cmd is None:
-                BayLog.debug("%s pipe closed: %d", self, self.communication_channel)
+                BayLog.debug("%s pipe closed: %s", self, self.communication_channel)
                 self.agent.abort()
             else:
-                BayLog.debug("%s receive command %d pipe=%d", self, cmd, self.communication_channel)
+                BayLog.debug("%s receive command %d pipe=%s", self, cmd, self.communication_channel)
                 if cmd == ga.GrandAgent.CMD_RELOAD_CERT:
                     self.agent.reload_cert()
                 elif cmd == ga.GrandAgent.CMD_MEM_USAGE:
@@ -40,12 +40,10 @@ class CommandReceiver:
 
                 IOUtil.send_int32(self.communication_channel, ga.GrandAgent.CMD_OK)
 
-        except IOError as e:
-            BayLog.error_e(e, "%s Command thread aborted(end)", self)
-
         except BaseException as e:
             BayLog.error_e(e)
             BayLog.error_e(e, "%s Command thread aborted(end)", self)
+            self.close()
 
     def end(self):
         BayLog.debug("%s end", self)

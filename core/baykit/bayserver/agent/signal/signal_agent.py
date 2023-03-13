@@ -99,15 +99,15 @@ class SignalAgent:
     def handle_command(cls, cmd):
         BayLog.debug("handle command: %s", cmd)
         if cmd.lower() == cls.COMMAND_RELOAD_CERT:
-          ga.GrandAgent.reload_cert_all()
+          ga.GrandAgentMonitor.reload_cert_all()
         elif cmd.lower() ==  cls.COMMAND_MEM_USAGE:
-          ga.GrandAgent.print_usage_all()
+          ga.GrandAgentMonitor.print_usage_all()
         elif cmd.lower() == cls.COMMAND_RESTART_AGENTS:
-          ga.GrandAgent.restart_all()
+          ga.GrandAgentMonitor.restart_all()
         elif cmd.lower() == cls.COMMAND_SHUTDOWN:
-          ga.GrandAgent.shutdown_all()
+          ga.GrandAgentMonitor.shutdown_all()
         elif cmd.lower() == cls.COMMAND_ABORT:
-          ga.GrandAgent.abort_all()
+          ga.GrandAgentMonitor.abort_all()
         else:
           BayLog.error("Unknown command: %s", cmd)
         BayLog.debug("HANDLED: %s", cmd)

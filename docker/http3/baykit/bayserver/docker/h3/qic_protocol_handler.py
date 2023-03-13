@@ -163,6 +163,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
 
         tur = self.get_tour(qev.stream_id)
         if tur:
+            BayLog.debug("%s set zombie", tur)
             tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ZOMBIE)
             return
 

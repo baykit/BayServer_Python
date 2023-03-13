@@ -187,48 +187,49 @@ class BayServer:
     @classmethod
     def start(cls, agt_id):
         try:
-            BayMessage.init(cls.bserv_home + "/lib/conf/messages", Locale('ja', 'JP'))
-
-            cls.dockers = BayDockers()
-
-            cls.dockers.init(cls.bserv_home + "/lib/conf/dockers.bcf")
-
-            Mimes.init(cls.bserv_home + "/lib/conf/mimes.bcf")
-            HttpStatus.init(cls.bserv_home + "/lib/conf/httpstatus.bcf");
-
-            if cls.bserv_plan is not None:
-                cls.load_plan(cls.bserv_plan)
-
-            if len(cls.port_docker_list) == 0:
-                raise BayException(BayMessage.get(Symbol.CFG_NO_PORT_DOCKER))
-
-            redirect_file = cls.harbor.redirect_file
-
-            if redirect_file is not None:
-                if not pathlib.Path(redirect_file).is_absolute():
-                    redirect_file = cls.bserv_home + "/" + redirect_file
-                f = open(redirect_file, "a")
-                sys.stdout = f
-                sys.stderr = f
-
-            # Init stores, memory usage managers
-            PacketStore.init()
-            InboundShipStore.init()
-            ProtocolHandlerStore.init()
-            TourStore.init(TourStore.MAX_TOURS)
-            MemUsage.init()
-
-
-            if SysUtil.run_on_pycharm():
-                def int_handler(sig, stk):
-                    print("Trap! Interrupted")
-                    GrandAgent.abort_all()
-
-                signal.signal(signal.SIGINT, int_handler)
-
-            BayLog.debug("Command line: %s", cls.commandline_args)
-
             if agt_id == -1:
+
+                BayMessage.init(cls.bserv_home + "/lib/conf/messages", Locale('ja', 'JP'))
+
+                cls.dockers = BayDockers()
+
+                cls.dockers.init(cls.bserv_home + "/lib/conf/dockers.bcf")
+
+                Mimes.init(cls.bserv_home + "/lib/conf/mimes.bcf")
+                HttpStatus.init(cls.bserv_home + "/lib/conf/httpstatus.bcf");
+
+                if cls.bserv_plan is not None:
+                    cls.load_plan(cls.bserv_plan)
+
+                if len(cls.port_docker_list) == 0:
+                    raise BayException(BayMessage.get(Symbol.CFG_NO_PORT_DOCKER))
+
+                redirect_file = cls.harbor.redirect_file
+
+                if redirect_file is not None:
+                    if not pathlib.Path(redirect_file).is_absolute():
+                        redirect_file = cls.bserv_home + "/" + redirect_file
+                    f = open(redirect_file, "a")
+                    sys.stdout = f
+                    sys.stderr = f
+
+                # Init stores, memory usage managers
+                PacketStore.init()
+                InboundShipStore.init()
+                ProtocolHandlerStore.init()
+                TourStore.init(TourStore.MAX_TOURS)
+                MemUsage.init()
+
+
+                if SysUtil.run_on_pycharm():
+                    def int_handler(sig, stk):
+                        print("Trap! Interrupted")
+                        GrandAgent.abort_all()
+
+                    signal.signal(signal.SIGINT, int_handler)
+
+                BayLog.debug("Command line: %s", cls.commandline_args)
+
                 cls.print_version()
                 cls.my_host_name = socket.gethostname()
                 BayLog.info("Host name    : " + cls.my_host_name)

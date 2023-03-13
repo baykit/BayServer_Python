@@ -56,7 +56,7 @@ class UdpInboundDataListener(DataListener):
         try:
             hdr = packet.pull_quic_header(buf=Buffer(data=buf), host_cid_length=self.port_dkr.config.connection_id_length)
         except ValueError as e:
-            BayLog.error_e(e, "Cannot parse header: %s", e)
+            BayLog.warn_e(e, "Cannot parse header: %s", e)
             return NextSocketAction.CONTINUE
 
         BayLog.debug("%s packet received :len=%d ver=%s type=%s scid=%s dcid=%s tkn=%s",

@@ -142,24 +142,20 @@ class TourRes:
 
         if self.tour.is_zombie():
             BayLog.debug("%s zombie return", self)
+            self.bytes_posted += length
             consumed_cb()
-            return
+            return True
 
         if not self.header_sent:
             raise Sink("Header not sent")
-
-        BayLog.debug("%s sendContent len=%d", self.tour, length)
-
-        if self.tour.is_zombie():
-            return True
 
         if self.consume_listener is None:
             raise Sink("Response consume listener is null")
 
         self.bytes_posted += length
-
         BayLog.debug("%s posted res content len=%d posted=%d limit=%d consumed=%d",
                     self.tour, length, self.bytes_posted, self.bytes_limit, self.bytes_consumed)
+
         if 0 < self.bytes_limit < self.bytes_posted:
             raise ProtocolException("Post data exceed content-length: " + self.bytes_posted + "/" + self.bytes_limit)
 

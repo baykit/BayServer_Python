@@ -112,73 +112,61 @@ class GrandAgent:
         busy = True
         try:
             while True:
-                try:
-                    if self.accept_handler:
-                        test_busy = self.accept_handler.ch_count >= self.max_inbound_ships
-                        if test_busy != busy:
-                            busy = test_busy
-                            if busy:
-                                self.accept_handler.on_busy()
-                            else:
-                                self.accept_handler.on_free()
+                if self.accept_handler:
+                    test_busy = self.accept_handler.ch_count >= self.max_inbound_ships
+                    if test_busy != busy:
+                        busy = test_busy
+                        if busy:
+                            self.accept_handler.on_busy()
+                        else:
+                            self.accept_handler.on_free()
 
-                    if self.aborted:
-                        # agent finished
-                        BayLog.debug("%s End loop", self)
-                        break
+                if self.aborted:
+                    # agent finished
+                    BayLog.debug("%s End loop", self)
+                    break
 
-                    #BayLog.debug("%s select", self)
-                    #for k in self.selector.get_map().keys():
-                    #    BayLog.debug("ch: %s", k)
-                    if not self.spin_handler.is_empty():
-                        selkeys = self.selector.select(0)
-                    else:
-                        selkeys = self.selector.select(self.select_timeout_sec)
-                    #BayLog.debug("%s selected %d keys", self, len(selkeys))
-                    #for key in selkeys:
-                    #    BayLog.debug("%s key=%s", self, key)
+                #BayLog.debug("%s select", self)
+                #for k in self.selector.get_map().keys():
+                #    BayLog.debug("ch: %s", k)
+                if not self.spin_handler.is_empty():
+                    selkeys = self.selector.select(0)
+                else:
+                    selkeys = self.selector.select(self.select_timeout_sec)
+                #BayLog.debug("%s selected %d keys", self, len(selkeys))
+                #for key in selkeys:
+                #    BayLog.debug("%s key=%s", self, key)
 
-                    # Consume wakeup queue first
-                    with self.lock:
-                        for key, events in selkeys:
-                            if key.fd == self.select_wakeup_pipe[0].fileno():
-                                # Waked up by ask_to_*
-                                self.on_waked_up(key.fileobj)
-
-                    processed = self.non_blocking_handler.register_channel_ops() > 0
-
-                    if len(selkeys) == 0:
-                        processed |= self.spin_handler.process_data();
-
+                # Consume wakeup queue first
+                with self.lock:
                     for key, events in selkeys:
                         if key.fd == self.select_wakeup_pipe[0].fileno():
-                            continue
-                        elif key.fd == self.command_receiver.communication_channel.fileno():
-                            self.command_receiver.on_pipe_readable()
-                        elif self.accept_handler and self.accept_handler.is_server_socket(key.fileobj):
-                            self.accept_handler.on_acceptable(key)
-                        else:
-                            self.non_blocking_handler.handle_channel(key, events)
-                        processed = True
+                            # Waked up by ask_to_*
+                            self.on_waked_up(key.fileobj)
 
-                    if not processed:
-                        # timeout check if there is nothing to do
-                        self.non_blocking_handler.close_timeout_sockets()
-                        self.spin_handler.stop_timeout_spins()
+                processed = self.non_blocking_handler.register_channel_ops() > 0
 
-                except KeyboardInterrupt as e:
-                    BayLog.error("%s interrupted: %s", self, e)
-                    break
+                if len(selkeys) == 0:
+                    processed |= self.spin_handler.process_data();
 
-                except Sink as e:
-                    raise e
+                for key, events in selkeys:
+                    if key.fd == self.select_wakeup_pipe[0].fileno():
+                        continue
+                    elif key.fd == self.command_receiver.communication_channel.fileno():
+                        self.command_receiver.on_pipe_readable()
+                    elif self.accept_handler and self.accept_handler.is_server_socket(key.fileobj):
+                        self.accept_handler.on_acceptable(key)
+                    else:
+                        self.non_blocking_handler.handle_channel(key, events)
+                    processed = True
 
-                except BaseException as e:
-                    BayLog.error_e(e)
-                    break
+                if not processed:
+                    # timeout check if there is nothing to do
+                    self.non_blocking_handler.close_timeout_sockets()
+                    self.spin_handler.stop_timeout_spins()
 
         except BaseException as e:
-            raise e
+            BayLog.fatal_e(e, "%s Fatal Error", self)
 
         finally:
             BayLog.debug("Agent end: %d", self.agent_id)

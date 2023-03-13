@@ -73,6 +73,7 @@ class GrandAgentMonitor:
 
         if unanchored_port_map is not None and len(unanchored_port_map) > 0:
             cls.add(False)
+            cls.num_agents += 1
 
         for i in range(0, num_agents):
             cls.add(True)
@@ -128,6 +129,37 @@ class GrandAgentMonitor:
                     cls.add(anchorable)
                 except BaseException as e:
                     BayLog.error_e(e)
+
+
+    @classmethod
+    def reload_cert_all(cls):
+        for mon in cls.monitors.values():
+            mon.reload_cert()
+
+    @classmethod
+    def restart_all(cls):
+        old_monitors = cls.monitors.copy().values()
+
+        for mon in old_monitors:
+            mon.shutdown()
+
+    @classmethod
+    def shutdown_all(cls):
+        cls.finale = True
+        for mon in cls.monitors.copy().values():
+            mon.shutdown()
+
+    @classmethod
+    def abort_all(cls):
+        cls.finale = True
+        for mon in cls.monitors.copy().values():
+            mon.abort()
+        SystemExit(1)
+    @classmethod
+    def print_usage_all(cls):
+        for mon in cls.monitors.values():
+            mon.print_usage()
+
 
 
 def run_child(argv, chs, com_ch):

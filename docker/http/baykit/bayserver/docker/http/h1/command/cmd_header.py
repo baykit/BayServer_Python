@@ -184,7 +184,12 @@ class CmdHeader(H1Command):
             raise ProtocolException(BayMessage.get(Symbol.HTP_INVALID_FIRST_LINE, line))
 
         self.version = items[0]
-        self.status = int(items[1])
+
+        try:
+            self.status = int(items[1])
+        except ValueError as e:
+            BayLog.warn_e(e, "Invalid Status line")
+            raise ProtocolException(BayMessage.get(Symbol.HTP_INVALID_FIRST_LINE, line))
 
     def  unpack_message_header(self, byte_array, start, length):
         buf = bytearray()
