@@ -187,7 +187,7 @@ class BayServer:
     @classmethod
     def start(cls, agt_id):
         try:
-            if agt_id == -1:
+            if SysUtil.run_on_windows() or agt_id == -1:
 
                 BayMessage.init(cls.bserv_home + "/lib/conf/messages", Locale('ja', 'JP'))
 
@@ -229,6 +229,8 @@ class BayServer:
                     signal.signal(signal.SIGINT, int_handler)
 
                 BayLog.debug("Command line: %s", cls.commandline_args)
+
+            if agt_id == -1:
 
                 cls.print_version()
                 cls.my_host_name = socket.gethostname()
