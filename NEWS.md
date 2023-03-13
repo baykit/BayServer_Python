@@ -1,6 +1,12 @@
 # BayServer for Python
 
 
+# 2.1.0
+
+- Supports multi core mode for Windows
+- Change name of banjo docker to "maccaferri" docker
+- Fixes some bugs
+
 # 2.0.3
 
 - Fixes Problem of POST request which causes 404
