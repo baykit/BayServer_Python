@@ -34,5 +34,5 @@ class UdpTransporter(Transporter):
         try:
             return self.ch.sendto(buf, adr)
         except BlockingIOError as e:
-            BayLog.error_e(e, "%s send error: %s", e, self, e)
+            BayLog.error_e(e, "%s send error: %s", self, e)
             return 0
