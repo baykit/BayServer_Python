@@ -276,7 +276,7 @@ class NonBlockingHandler:
 
         if not ok:
             BayLog.error("%s connect error: adr=%s %s(%d)", self, addr, os.strerror(err), err)
-            raise OSError("Connect failed: " + str(addr))
+            raise IOError("Connect failed: " + str(addr))
 
         ch_state.is_connecting = True
 
