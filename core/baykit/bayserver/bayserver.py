@@ -346,7 +346,8 @@ class BayServer:
 
         for skt in cls.channels:
             server_addr = skt.getsockname()
-            if skt.family == socket.AF_UNIX:
+            if not SysUtil.run_on_windows() and skt.family == socket.AF_UNIX:
+                # Unix domain socker
                 unix_domain = True
                 anchorable = True
                 port_path = server_addr
