@@ -6,7 +6,7 @@ from baykit.bayserver.util.simple_buffer import SimpleBuffer
 from baykit.bayserver.docker.fcgi.fcg_packet import FcgPacket
 
 class FcgPacketUnPacker(PacketUnPacker):
-    STATE_REQD_PREAMBLE = 1  # #state for reading first 8 bytes (from version to reserved)
+    STATE_READ_PREAMBLE = 1  # #state for reading first 8 bytes (from version to reserved)
     STATE_READ_CONTENT = 2  # state for reading content data
     STATE_READ_PADDING = 3  # state for reading padding data
     STATE_END = 4  # End
@@ -28,7 +28,7 @@ class FcgPacketUnPacker(PacketUnPacker):
         self.reset()
 
     def reset(self):
-        self.state = FcgPacketUnPacker.STATE_REQD_PREAMBLE
+        self.state = FcgPacketUnPacker.STATE_READ_PREAMBLE
         self.version = 0
         self.type = None
         self.req_id = 0
@@ -48,7 +48,7 @@ class FcgPacketUnPacker(PacketUnPacker):
         while pos < len(buf):
             while self.state != FcgPacketUnPacker.STATE_END and pos < len(buf):
 
-                if self.state == FcgPacketUnPacker.STATE_REQD_PREAMBLE:
+                if self.state == FcgPacketUnPacker.STATE_READ_PREAMBLE:
                     # preamble read mode
                     length = FcgPacket.PREAMBLE_SIZE - len(self.header_buf)
                     if len(buf) - pos < length:
