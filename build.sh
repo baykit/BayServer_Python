@@ -1,7 +1,7 @@
 #!/bin/bash
 version=`cat VERSION`
 
-version_file=packages/bayserver-core/baykit/bayserver/version.py
+version_file=packages/bayserver-core/bayserver_core/version.py
 temp_version_file=/tmp/version.py
 sed "s/VERSION=.*/VERSION='${version}'/" ${version_file} > ${temp_version_file}
 mv ${temp_version_file} ${version_file}
@@ -28,21 +28,24 @@ pkgs="
 
 
 sh ./uninstall.sh
-cd packages
+pushd . 
 
+cd packages
 for pkg in $pkgs; do
   cd $pkg
-  rm -r dist build __pycache__ ; python setup.py sdist; pip install .
+  rm -r dist build ${pkg}.egg-info
+  rm -r `find  -name "__pycache__"`
+  sed -i -e "s/version=.*/version='${version}',/g" setup.py
+  python setup.py sdist
+  pip install .
   cd ..
 done
 
-cd ..
-pwd
-exit
+popd
 
 
-
-
+cd ${target_dir}
+bin/bayserver.sh -init
 
 cd /tmp
 rm -r `find ${target_name} -name "__pycache__"`
