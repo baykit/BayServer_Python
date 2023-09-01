@@ -7,6 +7,7 @@ import socket
 import sys
 import threading
 import traceback
+import shutil
 
 from bayserver_core.version import Version
 from bayserver_core.bay_log import BayLog
@@ -136,6 +137,8 @@ class BayServer:
                 cmd = SignalAgent.COMMAND_MEM_USAGE
             elif larg == "-abort":
                 cmd = SignalAgent.COMMAND_ABORT
+            elif larg == "-init":
+                init = True
             elif larg.startswith("-home="):
                 home = arg[6:]
             elif larg.startswith("-plan="):
@@ -193,8 +196,12 @@ class BayServer:
 
 
     @classmethod
-    def init(cls, home, plan):
-        pass
+    def init(cls):
+        init_dir = os.path.join(cls.bserv_lib, "init")
+        BayLog.debug("init directory: %s", init_dir)
+        file_list = os.listdir(init_dir)
+        for file in file_list:
+            shutil.copytree(os.path.join(init_dir, file), os.path.join(cls.bserv_home, file))
 
     @classmethod
     def start(cls, agt_id):
