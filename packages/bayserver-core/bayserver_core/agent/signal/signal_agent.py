@@ -33,7 +33,7 @@ class SignalAgent:
         try:
             self.server_skt.bind(("0.0.0.0", port))
         except OSError as e:
-            BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, port, ExceptionUtil.message(e)))
+            BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, "0.0.0.0", port, ExceptionUtil.message(e)))
 
         self.server_skt.listen(0)
         BayLog.info(BayMessage.get(Symbol.MSG_OPEN_CTL_PORT, self.port))
