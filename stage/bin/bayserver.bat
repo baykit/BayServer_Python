@@ -1,5 +1,5 @@
 @ECHO OFF
-set "PYCMD=c:\python\python39\python.exe"
+set "PYCMD=python.exe"
 
 REM 
 REM  Bootstrap script
@@ -12,8 +12,11 @@ for %%f in (%*) do (
   )
 )
 
+set site=%~p0\..\site-packages
+set PYTHONPATH=%site%
+
 if "%daemon%" == "1" (
-  start %PYCMD%  %~p0\bootstrap.py %*
+  start %PYCMD%  %site%\bin\bayserver_py %*
 ) else (
-  %PYCMD%  %~p0\bootstrap.py %*
+  %PYCMD%  %site%\bin\bayserver_py %*
 )
