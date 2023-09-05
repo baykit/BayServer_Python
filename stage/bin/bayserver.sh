@@ -9,9 +9,10 @@ for arg in $args; do
   fi
 done
 
-
+site=${base}/../site-packages
+export PYTHONPATH=${site}
 if [ "$daemon" = 1 ]; then
-   bayserver_py $* < /dev/null  > /dev/null 2>&1 &
+   ${site}/bin/bayserver_py $* < /dev/null  > /dev/null 2>&1 &
 else
-   bayserver_py $* 
+   ${site}/bin/bayserver_py $* 
 fi
