@@ -1,0 +1,22 @@
+harbor              bayserver_core.docker.built_in.BuiltInHarborDocker
+port                bayserver_docker_http.HtpPortDocker
+port:http           bayserver_docker_http.HtpPortDocker
+port:ajp            bayserver_docker_ajp.AjpPortDocker
+port:fcgi           bayserver_docker_fcgi.FcgPortDocker
+port:h3             bayserver_docker_http3.H3PortDocker
+city                bayserver_core.docker.built_in.BuiltInCityDocker
+town                bayserver_core.docker.built_in.BuiltInTownDocker
+club                bayserver_core.docker.file.FileDocker
+club:file           bayserver_core.docker.file.FileDocker
+club:cgi            bayserver_docker_cgi.CgiDocker
+club:phpCgi         bayserver_docker_cgi.PhpCgiDocker
+club:ajpWarp        bayserver_docker_ajp.AjpWarpDocker
+club:fcgiWarp       bayserver_docker_fcgi.FcgWarpDocker
+club:httpWarp       bayserver_docker_http.HtpWarpDocker
+club:maccaferri     bayserver_docker_maccaferri.MaccaferriDocker
+log                 bayserver_core.docker.built_in.BuiltInLogDocker
+permission          bayserver_core.docker.built_in.BuiltInPermissionDocker
+secure              bayserver_core.docker.built_in.BuiltInSecureDocker
+trouble             bayserver_core.docker.built_in.BuiltInTroubleDocker
+reroute:wordpress   bayserver_docker_wordpress.WordPressDocker
+

@@ -1,6 +1,7 @@
 [harbor]
     groups plan/groups.plan
     grandAgents 4
+    multiCore 0
 
 
 #
@@ -17,7 +18,6 @@
     [secure]
         cert      cert/oreore.crt
         key       cert/oreore_key.p8
-        keyStorePass orepas
 
 [port 2025]
     docker ajp
@@ -27,6 +27,22 @@
 
 [port 2029]
     docker fcgi
+
+[port :unix:/tmp/bayserver-www.sock]
+[port :udp:2024]
+    docker h3
+    [secure]
+        cert      cert/oreore.crt
+        key       cert/oreore_key.p8
+
+    [city *]
+        [town /]
+
+        [club *]
+            docker httpWarp
+            destCity :unix:/tmp/bayserver-www.sock
+            destTown /
+
 
 
 #
@@ -52,7 +68,7 @@
     [town /wsgi-demo/]
         location www/wsgi-demo
         [club *]
-            docker banjo
+            docker maccaferri
             project www/wsgi-demo
             module wsgi
             app application

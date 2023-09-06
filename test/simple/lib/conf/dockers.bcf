@@ -13,7 +13,7 @@ club:phpCgi         baykit.bayserver.docker.cgi.PhpCgiDocker
 club:ajpWarp        baykit.bayserver.docker.ajp.AjpWarpDocker
 club:fcgiWarp       baykit.bayserver.docker.fcgi.FcgWarpDocker
 club:httpWarp       baykit.bayserver.docker.http.HtpWarpDocker
-club:banjo          baykit.bayserver.docker.banjo.BanjoDocker
+club:maccaferri     baykit.bayserver.docker.maccaferri.MaccaferriDocker
 log                 baykit.bayserver.docker.built_in.BuiltInLogDocker
 permission          baykit.bayserver.docker.built_in.BuiltInPermissionDocker
 secure              baykit.bayserver.docker.built_in.BuiltInSecureDocker

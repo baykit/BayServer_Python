@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+import os, sys
+
+pkgdir = os.path.dirname(__import__("bayserver").__file__)
+print("BayServer Package Directory:", pkgdir)
+
+
+os.environ["BSERV_LIB"] = pkgdir
+
+if os.environ.get("BSERV_HOME") is None:
+    os.environ["BSERV_HOME"] = "."
+
+from bayserver_core.bayserver import BayServer
+if __name__ == "__main__":
+    BayServer.main(sys.argv)
