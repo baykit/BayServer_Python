@@ -4,10 +4,13 @@ print("packages: " + str(find_packages()))
 
 setup(
     name='bayserver-docker-wordpress',
-    version='0.0.1',
+    version='2.2.0',
     packages=find_packages(),
+    package_data={
+        '': ['LICENSE.BAYKIT', 'README.md'],
+    },  
     install_requires=[
-        # Dependencies if any
+      "bayserver-core==2.2.0",
     ],
     author='Michisuke-P',
     author_email='michisukep@gmail.com',

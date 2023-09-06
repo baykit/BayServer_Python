@@ -1,6 +1,10 @@
 # BayServer for Python
 
 
+# 2.2.0
+
+- Supports pip install
+
 # 2.1.0
 
 - Supports multi core mode for Windows
