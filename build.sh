@@ -30,22 +30,30 @@ pkgs="
 sh ./uninstall.sh
 pushd . 
 
+dirs=
 cd packages
 for pkg in $pkgs; do
   cd $pkg
   rm -r dist build ${pkg}.egg-info
-  rm -r `find  -name "__pycache__"`
+  rm -r `find . -name "__pycache__"`
   sed -i -e "s/version=.*/version='${version}',/g" setup.py
+  sed -i -e "s/\([ ]*\"bayserver-.*\)==.*\",/\1==${version}\",/" setup.py
   python setup.py sdist
-  pip install .
+  dirs="${dirs} $pkg/"
   cd ..
 done
 
+echo "***** Installing package to ${target_dir} *****"
+echo pip install ${dirs} -t ${target_dir}/site-packages 
+pip install ${dirs} -t ${target_dir}/site-packages 
 popd
 
 
 cd ${target_dir}
+echo "***** Initialize BayServer *****"
 bin/bayserver.sh -init
+sed -i -e '1s/.*/\#!\/usr\/bin\/env python3/'  site-packages/bin/bayserver_py
+rm site-packages/bin/bayserver_py-e
 
 cd /tmp
 rm -r `find ${target_name} -name "__pycache__"`
