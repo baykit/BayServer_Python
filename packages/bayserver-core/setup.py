@@ -4,7 +4,7 @@ print("packages: " + str(find_packages()))
 
 setup(
     name='bayserver-core',
-    version='2.2.0',
+    version='2.2.1',
     packages=find_packages(),
     package_data={
         '': ['LICENSE.BAYKIT', 'README.md'],

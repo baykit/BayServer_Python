@@ -1,6 +1,10 @@
 # BayServer for Python
 
 
+# 2.2.1
+
+- Fixes some bugs
+
 # 2.2.0
 
 - Supports pip install
