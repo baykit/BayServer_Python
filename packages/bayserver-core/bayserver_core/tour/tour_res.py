@@ -195,7 +195,7 @@ class TourRes:
             self.tour.ship.return_tour(self.tour)
 
         try:
-            self.tour.ship.send_end_tour(self.tour.ship_id, chk_id, self.tour, callback)
+            self.tour.ship.send_end_tour(self.tour.ship_id, self.tour, callback)
         except IOError as e:
             callback()
             raise e

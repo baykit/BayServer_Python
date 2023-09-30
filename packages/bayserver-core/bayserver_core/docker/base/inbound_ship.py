@@ -145,15 +145,15 @@ class InboundShip(Ship):
         self.send_error_content(check_id, tur, StringUtil.to_bytes(body))
 
 
-    def send_res_content(self, check_id, tur, bytes, ofs, length, callback):
+    def send_res_content(self, chk_ship_id, tur, bytes, ofs, length, callback):
         BayLog.debug("%s send_res_content bytes: %d", self, length)
 
-        self.check_ship_id(check_id)
+        self.check_ship_id(chk_ship_id)
 
         if tur.is_zombie() or tur.is_aborted():
             # Don't send peer any data
             BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, tur, tur.state)
-            tur.change_state(check_id, Tour.TourState.ENDED);
+            tur.change_state(Ship.SHIP_ID_NOCHECK, Tour.TourState.ENDED);
             if callback is not None:
                 callback()
             return
@@ -172,7 +172,7 @@ class InboundShip(Ship):
                 raise e
 
 
-    def send_end_tour(self, chk_ship_id, chk_tour_id, tur, callback):
+    def send_end_tour(self, chk_ship_id, tur, callback):
         with self.lock:
             self.check_ship_id(chk_ship_id)
             BayLog.debug("%s sendEndTour: %s state=%s", self, tur, tur.state)
@@ -180,7 +180,7 @@ class InboundShip(Ship):
             if tur.is_zombie() or tur.is_aborted():
                 # Don't send peer any data. Do nothing
                 BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, tur, tur.state)
-                tur.change_state(chk_tour_id, Tour.TourState.ENDED)
+                tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ENDED)
                 callback()
             else:
                 if not tur.is_valid():
@@ -198,7 +198,7 @@ class InboundShip(Ship):
                         if tur.res.headers.content_length() < 0:
                             keep_alive = False
 
-                tur.change_state(chk_tour_id, Tour.TourState.ENDED)
+                tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ENDED)
 
                 self.protocol_handler.send_end_tour(tur, keep_alive, callback)
 

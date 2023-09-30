@@ -114,7 +114,7 @@ class H2InboundHandler(H2ProtocolHandler, InboundHandler):
         cmd.stream_id = H2ProtocolHandler.CTL_STREAM_ID
         cmd.last_stream_id = H2ProtocolHandler.CTL_STREAM_ID
         cmd.error_code = H2ErrorCode.PROTOCOL_ERROR
-        cmd.debug_data = "Thank you!"
+        cmd.debug_data = b"Thank you!"
         try:
             self.command_packer.post(self.ship, cmd)
             self.command_packer.end(self.ship)

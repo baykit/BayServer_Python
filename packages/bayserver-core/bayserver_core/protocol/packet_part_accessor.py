@@ -15,6 +15,9 @@ class PacketPartAccessor:
         self.put_bytes(buf, 0, 1)
 
     def put_bytes(self, buf, ofs=0, length=None):
+        if isinstance(buf, str):
+            raise TypeError("buffer type error")
+
         if length is None:
             length = len(buf)
         if length > 0:

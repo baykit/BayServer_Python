@@ -12,6 +12,7 @@ from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.agent.transporter.data_listener import DataListener
 from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.docker.base.inbound_ship import InboundShip
+from bayserver_core.util.exception_util import ExceptionUtil
 
 from bayserver_docker_http3.qic_packet import QicPacket
 from bayserver_docker_http3.qic_type import QicType
@@ -56,7 +57,7 @@ class UdpInboundDataListener(DataListener):
         try:
             hdr = packet.pull_quic_header(buf=Buffer(data=buf), host_cid_length=self.port_dkr.config.connection_id_length)
         except ValueError as e:
-            BayLog.warn_e(e, "Cannot parse header: %s", e)
+            BayLog.warn_e(e, "%s Cannot parse header: %s", self, ExceptionUtil.message(e))
             return NextSocketAction.CONTINUE
 
         BayLog.debug("%s packet received :len=%d ver=%s type=%s scid=%s dcid=%s tkn=%s",
@@ -129,7 +130,7 @@ class UdpInboundDataListener(DataListener):
         pkt.buf = packet.encode_quic_version_negotiation(
             source_cid = hdr.destination_cid,
             destination_cid = hdr.source_cid,
-            supported_versions = self.port_dkr.cfg.supported_versions,
+            supported_versions = self.port_dkr.config.supported_versions,
         )
         pkt.buf_len = len(pkt.buf)
         self.tmp_post_packet = pkt

@@ -184,16 +184,16 @@ class H1InboundHandler(H1ProtocolHandler, InboundHandler):
                 raise ProtocolException(BayMessage.get(Symbol.HTP_UNSUPPORTED_PROTOCOL, protocol))
 
         tur = self.ship.get_tour(self.cur_req_id)
-        self.cur_tour = tur
-        self.cur_tour_id = tur.tour_id
-        self.cur_req_id += 1
-
         if tur is None:
             BayLog.error(BayMessage.get(Symbol.INT_NO_MORE_TOURS))
             tur = self.ship.get_tour(self.cur_req_id, True)
             tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.SERVICE_UNAVAILABLE, "No available tours")
             self.ship.agent.shutdown(False)
             return NextSocketAction.CONTINUE
+
+        self.cur_tour = tur
+        self.cur_tour_id = tur.tour_id
+        self.cur_req_id += 1
 
         self.ship.keeping = False
 

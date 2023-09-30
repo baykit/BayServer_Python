@@ -1,7 +1,6 @@
 from bayserver_core.bay_log import BayLog
 from bayserver_core.util.reusable import Reusable
 from bayserver_core.util.data_consume_listener import DataConsumeListener
-from bayserver_core.util.exception_util import ExceptionUtil
 
 class CommandPacker(Reusable):
 

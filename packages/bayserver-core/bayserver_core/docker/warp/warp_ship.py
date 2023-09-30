@@ -72,9 +72,12 @@ class WarpShip(Ship):
 
     def end_warp_tour(self, tur):
         wdat = WarpData.get(tur)
-        BayLog.debug("%s end: started=%s ended=%s", tur, wdat.started, wdat.ended)
+        BayLog.debug("%s end warp tour: warp_id=%d started=%s ended=%s", tur, wdat.warp_id, wdat.started, wdat.ended)
 
-        del self.tour_map[wdat.warp_id]
+        if self.tour_map.get(wdat.warp_id) is None:
+            raise Sink("%s WarpId not in tourMap: %d", tur, wdat.warp_id)
+        else:
+            del self.tour_map[wdat.warp_id]
         self.docker.keep_ship(self)
 
     def notify_service_unavailable(self, msg):

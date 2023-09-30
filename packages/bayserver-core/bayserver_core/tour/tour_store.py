@@ -49,6 +49,7 @@ class TourStore:
             tur = self.free_tours.pop(-(len(self.free_tours) - 1))
         else:
             if not force and (len(self.active_tour_map) >= TourStore.max_count):
+                BayLog.warn("Max tour count reached")
                 return None
             else:
                 tur = tour.Tour()

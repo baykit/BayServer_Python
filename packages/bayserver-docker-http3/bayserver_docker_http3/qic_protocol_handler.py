@@ -60,7 +60,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
         try:
             self.con.receive_datagram(buf, self.sender, time.time())
         except Exception as e:
-            BayLog.error_e(e, "%s Error on analyzing received packet: %d", self, e)
+            BayLog.error_e(e, "%s Error on analyzing received packet: %s", self, e)
             raise ProtocolException(f"receive packet failed: {e}")
 
         while True:
@@ -112,7 +112,11 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
                 BayLog.info("%s header %s: %s", tur, hdr[0], hdr[1])
 
         stm_id = tur.req.key
-        self.hcon.send_headers(stream_id = stm_id, headers = h3_hdrs)
+        try:
+            self.hcon.send_headers(stream_id = stm_id, headers = h3_hdrs)
+        except AssertionError as e:
+            BayLog.error_e(e, "%s Error on sending headers: %s", tur, ExceptionUtil.message(e))
+            raise IOError("Error on sending headers: %s", ExceptionUtil.message(e))
 
     def send_res_content(self, tur, data, ofs, len, callback):
 

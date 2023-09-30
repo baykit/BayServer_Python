@@ -1,3 +1,4 @@
+import binascii
 import re
 import base64
 import socket
@@ -7,6 +8,7 @@ from bayserver_core.bay_log import BayLog
 from bayserver_core.util.headers import Headers
 from bayserver_core.util.string_util import StringUtil
 from bayserver_core.util.char_util import CharUtil
+from bayserver_core.util.exception_util import ExceptionUtil
 
 class HttpUtil:
     MAX_LINE_LEN = 5000
@@ -92,10 +94,15 @@ class HttpUtil:
             if result is None:
                 BayLog.warn("Not matched with basic authentication format")
             else:
-                auth = result.group(1)
-                auth = base64.b64decode(auth).decode()
-                ptn = r"(.*):(.*)"
-                result = re.match(ptn, auth)
+                result = None
+                try:
+                    auth = result.group(1)
+                    auth = base64.b64decode(auth).decode()
+                    ptn = r"(.*):(.*)"
+                    result = re.match(ptn, auth)
+                except binascii.Error as e:
+                    BayLog.warn_e(e, "decode error: %s", ExceptionUtil.message(e))
+
                 if result is not None:
                     tur.req.remote_user = result.group(1)
                     tur.req.remote_pass = result.group(2)
