@@ -34,6 +34,7 @@ dirs=
 cd packages
 for pkg in $pkgs; do
   cd $pkg
+  cp ../../LICENSE.* ../../README.* .
   rm -r dist build ${pkg}.egg-info
   rm -r `find . -name "__pycache__"`
   sed -i -e "s/version=.*/version='${version}',/g" setup.py
