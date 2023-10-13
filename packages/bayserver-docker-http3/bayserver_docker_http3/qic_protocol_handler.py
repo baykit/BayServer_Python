@@ -114,7 +114,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
         stm_id = tur.req.key
         try:
             self.hcon.send_headers(stream_id = stm_id, headers = h3_hdrs)
-        except AssertionError as e:
+        except Exception as e:
             BayLog.error_e(e, "%s Error on sending headers: %s", tur, ExceptionUtil.message(e))
             raise IOError("Error on sending headers: %s", ExceptionUtil.message(e))
 
