@@ -21,16 +21,20 @@ class StringUtil:
         return a.lower() == b.lower()
 
     @classmethod
-    def to_bytes(cls, str):
-        return str.encode("us-ascii")
+    def to_bytes(cls, s):
+        try:
+            return s.encode("us-ascii")
+        except UnicodeEncodeError as e:
+            bay_log.BayLog.warn("Cannot convert string to byte data (ignore): %s", s)
+            return s.encode("utf-8", errors='replace')
 
     @classmethod
     def from_bytes(cls, byte_array):
         try:
             return byte_array.decode("us-ascii")
         except UnicodeDecodeError as e:
-            bay_log.BayLog.debug("Cannot convert byte data to string (ignore): %s", str(byte_array));
-            return byte_array.decode("utf-8", errors='replace');
+            bay_log.BayLog.warn("Cannot convert byte data to string (ignore): %s", str(byte_array))
+            return byte_array.decode("utf-8", errors='replace')
 
     @classmethod
     def repeat(cls, str, times):
