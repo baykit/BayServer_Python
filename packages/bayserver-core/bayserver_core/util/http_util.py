@@ -94,7 +94,6 @@ class HttpUtil:
             if result is None:
                 BayLog.warn("Not matched with basic authentication format")
             else:
-                result = None
                 try:
                     auth = result.group(1)
                     auth = base64.b64decode(auth).decode()
