@@ -1,4 +1,4 @@
-import os
+import os, time
 from subprocess import Popen
 
 from bayserver_core.bay_log import BayLog
@@ -22,8 +22,9 @@ class CgiReqContentHandler(ReqContentHandler):
         self.std_in = None
         self.std_out = None
         self.std_err = None
-        self.std_out_closed = None
-        self.std_err_closed = None
+        self.std_out_closed = True
+        self.std_err_closed = True
+        self.last_access = None
 
     def __str__(self):
         return ClassUtil.get_local_name(self.__class__)
@@ -40,9 +41,11 @@ class CgiReqContentHandler(ReqContentHandler):
 
         #BayLog.debug("%s CGI:onReadReqContent: wrote=%d", tur, wrote_len)
         tur.req.consumed(Tour.TOUR_ID_NOCHECK, length)
+        self.access()
 
     def on_end_content(self, tur):
         BayLog.debug("%s CGI:endReqContent", tur)
+        self.access()
 
     def on_abort(self, tur):
         BayLog.trace("%s CGITask:abortReq", tur)
@@ -85,6 +88,7 @@ class CgiReqContentHandler(ReqContentHandler):
 
         self.std_out_closed = False
         self.std_err_closed = False
+        self.access()
 
     def on_std_out_closed(self):
         self.std_out_closed = True
@@ -96,7 +100,20 @@ class CgiReqContentHandler(ReqContentHandler):
         if self.std_out_closed and self.std_err_closed:
             self.process_finished()
 
+    def access(self):
+        self.last_access = int(time.time())
+
+    def timed_out(self):
+        if self.cgi_docker.timeout_sec <= 0:
+            return False
+
+        duration_sec = int(time.time()) - self.last_access
+        BayLog.debug("%s Check CGI timeout: dur=%d, timeout=%d", self.tour, duration_sec, self.cgi_docker.timeout_sec)
+        return duration_sec > self.cgi_docker.timeout_sec
+
     def process_finished(self):
+        BayLog.debug("%s process_finished()", self.tour)
+
         self.process.wait()
 
         BayLog.debug("%s CGI Process finished: pid=%d code=%d", self.tour, self.process.pid, self.process.returncode)

@@ -1,7 +1,6 @@
 from bayserver_core.bay_log import BayLog
 
 from bayserver_core.agent.next_socket_action import NextSocketAction
-from bayserver_core.sink import Sink
 from bayserver_core.watercraft.yacht import Yacht
 from bayserver_core.util.reusable import Reusable
 
@@ -12,6 +11,7 @@ class CgiStdErrYacht(Yacht, Reusable):
         super().__init__()
         self.tour = None
         self.tour_id = None
+        self.handler = None
         self.reset()
 
 
@@ -26,6 +26,8 @@ class CgiStdErrYacht(Yacht, Reusable):
     def reset(self):
         self.tour = None
         self.tour_id = 0
+        self.handler = None
+
 
     ######################################################
     # implements Yacht
@@ -37,6 +39,7 @@ class CgiStdErrYacht(Yacht, Reusable):
         if len(buf) > 0:
             BayLog.error("CGI Stderr: %s", buf)
 
+        self.handler.access()
         return NextSocketAction.CONTINUE
 
 
@@ -48,15 +51,16 @@ class CgiStdErrYacht(Yacht, Reusable):
         BayLog.debug("%s CGI StdErr: notifyClose", self)
         self.tour.req.content_handler.on_std_err_closed()
 
-    def check_timeout(self, duration):
-        BayLog.warn("%s invalid timeout check", self)
-        return False
+    def check_timeout(self, duration_sec):
+        BayLog.debug("%s stderr Check timeout: dur=%d", self.tour, duration_sec)
+        return self.handler.timed_out()
 
 
     ######################################################
     # Custom methods
     ######################################################
-    def init(self, tur):
+    def init(self, tur, handler):
         self.init_yacht()
         self.tour = tur
         self.tour_id = tur.tour_id
+        self.handler = handler

@@ -129,12 +129,12 @@ class CgiDocker(ClubBase):
             IOUtil.set_non_blocking(handler.std_err)
 
             out_tp = PlainTransporter(False, bufsize)
-            out_yat.init(tur, out_tp)
+            out_yat.init(tur, out_tp, handler)
             out_tp.init(tur.ship.agent.non_blocking_handler, handler.std_out, out_yat)
             out_tp.open_valve()
 
             err_tp = PlainTransporter(False, bufsize)
-            err_yat.init(tur)
+            err_yat.init(tur, handler)
             err_tp.init(tur.ship.agent.non_blocking_handler, handler.std_err, err_yat)
             err_tp.open_valve()
 
@@ -150,25 +150,25 @@ class CgiDocker(ClubBase):
                     return False
 
             out_tp = SpinReadTransporter(bufsize)
-            out_yat.init(tur, out_tp)
+            out_yat.init(tur, out_tp, handler)
             out_tp.init(tur.ship.agent.spin_handler, out_yat, handler.std_out, -1, self.timeout_sec, eof_checker)
             out_tp.open_valve()
 
             err_tp = SpinReadTransporter(bufsize)
-            err_yat.init(tur)
+            err_yat.init(tur, handler)
             err_tp.init(tur.ship.agent.spin_handler, err_yat, handler.std_err, -1, self.timeout_sec, eof_checker)
             err_tp.open_valve()
 
         elif self.proc_read_method == Harbor.FILE_SEND_METHOD_TAXI:
             out_txi = ReadFileTaxi(bufsize)
-            out_yat.init(tur, out_txi)
+            out_yat.init(tur, out_txi, handler)
             out_txi.init(handler.std_out, out_yat)
             if not TaxiRunner.post(out_txi):
                 raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "Taxi is busy!")
 
 
             err_txi = ReadFileTaxi(bufsize)
-            err_yat.init(tur)
+            err_yat.init(tur, handler)
             err_txi.init(handler.std_err, err_yat)
             if not TaxiRunner.post(err_txi):
                 raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "Taxi is busy!")

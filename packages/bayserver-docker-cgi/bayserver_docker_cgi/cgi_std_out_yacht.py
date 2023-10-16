@@ -1,8 +1,9 @@
+import subprocess
+
 from bayserver_core.bay_log import BayLog
 
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bayserver import BayServer
-from bayserver_core.sink import Sink
 from bayserver_core.util.char_util import CharUtil
 from bayserver_core.util.string_util import StringUtil
 from bayserver_core.watercraft.yacht import Yacht
@@ -18,6 +19,7 @@ class CgiStdOutYacht(Yacht, Reusable):
         self.file_wrote_len = None
         self.remain = None
         self.header_reading = None
+        self.handler = None
         self.reset()
 
 
@@ -35,6 +37,7 @@ class CgiStdOutYacht(Yacht, Reusable):
         self.tour_id = 0
         self.remain = b""
         self.header_reading = True
+        self.handler = None
 
     ######################################################
     # implements Yacht
@@ -100,6 +103,7 @@ class CgiStdOutYacht(Yacht, Reusable):
             if len(buf) - pos > 0:
                 available = self.tour.res.send_content(self.tour_id, buf, pos, len(buf) - pos)
 
+        self.handler.access()
         if available:
             return NextSocketAction.CONTINUE
         else:
@@ -114,17 +118,25 @@ class CgiStdOutYacht(Yacht, Reusable):
         BayLog.debug("%s CGI StdOut: notifyClose", self)
         self.tour.req.content_handler.on_std_out_closed()
 
-    def check_timeout(self, duration):
-        BayLog.warn("%s invalid timeout check", self)
+    def check_timeout(self, duration_sec):
+        BayLog.debug("%s Check StdOut timeout: dur=%d", self.tour, duration_sec)
+
+        if self.handler.timed_out():
+            # Kill cgi process instead of handing timeout
+            BayLog.warn("%s Kill process!: %d", self.tour, self.handler.process.pid)
+            self.handler.process.kill()
+            return True
         return False
 
     ######################################################
     # Custom methods
     ######################################################
-    def init(self, tur, vv):
+    def init(self, tur, vv, handler):
         self.init_yacht()
+        self.handler = handler
         self.tour = tur
         self.tour_id = tur.tour_id
+
 
         def callback(len, resume):
             if resume:
