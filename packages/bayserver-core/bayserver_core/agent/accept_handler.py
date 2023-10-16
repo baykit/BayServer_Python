@@ -24,14 +24,12 @@ class AcceptHandler:
 
         try:
             port_dkr.check_admitted(client_skt)
+            client_skt.setblocking(False)
+            tp = port_dkr.new_transporter(self.agent, client_skt)
         except BaseException as e:
             BayLog.error_e(e)
             client_skt.close()
             return
-
-        client_skt.setblocking(False)
-
-        tp = port_dkr.new_transporter(self.agent, client_skt)
 
         # In SSL mode, since Socket object is replaced to SSLSocket, we must update "ch" variable
         client_skt = tp.ch
