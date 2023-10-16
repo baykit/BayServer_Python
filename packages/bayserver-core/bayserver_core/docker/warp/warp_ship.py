@@ -18,6 +18,7 @@ class WarpShip(Ship):
         self.tour_map = {}
         self.lock = threading.RLock()
         self.connected = False
+        self.cmd_buf = []
 
     def __str__(self):
         return f"{self.agent} warp#{self.ship_id}/{self.object_id}[{self.protocol()}]"
@@ -35,7 +36,9 @@ class WarpShip(Ship):
         if len(self.tour_map) > 0:
             BayLog.error("BUG: Some tours is active: %s", self.tour_map)
 
+        self.tour_map = {}
         self.connected = False
+        self.cmd_buf = []
 
     ######################################################
     # Other methods
@@ -135,7 +138,16 @@ class WarpShip(Ship):
                      self, duration, timeout, self.keeping, self.socket_timeout_sec)
         return timeout
 
+    def post(self, cmd, listener=None):
+        if not self.connected:
+            self.cmd_buf.append([cmd, listener])
+        else:
+            self.protocol_handler.command_packer.post(self, cmd, listener)
 
+    def flush(self):
+        for cmd_and_lis in self.cmd_buf:
+            self.protocol_handler.command_packer.post(self, cmd_and_lis[0], cmd_and_lis[1])
+        self.cmd_buf = []
 
 
 

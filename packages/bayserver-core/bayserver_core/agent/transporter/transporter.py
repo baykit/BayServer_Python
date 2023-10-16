@@ -288,7 +288,7 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
 
     def on_connectable(self, chk_ch):
         self.check_channel(chk_ch)
-        BayLog.trace("%s onConnectable (^o^)/: ch=%d", self, chk_ch.fileno())
+        BayLog.debug("%s onConnectable (^o^)/: ch=%d", self, chk_ch.fileno())
 
         # check connection by sending 0 bytes data.
         try:
@@ -356,7 +356,7 @@ class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
     def post_end(self):
         self.check_initialized()
 
-        BayLog.debug("%s postEnd vld=%s", self, self.ch_valid)
+        BayLog.debug("%s postEnd valid=%s", self, self.ch_valid)
 
         # setting order is QUITE important  finalState->finale
         self.finale = True

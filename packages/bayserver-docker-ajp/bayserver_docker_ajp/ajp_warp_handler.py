@@ -198,8 +198,7 @@ class AjpWarpHandler(AjpProtocolHandler, WarpHandler):
                 for value in cmd.headers.values(name):
                     BayLog.info("%s sendWarpHeader: %s=%s", WarpData.get(tur), name, value)
 
-
-        self.command_packer.post(self.ship, cmd)
+        self.ship.post(cmd)
 
     def send_data(self, tur, data, ofs, length, callback):
         BayLog.debug("%s construct contents", tur)
@@ -207,4 +206,4 @@ class AjpWarpHandler(AjpProtocolHandler, WarpHandler):
         cmd = CmdData(data, ofs, length)
         cmd.to_server = True
 
-        self.command_packer.post(self.ship, cmd, callback)
+        self.ship.post(cmd, callback)

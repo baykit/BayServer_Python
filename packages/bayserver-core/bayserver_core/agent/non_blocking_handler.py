@@ -67,12 +67,12 @@ class NonBlockingHandler:
     def handle_channel(self, key, events):
 
         ch = key.fileobj
-        #BayLog.trace("%s Handle channel: readable=%s writable=%s ch=%s",
+        #BayLog.trace("%s Handle channel: readable=%s writable=%s fd=%s",
         #             self.agent, events & selectors.EVENT_READ, events & selectors.EVENT_WRITE, ch)
 
         ch_state = self.find_channel_state(ch)
         if ch_state is None:
-            BayLog.error("Channel state is not registered: ch=%s", ch)
+            BayLog.error("Channel state is not registered: fd=%s", ch)
             try:
                 self.agent.selector.unregister(ch)
             except ValueError as e:
@@ -95,8 +95,16 @@ class NonBlockingHandler:
                 next_action = ch_state.listener.on_connectable(ch)
                 if next_action is None:
                     raise Sink("unknown next action")
-                elif next_action == NextSocketAction.CONTINUE:
-                    self.ask_to_read(ch)
+                elif next_action == NextSocketAction.WRITE:
+                    # "Read-OP Off"
+                    key = self.agent.selector.get_key(ch)
+                    op = key.events & ~selectors.EVENT_READ
+                    if op != selectors.EVENT_WRITE:
+                        BayLog.debug("%s Unregister channel (Read Off) chState=%s", self.agent, ch_state)
+                        self.agent.selector.unregister(ch)
+                    else:
+                        self.agent.selector.modify(ch, op)
+
 
             else:
                 if events & selectors.EVENT_READ != 0:
@@ -118,6 +126,7 @@ class NonBlockingHandler:
                         key = self.agent.selector.get_key(ch)
                         op = key.events & ~selectors.EVENT_WRITE
                         if op != selectors.EVENT_READ:
+                            BayLog.debug("%s Unregister channel (Write Off) chState=%s",self.agent, ch_state)
                             self.agent.selector.unregister(ch)
                         else:
                             self.agent.selector.modify(ch, op)
@@ -185,7 +194,7 @@ class NonBlockingHandler:
                     continue
 
                 try:
-                    BayLog.debug("%s register op=%s chState=%s", self, NonBlockingHandler.op_mode(ch_op.op), st)
+                    BayLog.debug("%s register op=%s fd=%d chState=%s", self, NonBlockingHandler.op_mode(ch_op.op), ch_op.ch.fileno(), st)
                     try:
                         key = self.agent.selector.get_key(ch_op.ch)
                         op = key.events;
@@ -229,13 +238,10 @@ class NonBlockingHandler:
                 try:
                     duration = int(now - ch_state.last_access_time)
                     if ch_state.listener.check_timeout(ch_state.channel, duration):
-                        BayLog.debug("%s timeout: skt=%s", self, ch_state.channel)
+                        BayLog.debug("%s timeout: fd=%s chState=%s", self, ch_state.channel.fileno(), ch_state)
                         close_list.append(ch_state)
 
-                except Sink as e:
-                    raise e
-
-                except BaseException as e:
+                except IOError as e:
                     BayLog.error_e(e)
                     close_list.append(ch_state)
 
@@ -251,7 +257,7 @@ class NonBlockingHandler:
 
 
     def ask_to_start(self, ch):
-        BayLog.debug("%s askToStart: ch=%s", self.agent, ch);
+        BayLog.debug("%s askToStart: fd=%s", self.agent, ch);
         if not isinstance(ch, io.IOBase) and not isinstance(ch, socket.socket):
             raise Sink("Invalid channel")
 
@@ -265,7 +271,7 @@ class NonBlockingHandler:
             raise Sink("Invalid channel")
 
         ch_state = self.find_channel_state(ch)
-        BayLog.debug("%s askToConnect addr=%s ch=%s chState=%s", self, addr, ch, ch_state)
+        BayLog.debug("%s askToConnect addr=%s fd=%s chState=%s", self, addr, ch, ch_state)
 
         err = ch.connect_ex(addr)
         if bs.SysUtil.run_on_windows():
@@ -318,7 +324,7 @@ class NonBlockingHandler:
 
     def ask_to_close(self, ch):
         ch_state = self.find_channel_state(ch)
-        BayLog.debug("%s askToClose ch=%s chState=%s", self, ch, ch_state)
+        BayLog.debug("%s askToClose fd=%s chState=%s", self, ch, ch_state)
 
         if ch_state is None:
             BayLog.warn("%s channel state not found: %s", self, ch)
@@ -344,16 +350,16 @@ class NonBlockingHandler:
                     ch_op.close = ch_op.close or close
                     ch_op.connect = ch_op.connect or connect
                     found = True
-                    BayLog.debug("%s Update operation: %s ch=%d", self, NonBlockingHandler.op_mode(ch_op.op), ch_op.ch.fileno())
+                    BayLog.debug("%s Update operation: %s fd=%d", self, NonBlockingHandler.op_mode(ch_op.op), ch_op.ch.fileno())
             if not found:
-                BayLog.debug("%s New operation: %s ch=%d", self, NonBlockingHandler.op_mode(op), ch.fileno());
+                BayLog.debug("%s New operation: %s fd=%d", self, NonBlockingHandler.op_mode(op), ch.fileno());
                 self.operations.append(NonBlockingHandler.ChannelOperation(ch, op, connect=connect, close=close))
 
         self.agent.wakeup()
 
 
     def close_channel(self, ch, ch_state):
-        BayLog.debug("%s Close ch=%d chState=%s", self, ch.fileno(), ch_state)
+        BayLog.debug("%s Close fd=%d chState=%s", self, ch.fileno(), ch_state)
 
         if ch_state is None:
             ch_state = self.find_channel_state(ch)
@@ -368,13 +374,13 @@ class NonBlockingHandler:
         try:
             self.agent.selector.unregister(ch)
         except KeyError or ValueError as e:
-            BayLog.debug("%s Unregister error (Ignore): %s %s", self, ch, e)
+            BayLog.debug("%s Unregister error (Ignore): fd=%d chState=%s %s", self, ch.fileno(), ch_state, e)
 
         ch.close()
 
 
     def add_channel_state(self, ch, ch_state):
-        BayLog.trace("%s add_channel_state ch=%s chState=%s", self, ch.fileno(), ch_state);
+        BayLog.trace("%s add_channel_state fd=%s chState=%s", self, ch.fileno(), ch_state);
 
         with self.lock:
             self.channel_map[ch] = ch_state

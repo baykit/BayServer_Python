@@ -68,7 +68,10 @@ class FcgWarpHandler(FcgProtocolHandler):
         self.send_stdin(tur, buf, start, length, callback)
 
     def post_warp_end(self, tur):
-        self.send_stdin(tur, None, 0, 0, null)
+        def callback():
+            self.ship.agent.non_blocking_handler.ask_to_read(self.ship.socket)
+
+        self.send_stdin(tur, None, 0, 0, callback)
 
     def verify_protocol(proto):
         pass
@@ -209,13 +212,13 @@ class FcgWarpHandler(FcgProtocolHandler):
 
     def send_stdin(self, tur, data, ofs, length, callback):
         cmd = CmdStdIn(WarpData.get(tur).warp_id, data, ofs, length)
-        self.command_packer.post(self.ship, cmd, callback)
+        self.ship.post(cmd, callback)
 
     def send_begin_req(self, tur):
         cmd = CmdBeginRequest(WarpData.get(tur).warp_id)
         cmd.role = CmdBeginRequest.FCGI_RESPONDER
         cmd.keep_conn = True
-        self.command_packer.post(self.ship, cmd)
+        self.ship.post(cmd)
 
     def send_params(self, tur):
         script_base = self.ship.docker.script_base
@@ -258,10 +261,10 @@ class FcgWarpHandler(FcgProtocolHandler):
             for kv in cmd.params:
                 BayLog.info("%s fcgi_warp: env: %s=%s", self.ship, kv[0], kv[1])
 
-        self.command_packer.post(self.ship, cmd)
+        self.ship.post(cmd)
 
         cmd_params_end = CmdParams(WarpData.get(tur).warp_id)
-        self.command_packer.post(self.ship, cmd_params_end)
+        self.ship.post(cmd_params_end)
 
 
 

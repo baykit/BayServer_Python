@@ -18,7 +18,7 @@ class SecureTransporter(Transporter):
 
 
     def __str__(self):
-        return f"stp[#{self.data_listener}]"
+        return f"stp[{self.data_listener}]"
 
 
     ######################################################

@@ -31,6 +31,7 @@ class WarpDataListener(DataListener):
         return NextSocketAction.CONTINUE
 
     def notify_connect(self):
+        BayLog.debug("%s Connected", self)
         self.ship.connected = True
 
         if SysUtil.run_on_windows():

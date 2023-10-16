@@ -15,6 +15,7 @@ from bayserver_core.docker.warp.warp_handler import WarpHandler
 from bayserver_docker_http.h1.h1_protocol_handler import H1ProtocolHandler
 from bayserver_docker_http.h1.command.cmd_header import CmdHeader
 from bayserver_docker_http.h1.command.cmd_content import CmdContent
+from bayserver_docker_http.h1.command.cmd_end_content import CmdEndContent
 
 class H1WarpHandler(H1ProtocolHandler, WarpHandler):
     class WarpProtocolHandlerFactory(ProtocolHandlerFactory):
@@ -96,15 +97,19 @@ class H1WarpHandler(H1ProtocolHandler, WarpHandler):
             for kv in cmd.headers:
                 BayLog.info("%s warp_http reqHdr: %s=%s", tur, kv[0], kv[1])
 
-        self.command_packer.post(sip, cmd)
+        self.ship.post(cmd)
 
     def post_warp_contents(self, tur, buf, start, length, callback):
         cmd = CmdContent(buf, start, length)
-        self.command_packer.post(self.ship, cmd, callback)
+        self.ship.post(cmd, callback)
 
 
     def post_warp_end(self, tur):
-        pass
+        cmd = CmdEndContent()
+        def callback():
+            self.ship.agent.non_blocking_handler.ask_to_read(self.ship.socket)
+
+        self.ship.post(cmd, callback)
 
 
     def verify_protocol(self, proto):

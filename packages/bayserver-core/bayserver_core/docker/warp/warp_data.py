@@ -37,6 +37,7 @@ class WarpData(ReqContentHandler):
 
     def on_end_content(self, tur):
         BayLog.debug("%s endReqContent tur=%s", self.warp_ship, tur)
+        self.warp_ship.check_ship_id(self.warp_ship_id)
         self.warp_ship.warp_handler().post_warp_end(tur)
 
     def on_abort(self, tur):
@@ -49,6 +50,7 @@ class WarpData(ReqContentHandler):
         if not self.started:
             self.warp_ship.protocol_handler.command_packer.flush(self.warp_ship)
             BayLog.debug("%s Start Warp tour", self)
+            self.warp_ship.flush()
             self.started = True
 
 
