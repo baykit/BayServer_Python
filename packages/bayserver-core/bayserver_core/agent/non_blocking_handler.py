@@ -95,12 +95,12 @@ class NonBlockingHandler:
                 next_action = ch_state.listener.on_connectable(ch)
                 if next_action is None:
                     raise Sink("unknown next action")
-                elif next_action == NextSocketAction.WRITE:
-                    # "Read-OP Off"
+                elif next_action == NextSocketAction.READ:
+                    # "Write-OP Off"
                     key = self.agent.selector.get_key(ch)
-                    op = key.events & ~selectors.EVENT_READ
-                    if op != selectors.EVENT_WRITE:
-                        BayLog.debug("%s Unregister channel (Read Off) chState=%s", self.agent, ch_state)
+                    op = key.events & ~selectors.EVENT_WRITE
+                    if op != selectors.EVENT_READ:
+                        BayLog.debug("%s Unregister channel (Write Off) chState=%s", self.agent, ch_state)
                         self.agent.selector.unregister(ch)
                     else:
                         self.agent.selector.modify(ch, op)
@@ -286,7 +286,7 @@ class NonBlockingHandler:
 
         ch_state.is_connecting = True
 
-        self.add_operation(ch, selectors.EVENT_READ, connect=True)
+        self.add_operation(ch, selectors.EVENT_WRITE, connect=True)
 
     def ask_to_read(self, ch):
         if not isinstance(ch, io.IOBase) and not isinstance(ch, socket.socket):
