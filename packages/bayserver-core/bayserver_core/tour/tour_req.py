@@ -134,7 +134,7 @@ class TourReq(Reusable):
         BayLog.debug("%s read content: len=%d posted=%d limit=%d consumed=%d",
                      self.tour, length, self.bytes_posted, self.bytes_limit, self.bytes_consumed)
 
-        if self.tour.error is None:
+        if self.tour.error is not None:
             return True
 
         old_available = self.available
