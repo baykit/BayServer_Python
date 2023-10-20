@@ -124,11 +124,17 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
         BayLog.debug("%s stm#%d sendResContent len=%d posted=%d/%d",
                      tur, stm_id, len, tur.res.bytes_posted, tur.res.headers.content_length())
 
-        self.hcon.send_data(stream_id=stm_id, data=bytes(data[ofs:ofs+len]), end_stream=False)
-        self.post_packets()
+        try:
+            self.hcon.send_data(stream_id=stm_id, data=bytes(data[ofs:ofs+len]), end_stream=False)
+            self.post_packets()
 
-        if callback:
-            callback()
+        except Exception as e:
+            BayLog.error_e(e, "%s Error on sending data: %s", tur, ExceptionUtil.message(e))
+            raise IOError("Error on sending data: %s", ExceptionUtil.message(e))
+
+        finally:
+            if callback:
+                callback()
 
 
     def send_end_tour(self, tur, keep_alive, callback):
