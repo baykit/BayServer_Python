@@ -2,25 +2,25 @@ from abc import ABCMeta, abstractmethod
 
 class ChannelListener(metaclass=ABCMeta):
     @abstractmethod
-    def on_readable(chk_ch):
+    def on_readable(self, chk_ch):
         pass
 
     @abstractmethod
-    def on_writable(chk_ch):
+    def on_writable(self, chk_ch):
         pass
 
     @abstractmethod
-    def on_connectable(chk_ch):
+    def on_connectable(self, chk_ch):
         pass
 
     @abstractmethod
-    def on_error(chk_ch, e):
+    def on_error(self, chk_ch, e):
         pass
 
     @abstractmethod
-    def on_closed(chk_ch):
+    def on_closed(self, chk_ch):
         pass
 
     @abstractmethod
-    def check_timeout(chk_ch, duration_sec):
+    def check_timeout(self, chk_ch, duration_sec):
         pass
