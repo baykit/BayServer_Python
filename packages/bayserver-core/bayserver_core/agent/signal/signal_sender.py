@@ -54,6 +54,7 @@ class SignalSender:
     def send(self, host, port, cmd):
         try:
             skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            skt.settimeout(60)
 
             skt.connect((host, port))
             f = skt.makefile("rw")

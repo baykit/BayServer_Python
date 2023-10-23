@@ -66,6 +66,7 @@ class GrandAgent:
         self.agent_id = agent_id
         self.anchorable = anchorable
 
+        self.timer_handlers = []
         if anchorable:
             self.accept_handler = AcceptHandler(self, GrandAgent.anchorable_port_map)
         else:
@@ -86,11 +87,8 @@ class GrandAgent:
         self.command_receiver = None
         self.lock = threading.RLock()
 
-
     def __str__(self):
         return f"Agt#{self.agent_id}"
-
-
 
     def run(self):
         BayLog.info(BayMessage.get(Symbol.MSG_RUNNING_GRAND_AGENT, self))
@@ -147,7 +145,7 @@ class GrandAgent:
                 processed = self.non_blocking_handler.register_channel_ops() > 0
 
                 if len(selkeys) == 0:
-                    processed |= self.spin_handler.process_data();
+                    processed |= self.spin_handler.process_data()
 
                 for key, events in selkeys:
                     if key.fd == self.select_wakeup_pipe[0].fileno():
@@ -162,8 +160,8 @@ class GrandAgent:
 
                 if not processed:
                     # timeout check if there is nothing to do
-                    self.non_blocking_handler.close_timeout_sockets()
-                    self.spin_handler.stop_timeout_spins()
+                    for h in self.timer_handlers:
+                        h.on_timer()
 
         except BaseException as e:
             BayLog.fatal_e(e, "%s Fatal Error", self)
@@ -171,7 +169,6 @@ class GrandAgent:
         finally:
             BayLog.debug("Agent end: %d", self.agent_id)
             self.abort(None, 0)
-
 
     def shutdown(self):
         BayLog.debug("%s shutdown", self)
@@ -230,6 +227,9 @@ class GrandAgent:
 
     def run_command_receiver(self, com_channel):
         self.command_receiver = CommandReceiver(self, com_channel)
+
+    def add_timer_handler(self, handler):
+        self.timer_handlers.append(handler)
 
     ######################################################
     # class methods

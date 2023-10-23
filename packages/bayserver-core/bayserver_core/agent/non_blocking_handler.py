@@ -7,13 +7,14 @@ import errno
 import selectors
 
 from bayserver_core import bayserver as bs
+from bayserver_core.agent.timer_handler import TimerHandler
 from bayserver_core.bay_log import BayLog
 from bayserver_core.sink import Sink
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.util.exception_util import ExceptionUtil
 
 
-class NonBlockingHandler:
+class NonBlockingHandler(TimerHandler):
 
     OP_READ = 1
     OP_WRITE = 2
@@ -59,10 +60,21 @@ class NonBlockingHandler:
         self.operations = []
         self.operations_lock = threading.RLock()
 
+        agent.add_timer_handler(self)
 
     def __str__(self):
         return str(self.agent)
 
+    ######################################################
+    # Implements TimerHandler
+    ######################################################
+
+    def on_timer(self):
+        self.close_timeout_sockets()
+
+    ######################################################
+    # Custom methods
+    ######################################################
 
     def handle_channel(self, key, events):
 

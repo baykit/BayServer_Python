@@ -33,9 +33,22 @@ class SpinHandler:
         self.agent = agt
         self.spin_count = 0
 
+        agt.add_timer_handler(self)
+
     def __str__(self):
         return str(self.agent)
 
+
+    ######################################################
+    # Implements TimerHandler
+    ######################################################
+
+    def on_timer(self):
+        self.stop_timeout_spins()
+
+    ######################################################
+    # Custom methods
+    ######################################################
 
     def process_data(self):
         if len(self.listeners) == 0:

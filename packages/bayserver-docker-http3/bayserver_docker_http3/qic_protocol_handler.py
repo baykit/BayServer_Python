@@ -33,6 +33,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
         self.config = cfg
         self.postman = postman
         self.hcon = None
+        self.last_accessed = None
 
     def __str__(self):
         return f"{self.ship}"
@@ -87,7 +88,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
                 pass
             #self.quic_event_received(event)
 
-
+        self.access()
         return NextSocketAction.CONTINUE
 
     ######################################################
@@ -118,6 +119,8 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
             BayLog.error_e(e, "%s Error on sending headers: %s", tur, ExceptionUtil.message(e))
             raise IOError("Error on sending headers: %s", ExceptionUtil.message(e))
 
+        self.access()
+
     def send_res_content(self, tur, data, ofs, len, callback):
 
         stm_id = tur.req.key
@@ -136,6 +139,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
             if callback:
                 callback()
 
+        self.access()
 
     def send_end_tour(self, tur, keep_alive, callback):
 
@@ -152,6 +156,8 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
 
         if callback:
             callback()
+
+        self.access()
 
     ##################################################
     # Quic event handling
@@ -270,6 +276,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
         posted = False
         for buf, adr in self.con.datagrams_to_send(now=time.time()):
             pkt = QicPacket()
+            # For performance reasons, we update the attribute 'buf' directly.
             pkt.buf = buf
             pkt.bufLen = len(pkt.buf)
             self.postman.post(pkt.buf, adr, pkt, None)
@@ -298,3 +305,20 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
         tur.res.buffer_size = 8192
 
         tur.go()
+        self.access()
+
+    def access(self):
+        self.last_accessed = int(time.time())
+
+    def is_timed_out(self):
+        duration_sec = int(time.time()) - self.last_accessed
+        BayLog.info("%s Check H3 timeout duration=%d", self, duration_sec)
+        if duration_sec > BayServer.harbor.socket_timeout_sec:
+            BayLog.info("%s H3 Connection is timed out", self)
+            try:
+                self.con.close()
+            except BaseException as e:
+                BayLog.error_e(e, "%s Close Error", self)
+            return True
+        else:
+            return False

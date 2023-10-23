@@ -104,6 +104,15 @@ class UdpInboundDataListener(DataListener):
         pass
 
     def check_timeout(self, duration_sec):
+        BayLog.debug("%s Check H3Conn timeout: %s", self, self.handlers)
+        remove_list = []
+        for key, handler in self.handlers.items():
+            BayLog.debug("%s Check H3Conn handler: key = %s", self, key)
+            if handler.is_timed_out():
+                remove_list.append(key)
+        for key in remove_list:
+            BayLog.debug("%s Remove key: %s", self, key)
+            del self.handlers[key]
         return False
 
     ######################################################

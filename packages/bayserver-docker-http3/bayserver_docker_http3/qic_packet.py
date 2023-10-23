@@ -10,4 +10,4 @@ class QicPacket(Packet):
         super().__init__(QicType.SHORT, 0, QicPacket.MAX_DATAGRAM_SIZE)
 
     def __str__(self):
-        return f"QicPacket[len={self.data_len()}]"
+        return f"QicPacket[len={len(self.buf)}]"

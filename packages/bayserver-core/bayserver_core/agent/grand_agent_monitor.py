@@ -117,7 +117,7 @@ class GrandAgentMonitor:
 
     @classmethod
     def agent_aborted(cls, agt_id, anchorable):
-        BayLog.info(BayMessage.get(Symbol.MSG_GRAND_AGENT_SHUTDOWN, agt_id))
+        BayLog.error(BayMessage.get(Symbol.MSG_GRAND_AGENT_SHUTDOWN, agt_id))
 
         del cls.monitors[agt_id]
 
