@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 from multiprocessing import Process
 import sys
 
@@ -54,6 +55,7 @@ class GrandAgentMonitor:
     def print_usage(self):
         BayLog.debug("%s Send mem_usage command", self)
         self.send(ga.GrandAgent.CMD_MEM_USAGE)
+        time.sleep(1) # lazy implementation
 
     def send(self, cmd):
         BayLog.debug("%s send command %s pipe=%s", self, cmd, self.communication_channel)
