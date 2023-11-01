@@ -10,8 +10,9 @@ from bayserver_core.taxi.taxi import Taxi
 
 class ReadFileTaxi(Taxi, Valve):
 
-    def __init__(self, buf_size):
+    def __init__(self, agt, buf_size):
         super().__init__()
+        self.agent = agt
         self.infile = None
         self.ch_valid = None
         self.data_listener = None
@@ -74,7 +75,7 @@ class ReadFileTaxi(Taxi, Valve):
             return
 
         self.running = True
-        TaxiRunner.post(self)
+        TaxiRunner.post(self.agent.agent_id, self)
 
 
     def close(self):

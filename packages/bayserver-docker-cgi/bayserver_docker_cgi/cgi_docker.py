@@ -160,17 +160,16 @@ class CgiDocker(ClubBase):
             err_tp.open_valve()
 
         elif self.proc_read_method == Harbor.FILE_SEND_METHOD_TAXI:
-            out_txi = ReadFileTaxi(bufsize)
+            out_txi = ReadFileTaxi(tur.ship.agent, bufsize)
             out_yat.init(tur, out_txi, handler)
             out_txi.init(handler.std_out, out_yat)
-            if not TaxiRunner.post(out_txi):
+            if not TaxiRunner.post(tur.ship.agent.agent_id, out_txi):
                 raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "Taxi is busy!")
 
-
-            err_txi = ReadFileTaxi(bufsize)
+            err_txi = ReadFileTaxi(tur.ship.agent, bufsize)
             err_yat.init(tur, handler)
             err_txi.init(handler.std_err, err_yat)
-            if not TaxiRunner.post(err_txi):
+            if not TaxiRunner.post(tur.ship.agent.agent_id, err_txi):
                 raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "Taxi is busy!")
 
 

@@ -231,6 +231,9 @@ class GrandAgent:
     def add_timer_handler(self, handler):
         self.timer_handlers.append(handler)
 
+    def remove_timer_handler(self, handler):
+        self.timer_handlers.remove(handler)
+
     ######################################################
     # class methods
     ######################################################

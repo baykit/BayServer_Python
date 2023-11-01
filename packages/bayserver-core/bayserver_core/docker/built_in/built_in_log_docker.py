@@ -40,7 +40,7 @@ class BuiltInLogDocker(DockerBase, Log):
 
             elif self.log_docker.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_TAXI:
                 tp = WriteFileTaxi()
-                tp.init(open(file_name, "ab"), boat)
+                tp.init(agt.agent_id, open(file_name, "ab"), boat)
 
             try:
                 boat.init(file_name, tp)

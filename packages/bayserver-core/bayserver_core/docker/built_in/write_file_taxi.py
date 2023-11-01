@@ -5,7 +5,6 @@ from bayserver_core.bay_log import BayLog
 from bayserver_core.taxi.taxi import Taxi
 from bayserver_core.taxi.taxi_runner import TaxiRunner
 from bayserver_core.util.valve import Valve
-from bayserver_core.util.postman import Postman
 
 class WriteFileTaxi(Taxi, Valve):
 
@@ -17,8 +16,10 @@ class WriteFileTaxi(Taxi, Valve):
         self.lock = None
         self.write_queue = []
         self.lock = threading.Lock()
+        self.agent_id = None
 
-    def init(self, out, data_listener):
+    def init(self, agt_id, out, data_listener):
+        self.agent_id = agt_id
         self.outfile = out
         self.data_listener = data_listener
         self.ch_valid = True
@@ -65,5 +66,5 @@ class WriteFileTaxi(Taxi, Valve):
                 self.open_valve()
 
     def next_run(self):
-        TaxiRunner.post(self)
+        TaxiRunner.post(self.agent_id, self)
         

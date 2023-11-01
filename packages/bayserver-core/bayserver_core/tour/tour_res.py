@@ -311,10 +311,10 @@ class TourRes:
                     tp.open_valve()
 
                 elif method == Harbor.FILE_SEND_METHOD_TAXI:
-                    txi = ReadFileTaxi(bufsize);
+                    txi = ReadFileTaxi(self.tour.ship.agent, bufsize)
                     self.yacht.init(self.tour, file, txi);
                     txi.init(infile, self.yacht)
-                    if not TaxiRunner.post(txi):
+                    if not TaxiRunner.post(self.tour.ship.agent.agent_id, txi):
                         raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "Taxi is busy!");
 
                 else:
