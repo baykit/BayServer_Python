@@ -13,7 +13,9 @@ class SysUtil:
     def run_on_windows(cls):
         return platform.system() == "Windows"
 
-
+    @classmethod
+    def run_on_mac(cls):
+        return platform.system() == 'Darwin'
     #
     # We set environment variable "PYCHARM" to 1 for debugging
     #

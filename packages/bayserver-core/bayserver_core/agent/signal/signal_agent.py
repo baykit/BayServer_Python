@@ -5,7 +5,7 @@ from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.symbol import Symbol
 
-from bayserver_core.agent import grand_agent as ga
+from bayserver_core.agent.grand_agent_monitor import GrandAgentMonitor
 from bayserver_core.agent.signal.signal_proxy import SignalProxy
 
 from bayserver_core.util.sys_util import SysUtil
@@ -99,15 +99,15 @@ class SignalAgent:
     def handle_command(cls, cmd):
         BayLog.debug("handle command: %s", cmd)
         if cmd.lower() == cls.COMMAND_RELOAD_CERT:
-          ga.GrandAgentMonitor.reload_cert_all()
+          GrandAgentMonitor.reload_cert_all()
         elif cmd.lower() ==  cls.COMMAND_MEM_USAGE:
-          ga.GrandAgentMonitor.print_usage_all()
+          GrandAgentMonitor.print_usage_all()
         elif cmd.lower() == cls.COMMAND_RESTART_AGENTS:
-          ga.GrandAgentMonitor.restart_all()
+          GrandAgentMonitor.restart_all()
         elif cmd.lower() == cls.COMMAND_SHUTDOWN:
-          ga.GrandAgentMonitor.shutdown_all()
+          GrandAgentMonitor.shutdown_all()
         elif cmd.lower() == cls.COMMAND_ABORT:
-          ga.GrandAgentMonitor.abort_all()
+          GrandAgentMonitor.abort_all()
         else:
           BayLog.error("Unknown command: %s", cmd)
         BayLog.debug("HANDLED: %s", cmd)

@@ -1,8 +1,8 @@
 import os
 import selectors
 import socket
+import sys
 
-import signal
 import threading
 from abc import ABCMeta, abstractmethod
 
@@ -10,14 +10,12 @@ from bayserver_core import bayserver as bs
 from bayserver_core.symbol import Symbol
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
-from bayserver_core.sink import Sink
 from bayserver_core import mem_usage as mem
 
 from bayserver_core.agent.command_receiver import CommandReceiver
 from bayserver_core.agent.accept_handler import AcceptHandler
 from bayserver_core.agent.non_blocking_handler import NonBlockingHandler
 from bayserver_core.agent.spin_handler import SpinHandler
-from bayserver_core.agent.grand_agent_monitor import GrandAgentMonitor
 
 
 from bayserver_core.util.io_util import IOUtil
@@ -205,6 +203,17 @@ class GrandAgent:
     def print_usage(self):
         # print memory usage
         BayLog.info("Agent#%d MemUsage", self.agent_id)
+        BayLog.info(" Python version: %s", sys.version)
+        mem_usage = 0
+        if not SysUtil.run_on_windows():
+            import resource
+            if hasattr(resource, 'getrusage'):
+                mem_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+                if SysUtil.run_on_mac():
+                    mem_usage = mem_usage / 1024.0
+                mem_usage = int(mem_usage)
+        if mem_usage > 0:
+            BayLog.info(" Memory used: %s MBytes", "{:,}".format(mem_usage))
         mem.MemUsage.get(self.agent_id).print_usage(1)
 
     def on_waked_up(self, ch):
