@@ -49,6 +49,7 @@ class TourRes:
         self.bytes_consumed = None
         self.bytes_limit = None
         self.buffer_size = bs.BayServer.harbor.tour_buffer_size
+        self.tour_returned = False
         #self.buffer_size = 1024
 
     def __str__(self):
@@ -76,6 +77,7 @@ class TourRes:
         self.bytes_posted = 0
         self.bytes_consumed = 0
         self.bytes_limit = 0
+        self.tour_returned = False
 
 
     ######################################################
@@ -112,8 +114,13 @@ class TourRes:
                         self.headers.remove(Headers.CONTENT_LENGTH)
                         break
 
-        self.tour.ship.send_headers(self.tour.ship_id, self.tour)
-        self.header_sent = True
+        try:
+            self.tour.ship.send_headers(self.tour.ship_id, self.tour)
+        except IOError as e:
+            self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+            raise e
+        finally:
+            self.header_sent = True
 
     def send_redirect(self, chk_tour_id, status, location):
         self.tour.check_tour_id(chk_tour_id)
@@ -122,9 +129,14 @@ class TourRes:
             BayLog.error("Try to redirect after response header is sent (Ignore)")
         else:
             self.set_consume_listener(ContentConsumeListener.dev_null)
-            self.tour.ship.send_redirect(self.tour.ship_id, self.tour, status, location)
-            self.header_sent = True
-            self.end_content(chk_tour_id)
+            try:
+                self.tour.ship.send_redirect(self.tour.ship_id, self.tour, status, location)
+            except IOError as e:
+                self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+                raise e
+            finally:
+                self.header_sent = True
+                self.end_content(chk_tour_id)
 
     def set_consume_listener(self, listener):
         self.consume_listener = listener
@@ -159,14 +171,20 @@ class TourRes:
         if 0 < self.bytes_limit < self.bytes_posted:
             raise ProtocolException("Post data exceed content-length: " + self.bytes_posted + "/" + self.bytes_limit)
 
-        if self.can_compress:
-            self.get_compressor().compress(buf, ofs, length, consumed_cb)
+        if self.tour.is_zombie() or self.tour.is_aborted():
+            # Don't send peer any data
+            BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, self.tour, self.tour.state)
+            consumed_cb()
         else:
-            try:
-                self.tour.ship.send_res_content(self.tour.ship_id, self.tour, buf, ofs, length, consumed_cb)
-            except IOError as e:
-                consumed_cb()
-                raise e
+            if self.can_compress:
+                self.get_compressor().compress(buf, ofs, length, consumed_cb)
+            else:
+                try:
+                    self.tour.ship.send_res_content(self.tour.ship_id, self.tour, buf, ofs, length, consumed_cb)
+                except IOError as e:
+                    consumed_cb()
+                    self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+                    raise e
 
         old_available = self.available
         if not self.buffer_available():
@@ -182,6 +200,9 @@ class TourRes:
         self.tour.check_tour_id(chk_id)
 
         BayLog.debug("%s end ResContent: chk_id=%d", self, chk_id)
+        if self.tour.is_ended():
+            BayLog.debug("%s Tour is already ended (Ignore).", self)
+            return
 
         if not self.tour.is_zombie() and self.tour.city is not None:
             self.tour.city.log(self.tour)
@@ -192,13 +213,26 @@ class TourRes:
 
         # Callback
         def callback():
+            self.tour.check_tour_id(chk_id)
             self.tour.ship.return_tour(self.tour)
+            self.tour_returned = True
 
         try:
-            self.tour.ship.send_end_tour(self.tour.ship_id, self.tour, callback)
-        except IOError as e:
-            callback()
-            raise e
+            if self.tour.is_zombie() or self.tour.is_aborted():
+                # Don't send peer any data. Do nothing
+                BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, self.tour, self.tour.state)
+                callback()
+            else:
+                try:
+                    self.tour.ship.send_end_tour(self.tour.ship_id, self.tour, callback)
+                except IOError as e:
+                    BayLog.debug("%s Error on sending end tour", self)
+                    callback()
+                    raise e
+        finally:
+            BayLog.debug("%s Tour is returned: %s", self, self.tour_returned)
+            if not self.tour_returned:
+                self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ENDED)
 
     def consumed(self, check_id, length):
         self.tour.check_tour_id(check_id)
@@ -229,7 +263,7 @@ class TourRes:
         if http_ex.status == HttpStatus.MOVED_TEMPORARILY or http_ex.status == HttpStatus.MOVED_PERMANENTLY:
             self.send_redirect(chk_tour_id, http_ex.status, http_ex.location)
         else:
-            self.send_error(chk_tour_id, http_ex.status, http_ex.message(), http_ex)
+            self.send_error(chk_tour_id, http_ex.status, http_ex.args, http_ex)
 
 
 
@@ -241,8 +275,7 @@ class TourRes:
 
         if isinstance(err, HttpException):
             status = err.status
-            msg = err.message
-
+            msg = err.args
 
         if self.header_sent:
             BayLog.warn("Try to send error after response header is sent (Ignore)");
@@ -251,7 +284,16 @@ class TourRes:
                 BayLog.error_e(err);
         else:
             self.set_consume_listener(ContentConsumeListener.dev_null)
-            self.tour.ship.send_error(self.tour.ship_id, self.tour, status, msg, err)
+
+            if self.tour.is_zombie() or self.tour.is_aborted():
+                # Don't send peer any data
+                BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, self.tour, self.tour.state)
+            else:
+                try:
+                    self.tour.ship.send_error(self.tour.ship_id, self.tour, status, msg, err)
+                except IOError as e:
+                    BayLog.error_e(e, "%s Error in sending error", self)
+                    self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
             self.header_sent = True
 
         self.end_content(chk_tour_id)
@@ -330,8 +372,16 @@ class TourRes:
 
     def get_compressor(self):
         if self.compressor is None:
-            self.compressor = GzipCompressor(lambda new_buf, new_ofs, new_len, callback:
-                self.tour.ship.send_res_content(self.tour.ship_id, self.tour, new_buf, new_ofs, new_len, callback))
+            sip_id = self.tour.ship.ship_id
+            tur_id = self.tour.tour_id
+            def gz_callback(new_buf, new_ofs, new_len, callback):
+                try:
+                    self.tour.ship.send_res_content(sip_id, self.tour, new_buf, new_ofs, new_len, callback)
+                except IOError as e:
+                    self.tour.change_state(tur_id, tour.Tour.TourState.ABORTED)
+                    raise e
+
+            self.compressor = GzipCompressor(gz_callback)
 
         return self.compressor
 

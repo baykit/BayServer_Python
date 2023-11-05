@@ -108,18 +108,17 @@ class TourReq(Reusable):
     def post_content(self, check_id, data, start, length):
         self.tour.check_tour_id(check_id)
 
+        data_passed = False
         if not self.tour.is_running():
             BayLog.debug("%s tour is not running.", self.tour);
-            return True
 
-        if self.content_handler is None:
+        elif self.content_handler is None:
             BayLog.warn("%s content read, but no content handler", self.tour)
-            return True
 
-        if self.consume_listener is None:
+        elif self.consume_listener is None:
             raise Sink("Request consume listener is null")
 
-        if self.bytes_posted + length > self.bytes_limit:
+        elif self.bytes_posted + length > self.bytes_limit:
             raise ProtocolException(
                 BayMessage.get(
                     Symbol.HTP_READ_DATA_EXCEEDED,
@@ -127,14 +126,18 @@ class TourReq(Reusable):
                     self.bytes_limit))
 
         # If has error, only read content. (Do not call content handler)
-        if self.tour.error is None:
-            self.content_handler.on_read_content(self.tour, data, start, length)
-        self.bytes_posted += length
+        elif self.tour.error is not None:
+            BayLog.debug("%s tour has error.", self.tour)
 
+        else:
+            self.content_handler.on_read_content(self.tour, data, start, length)
+            data_passed = True
+
+        self.bytes_posted += length
         BayLog.debug("%s read content: len=%d posted=%d limit=%d consumed=%d",
                      self.tour, length, self.bytes_posted, self.bytes_limit, self.bytes_consumed)
 
-        if self.tour.error is not None:
+        if not data_passed:
             return True
 
         old_available = self.available

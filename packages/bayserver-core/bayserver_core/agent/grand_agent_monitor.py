@@ -34,7 +34,7 @@ class GrandAgentMonitor:
             if res is None or res == ga.GrandAgent.CMD_CLOSE:
                 BayLog.debug("%s read Close", self)
                 self.close()
-                ga.GrandAgentMonitor.agent_aborted(self.agent_id, self.anchorable)
+                GrandAgentMonitor.agent_aborted(self.agent_id, self.anchorable)
             else:
                 BayLog.debug("%s read: %d", self, res)
         except BlockingIOError as e:

@@ -57,14 +57,14 @@ class InboundShip(Ship):
     # Other methods
     ######################################################
 
-    def get_tour(self, tur_key, force=False):
-        tur = None
+    def get_tour(self, tur_key, force=False, rent=True):
+
         store_key = InboundShip.uniq_key(self.ship_id, tur_key)
 
         with self.lock:
             tur = self.tour_store.get(store_key)
 
-            if tur is None:
+            if tur is None and rent:
                 tur = self.tour_store.rent(store_key, force)
                 if tur is None:
                     return None
@@ -124,13 +124,7 @@ class InboundShip(Ship):
         if not handled:
             for nv in self.port_docker.additional_headers:
                 tur.res.headers.add(nv[0], nv[1])
-
-            try:
-                self.protocol_handler.send_res_headers(tur)
-            except IOError as e:
-                BayLog.debug_e(e, "%s abort: %s", tur, e)
-                tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
-                raise e
+            self.protocol_handler.send_res_headers(tur)
 
 
     def send_redirect(self, check_id, tur, status, location):
@@ -150,26 +144,13 @@ class InboundShip(Ship):
 
         self.check_ship_id(chk_ship_id)
 
-        if tur.is_zombie() or tur.is_aborted():
-            # Don't send peer any data
-            BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, tur, tur.state)
-            tur.change_state(Ship.SHIP_ID_NOCHECK, Tour.TourState.ENDED);
-            if callback is not None:
-                callback()
-            return
-
         max_len = self.protocol_handler.max_res_packet_data_size()
         while length > max_len:
             self.protocol_handler.send_res_content(tur, bytes, ofs, max_len, None)
             ofs = ofs + max_len
             length = length - max_len
         if length > 0:
-            try :
-                self.protocol_handler.send_res_content(tur, bytes, ofs, length, callback)
-            except IOError as e:
-                BayLog.debug_e(e, "%s abort: %s", tur, e)
-                tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
-                raise e
+            self.protocol_handler.send_res_content(tur, bytes, ofs, length, callback)
 
 
     def send_end_tour(self, chk_ship_id, tur, callback):
@@ -177,30 +158,22 @@ class InboundShip(Ship):
             self.check_ship_id(chk_ship_id)
             BayLog.debug("%s sendEndTour: %s state=%s", self, tur, tur.state)
 
-            if tur.is_zombie() or tur.is_aborted():
-                # Don't send peer any data. Do nothing
-                BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, tur, tur.state)
-                tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ENDED)
-                callback()
-            else:
-                if not tur.is_valid():
-                  raise Sink("Tour is not valid")
+            if not tur.is_valid():
+              raise Sink("Tour is not valid")
 
-                keep_alive = False
-                if tur.req.headers.get_connection() == Headers.CONNECTION_KEEP_ALIVE:
-                    keep_alive = True
-                    if keep_alive:
-                        res_conn = tur.res.headers.get_connection()
-                        keep_alive = (res_conn == Headers.CONNECTION_KEEP_ALIVE) or \
-                                    (res_conn == Headers.CONNECTION_UNKOWN)
+            keep_alive = False
+            if tur.req.headers.get_connection() == Headers.CONNECTION_KEEP_ALIVE:
+                keep_alive = True
+                if keep_alive:
+                    res_conn = tur.res.headers.get_connection()
+                    keep_alive = (res_conn == Headers.CONNECTION_KEEP_ALIVE) or \
+                                (res_conn == Headers.CONNECTION_UNKOWN)
 
-                    if keep_alive:
-                        if tur.res.headers.content_length() < 0:
-                            keep_alive = False
+                if keep_alive:
+                    if tur.res.headers.content_length() < 0:
+                        keep_alive = False
 
-                tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ENDED)
-
-                self.protocol_handler.send_end_tour(tur, keep_alive, callback)
+            self.protocol_handler.send_end_tour(tur, keep_alive, callback)
 
 
 

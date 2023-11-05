@@ -254,7 +254,7 @@ class H1InboundHandler(H1ProtocolHandler, InboundHandler):
                 return NextSocketAction.CONTINUE
 
     def handle_content(self, cmd):
-        BayLog.debug("%s handleContent: len=%s", self.ship, cmd.length)
+        BayLog.debug("%s handleContent: len=%s", self.ship, cmd.  length)
 
         if self.state != H1InboundHandler.STATE_READ_CONTENT:
             s = self.state

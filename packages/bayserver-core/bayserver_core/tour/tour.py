@@ -79,7 +79,7 @@ class Tour(Reusable):
     ######################################################
     def init(self, key, sip):
         if self.is_initialized():
-            raise Sink(f"{self} Tour already initialized")
+            raise Sink(f"{self} Tour already initialized: state=%d", self.state)
 
         self.ship = sip
         self.ship_id = sip.ship_id
@@ -108,11 +108,14 @@ class Tour(Reusable):
             try:
                 city.enter(self)
             except Sink as e:
+                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
                 raise e
             except HttpException as e:
+                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
                 BayLog.error_e(e)
                 raise e
             except BaseException as e:
+                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
                 BayLog.error_e(e)
                 raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, ExceptionUtil.message(e))
 
@@ -130,6 +133,9 @@ class Tour(Reusable):
 
     def is_aborted(self):
         return self.state == Tour.TourState.ABORTED
+
+    def is_ended(self):
+        return self.state == Tour.TourState.ENDED
 
     def is_initialized(self):
         return self.state != Tour.TourState.UNINITIALIZED

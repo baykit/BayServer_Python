@@ -177,11 +177,9 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
     def on_stream_reset(self, qev):
         BayLog.debug("%s stm#%d reset: code=%d", self, qev.stream_id, qev.error_code)
 
-        tur = self.get_tour(qev.stream_id)
+        tur = self.get_tour(qev.stream_id, rent=False)
         if tur:
-            BayLog.debug("%s set zombie", tur)
-            tur.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ZOMBIE)
-            return
+            tur.req.abort()
 
     ##################################################
     # Http event handling
@@ -248,8 +246,13 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
     def on_data(self, hev):
         BayLog.debug("%s stm#%d onData: len=%d end=%s", self, hev.stream_id, len(hev.data), hev.stream_ended)
 
-        tur = self.get_tour(hev.stream_id)
-        if tur.req.ended:
+        tur = self.get_tour(hev.stream_id, rent=False)
+        if tur is None:
+            BayLog.debug("%s stm#%d No tour related (Ignore)", self, hev.stream_id)
+            return
+
+        elif tur.req.ended:
+            BayLog.debug("%s stm#%d Tour is already ended (Ignore)", self, hev.stream_id)
             return
 
         tur.req.post_content(Tour.TOUR_ID_NOCHECK, hev.data, 0, len(hev.data))
@@ -283,8 +286,8 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
             posted = True
         return posted
 
-    def get_tour(self, stm_id):
-        tur = self.ship.get_tour(stm_id)
+    def get_tour(self, stm_id, rent=True):
+        tur = self.ship.get_tour(stm_id, rent=rent)
         return tur
 
     def start_tour(self, tur):

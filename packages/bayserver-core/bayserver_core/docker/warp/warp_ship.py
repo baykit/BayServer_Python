@@ -112,7 +112,8 @@ class WarpShip(Ship):
                         tur.res.send_error(Tour.TOUR_ID_NOCHECK, status, msg)
                     except BaseException as e:
                         BayLog.error_e(e)
-
+                else:
+                    tur.res.end_content(Tour.TOUR_ID_NOCHECK)
 
             self.tour_map.clear()
 

@@ -3,14 +3,17 @@ from bayserver_core.util.http_status import HttpStatus
 
 class HttpException(BayException):
     def __init__(self, status, fmt=None, *args):
-        super().__init__(fmt, *args)
+        super().__init__(self.add_status_to_message(status, fmt), *args)
         self.status = status
         self.location = None
         if status < 300 or status >= 600:
             raise Exception("Illegal Http error status code: %d", status)
 
-    def message(self):
-        return f"HTTP {self.status} #{self.args[0]}"
+    def add_status_to_message(self, status, fmt):
+        if fmt is None:
+            return f"{status}"
+        else:
+            return f"{status} {fmt}"
 
     @classmethod
     def moved_temp(cls, location):
