@@ -1,5 +1,9 @@
 # BayServer for Python
 
+# 2.3.1
+
+- [Core] Fixes a problem where the POST method did not work sometimes.
+
 # 2.3.0
 
 - [CGI] Supports "timeout" parameter. (The timed-out CGI processes are killed)

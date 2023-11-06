@@ -3,18 +3,18 @@ from setuptools import setup, find_packages
 print("packages: " + str(find_packages()))
 
 setup(
-    name='bayserver-core',
-    version='2.3.0',
+    name='bayserver-docker-maccaferri',
+    version='${VERSION}',
     packages=find_packages(),
     package_data={
         '': ['LICENSE.BAYKIT', 'README.md'],
-    },
+    },  
     install_requires=[
-        # Dependencies if any
+      "bayserver-core==${VERSION}",
     ],
     author='Michisuke-P',
     author_email='michisukep@gmail.com',
-    description='BayServer core module',
+    description='Maccaferri docker for BayServer',
     license='MIT',
     python_requires=">=3.7",
     url='https://baykit.yokohama/',

@@ -37,8 +37,7 @@ for pkg in $pkgs; do
   cp ../../LICENSE.* ../../README.* .
   rm -r dist build ${pkg}.egg-info
   rm -r `find . -name "__pycache__"`
-  sed -i -e "s/version=.*/version='${version}',/g" setup.py
-  sed -i -e "s/\([ ]*\"bayserver-.*\)==.*\",/\1==${version}\",/" setup.py
+  sed -e "s/\\\${VERSION}/${version}/g" setup.py.template > setup.py
   python setup.py sdist
   dirs="${dirs} $pkg/"
   cd ..
