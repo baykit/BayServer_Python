@@ -9,7 +9,6 @@ class TaxiRunner(TimerHandler):
 
     class AgentListener(GrandAgent.GrandAgentLifecycleListener):
         def add(self, agt):
-            BayLog.debug("add agent listener: %s", agt)
             TaxiRunner.runners[agt.agent_id] = TaxiRunner(agt)
 
         def remove(self, agt):
@@ -31,7 +30,7 @@ class TaxiRunner(TimerHandler):
         self.agent.remove_timer_handler(self)
 
     ######################################################
-    # Class initializer
+    # Implements TimerHandler
     ######################################################
     def on_timer(self):
         with(self.lock):
