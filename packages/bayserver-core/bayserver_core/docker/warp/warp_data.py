@@ -34,7 +34,10 @@ class WarpData(ReqContentHandler):
 
             if not self.started:
                 # The buffer will become corrupted due to reuse.
-                buf = buf.copy()
+                if isinstance(buf, bytes):
+                    buf = bytes(buf)
+                else:
+                    buf = buf.copy()
 
             self.warp_ship.warp_handler().post_warp_contents(tur, buf, start + pos, post_len, callback)
             pos += max_len
