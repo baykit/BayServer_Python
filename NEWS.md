@@ -1,5 +1,9 @@
 # BayServer for Python
 
+# 2.3.2
+
+- [Core] Fixes server crashes that sometimes occur in proxy mode with HTTP/3.
+
 # 2.3.1
 
 - [Core] Fixes a problem where the POST method did not work sometimes.
