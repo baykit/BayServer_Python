@@ -49,8 +49,6 @@ class TourRes:
         self.bytes_consumed = None
         self.bytes_limit = None
         self.buffer_size = bs.BayServer.harbor.tour_buffer_size
-        self.tour_returned = False
-        #self.buffer_size = 1024
 
     def __str__(self):
         return str(self.tour)
@@ -77,8 +75,6 @@ class TourRes:
         self.bytes_posted = 0
         self.bytes_consumed = 0
         self.bytes_limit = 0
-        self.tour_returned = False
-
 
     ######################################################
     # other methods
@@ -212,10 +208,11 @@ class TourRes:
             self.get_compressor().finish()
 
         # Callback
-        def callback():
-            self.tour.check_tour_id(chk_id)
-            self.tour.ship.return_tour(self.tour)
-            self.tour_returned = True
+        tour_returned = []
+        callback = lambda: (
+            self.tour.check_tour_id(chk_id),
+            self.tour.ship.return_tour(self.tour),
+            tour_returned.append(True))
 
         try:
             if self.tour.is_zombie() or self.tour.is_aborted():
@@ -230,8 +227,10 @@ class TourRes:
                     callback()
                     raise e
         finally:
-            BayLog.debug("%s Tour is returned: %s", self, self.tour_returned)
-            if not self.tour_returned:
+            # If tour is returned, we cannot change its state because
+            # it will become uninitialized.
+            BayLog.debug("%s Tour is returned: %s", self, tour_returned)
+            if len(tour_returned) == 0:
                 self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ENDED)
 
     def consumed(self, check_id, length):
@@ -344,7 +343,7 @@ class TourRes:
                     tp.init(self.tour.ship.agent.non_blocking_handler, infile, self.yacht)
                     tp.open_valve()
 
-                if method == Harbor.FILE_SEND_METHOD_SPIN:
+                elif method == Harbor.FILE_SEND_METHOD_SPIN:
                     timeout = 10
                     IOUtil.set_non_blocking(infile)
                     tp = SpinReadTransporter(bufsize)
@@ -360,7 +359,7 @@ class TourRes:
                         raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "Taxi is busy!");
 
                 else:
-                    raise Sink();
+                    raise Sink()
 
             else:
                 SendFileTrain(self.tour, file).run()

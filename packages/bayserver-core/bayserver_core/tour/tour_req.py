@@ -188,24 +188,23 @@ class TourReq(Reusable):
 
         ContentConsumeListener.call(self.consume_listener, length, resume)
 
-
     def abort(self):
-        if not self.tour.is_preparing():
-            BayLog.debug("%s cannot abort non-preparing tour", self.tour)
+        BayLog.debug("%s abort tour", self.tour)
+        if self.tour.is_preparing():
+            self.tour.changeState(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+            return True
+
+        elif self.tour.is_running():
+            aborted = True
+            if self.content_handler is not None:
+                aborted = self.content_handler.on_abort(self.tour)
+            if aborted:
+                self.tour.changeState(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+            return aborted
+
+        else:
+            BayLog.debug("%s tour is already aborted", self.tour)
             return False
-
-        BayLog.debug("%s req abort", self.tour)
-        if self.tour.is_aborted():
-            raise Sink("tour is already aborted")
-
-        aborted = True
-        if self.tour.is_running() and self.content_handler is not None:
-            aborted = self.content_handler.on_abort(self.tour)
-
-        if aborted:
-            self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
-
-        return aborted
 
     def set_content_handler(self, hnd):
         BayLog.debug("%s set content handler", self.tour)
