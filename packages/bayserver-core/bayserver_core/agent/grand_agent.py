@@ -11,6 +11,7 @@ from bayserver_core.symbol import Symbol
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
 from bayserver_core import mem_usage as mem
+from bayserver_core.docker.harbor import Harbor
 
 from bayserver_core.agent.command_receiver import CommandReceiver
 from bayserver_core.agent.accept_handler import AcceptHandler
@@ -80,7 +81,10 @@ class GrandAgent:
         self.select_timeout_sec = GrandAgent.SELECT_TIMEOUT_SEC
         self.max_inbound_ships = max_ships
         self.selector = selectors.DefaultSelector()
-        if isinstance(self.selector, selectors.KqueueSelector):
+        if (hasattr(selectors, 'KqueueSelector') and
+                isinstance(self.selector, selectors.KqueueSelector) and
+                bs.BayServer.harbor.file_send_method == Harbor.FILE_SEND_METHOD_SELECT):
+
             # On macOS, since we cannot detect the EOF status using KqueueSelector for files,
             # we instead use PollSelector.
             try:
