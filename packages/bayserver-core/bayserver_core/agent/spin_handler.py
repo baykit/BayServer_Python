@@ -3,11 +3,12 @@ from abc import ABCMeta, abstractmethod
 import threading
 from time import sleep
 
+from bayserver_core.agent.timer_handler import TimerHandler
 from bayserver_core.sink import Sink
 from bayserver_core.bay_log import BayLog
 from bayserver_core.agent.next_socket_action import NextSocketAction
 
-class SpinHandler:
+class SpinHandler(TimerHandler):
 
     class SpinListener(metaclass=ABCMeta):
         @abstractmethod
