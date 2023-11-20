@@ -143,11 +143,19 @@ class WarpShip(Ship):
         if not self.connected:
             self.cmd_buf.append([cmd, listener])
         else:
-            self.protocol_handler.command_packer.post(self, cmd, listener)
+            if cmd is None:
+                listener()
+            else:
+                self.protocol_handler.command_packer.post(self, cmd, listener)
 
     def flush(self):
         for cmd_and_lis in self.cmd_buf:
-            self.protocol_handler.command_packer.post(self, cmd_and_lis[0], cmd_and_lis[1])
+            cmd = cmd_and_lis[0]
+            lis = cmd_and_lis[1]
+            if cmd is None:
+                lis()
+            else:
+                self.protocol_handler.command_packer.post(self, cmd, lis)
         self.cmd_buf = []
 
 

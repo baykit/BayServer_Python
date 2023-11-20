@@ -53,7 +53,9 @@ class AjpWarpHandler(AjpProtocolHandler, WarpHandler):
         self.send_data(tur, buf, start, length, callback)
 
     def post_warp_end(self, tur):
-        pass
+        def callback():
+            self.ship.agent.non_blocking_handler.ask_to_read(self.ship.socket)
+        self.ship.post(None, callback)
 
     def verify_protocol(self, proto):
         pass
