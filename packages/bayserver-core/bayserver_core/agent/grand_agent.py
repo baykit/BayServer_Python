@@ -80,6 +80,14 @@ class GrandAgent:
         self.select_timeout_sec = GrandAgent.SELECT_TIMEOUT_SEC
         self.max_inbound_ships = max_ships
         self.selector = selectors.DefaultSelector()
+        if isinstance(self.selector, selectors.KqueueSelector):
+            # On macOS, since we cannot detect the EOF status using KqueueSelector for files,
+            # we instead use PollSelector.
+            try:
+                self.selector = selectors.PollSelector()
+            except BaseException as e:
+                BayLog.warn_e(e, "Cannot create PollSelector")
+                self.selector = selectors.SelectSelector()
         self.aborted = False
         self.unanchorable_transporters = {}
         self.command_receiver = None
