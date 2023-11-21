@@ -107,17 +107,17 @@ class Tour(Reusable):
         else:
             try:
                 city.enter(self)
-            except Sink as e:
-                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
-                raise e
             except HttpException as e:
                 self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
                 BayLog.error_e(e)
                 raise e
-            except BaseException as e:
+            except IOError as e:
                 self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
                 BayLog.error_e(e)
                 raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, ExceptionUtil.message(e))
+            except BaseException as e:
+                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
+                raise e
 
     def is_valid(self):
         return self.state == Tour.TourState.PREPARING or self.state == Tour.TourState.RUNNING
