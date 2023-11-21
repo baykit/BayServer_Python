@@ -277,8 +277,8 @@ class TourRes:
             msg = err.args
 
         if self.header_sent:
-            BayLog.warn("Try to send error after response header is sent (Ignore)");
-            BayLog.warn("%s: status=%d, message=%s", self, status, msg);
+            BayLog.debug("Try to send error after response header is sent (Ignore)");
+            BayLog.debug("%s: status=%d, message=%s", self, status, msg);
             if err:
                 BayLog.error_e(err);
         else:
@@ -291,7 +291,7 @@ class TourRes:
                 try:
                     self.tour.ship.send_error(self.tour.ship_id, self.tour, status, msg, err)
                 except IOError as e:
-                    BayLog.error_e(e, "%s Error in sending error", self)
+                    BayLog.debug_e(e, "%s Error in sending error", self)
                     self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
             self.header_sent = True
 
