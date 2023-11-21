@@ -36,8 +36,7 @@ class CgiReqContentHandler(ReqContentHandler):
     def on_read_content(self, tur, buf, start, length):
         BayLog.debug("%s CGI:onReadReqContent: start=%d len=%d", tur, start, length)
 
-        wrote_len = self.std_in.write(buf[start:start + length])
-        self.std_in.flush()
+        wrote_len = os.write(self.std_in, buf[start:start + length])
 
         #BayLog.debug("%s CGI:onReadReqContent: wrote=%d", tur, wrote_len)
         tur.req.consumed(Tour.TOUR_ID_NOCHECK, length)
@@ -80,9 +79,9 @@ class CgiReqContentHandler(ReqContentHandler):
         os.close(fout[1])
         os.close(ferr[1])
 
-        self.std_in = os.fdopen(fin[1], "wb")
-        self.std_out = os.fdopen(fout[0], "rb")
-        self.std_err = os.fdopen(ferr[0], "rb")
+        self.std_in = fin[1]
+        self.std_out = fout[0]
+        self.std_err = ferr[0]
 
         BayLog.debug("%s PID: %d", self.tour, self.process.pid)
 

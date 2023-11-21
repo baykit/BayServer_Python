@@ -9,33 +9,39 @@ class TaxiRunner(TimerHandler):
 
     class AgentListener(GrandAgent.GrandAgentLifecycleListener):
         def add(self, agt):
-            TaxiRunner.runners[agt.agent_id] = TaxiRunner(agt)
+            TaxiRunner.runners[agt.agent_id - 1] = TaxiRunner(agt)
 
         def remove(self, agt):
-            TaxiRunner.runners[agt.agent_id].terminate()
-            del TaxiRunner.runners[agt.agent_id]
+            TaxiRunner.runners[agt.agent_id - 1].terminate()
+            del TaxiRunner.runners[agt.agent_id - 1]
 
     max_taxis = None
     runners = None
-    runner = None
 
     def __init__(self, agt):
         self.agent = agt
         self.exe = ThreadPoolExecutor(TaxiRunner.max_taxis, f"TaxiRunner-{agt}-")
-        self.running_taxi = None
-        self.lock = threading.Lock()
         self.agent.add_timer_handler(self)
-
-    def terminate(self):
-        self.agent.remove_timer_handler(self)
+        self.running_taxis = []
+        self.lock = threading.Lock()
 
     ######################################################
     # Implements TimerHandler
     ######################################################
     def on_timer(self):
         with(self.lock):
-            if self.running_taxi is not None:
-                self.running_taxi.on_timer()
+            for txi in self.running_taxis:
+                txi.on_timer()
+
+    ######################################################
+    # Custom Methods
+    ######################################################
+    def terminate(self):
+        self.agent.remove_timer_handler(self)
+
+    def submit(self, txi):
+        self.exe.submit(TaxiRunner.run, [self, txi])
+
 
     ######################################################
     # Class Methods
@@ -48,10 +54,10 @@ class TaxiRunner(TimerHandler):
         GrandAgent.add_lifecycle_listener(TaxiRunner.AgentListener())
 
     @classmethod
-    def post(cls, agt_id, taxi):
-        BayLog.debug("Agt#%d post taxi: thread=%s taxi=%s", agt_id, threading.current_thread().name, taxi)
+    def post(cls, agt_id, txi):
+        BayLog.debug("Agt#%d post taxi: thread=%s taxi=%s", agt_id, threading.current_thread().name, txi)
         try:
-            cls.runners[agt_id].exe.submit(TaxiRunner.run, [agt_id, taxi])
+            cls.runners[agt_id - 1].submit(txi)
             return True
         except BaseException as e:
             BayLog.error_e(e)
@@ -59,12 +65,16 @@ class TaxiRunner(TimerHandler):
 
     @classmethod
     def run(cls, args):
-        agt_id = args[0]
-        taxi = args[1]
-        runner = cls.runners[agt_id]
-        BayLog.debug("Agt#%d Run taxi: thread=%s taxi=%s", agt_id, threading.current_thread().name, taxi)
-        runner.running_taxi = taxi
-        taxi.run()
-        with runner.lock:
-            runner.running_taxi = None
+        runner = args[0]
+        txi = args[1]
+
+        with(runner.lock):
+            runner.running_taxis.append(txi)
+
+        BayLog.debug("%s Start taxi on thread=%s taxi=%s", runner.agent, threading.current_thread().name, txi)
+        txi.run()
+
+        with(runner.lock):
+            runner.running_taxis.remove(txi)
+
 

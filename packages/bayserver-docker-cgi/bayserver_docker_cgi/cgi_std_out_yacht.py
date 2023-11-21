@@ -24,7 +24,7 @@ class CgiStdOutYacht(Yacht, Reusable):
 
 
     def __str__(self):
-        return "CGIYat#" + str(self.yacht_id) + "/" + str(self.object_id) + " tour=" + str(self.tour) + " id=" + str(self.tour_id)
+        return "CGIOutYat#" + str(self.yacht_id) + "/" + str(self.object_id) + " tour=" + str(self.tour) + " id=" + str(self.tour_id)
 
 
     ######################################################

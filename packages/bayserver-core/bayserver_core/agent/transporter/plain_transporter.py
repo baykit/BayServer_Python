@@ -1,3 +1,4 @@
+import os
 import socket
 
 from bayserver_core.sink import Sink
@@ -30,6 +31,8 @@ class PlainTransporter(Transporter):
     def read_nonblock(self):
         if isinstance(self.ch, socket.socket):
             return (self.ch.recv(self.capacity), None)
+        elif isinstance(self.ch, int):
+            return (os.read(self.ch, self.capacity), None)
         else:
             return (self.ch.read(self.capacity), None)
 

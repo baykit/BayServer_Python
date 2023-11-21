@@ -1,4 +1,8 @@
+import io
+import os
 import threading
+import time
+
 from bayserver_core.bay_log import BayLog
 
 from bayserver_core.sink import Sink
@@ -14,20 +18,26 @@ class ReadFileTaxi(Taxi, Valve):
         super().__init__()
         self.agent = agt
         self.infile = None
+        self.fd = None
         self.ch_valid = None
         self.data_listener = None
         self.buf = None
         self.running = None
         self.buf_size = buf_size
         self.lock = threading.RLock()
+        self.start_time = None
 
 
 
     def init(self, infile, data_listener):
-        self.data_listener = data_listener;
+        if isinstance(infile, io.IOBase):
+            self.infile = infile
+            self.fd = infile.fileno()
+        else:
+            self.fd = infile
+        self.data_listener = data_listener
         self.infile = infile
         self.ch_valid = True
-
 
     def __str__(self):
         return Taxi.__str__(self) + " " + str(self.data_listener)
@@ -46,27 +56,31 @@ class ReadFileTaxi(Taxi, Valve):
     ######################################################
 
     def depart(self):
-        with self.lock:
-            try:
-                if not self.ch_valid:
-                    raise Sink()
+        self.start_time = time.time()
+        try:
+            if not self.ch_valid:
+                raise Sink()
 
-                buf = self.infile.read(self.buf_size)
+            buf = os.read(self.fd, self.buf_size)
 
-                if len(buf) == 0:
-                    self.data_listener.notify_eof()
-                    self.close()
-                    return
-
-                act = self.data_listener.notify_read(buf, None)
-
-                self.running = False
-                if act == NextSocketAction.CONTINUE:
-                    self.next_run()
-
-            except BaseException as e:
-                BayLog.error_e(e)
+            if len(buf) == 0:
                 self.close()
+                return
+
+            act = self.data_listener.notify_read(buf, None)
+
+            self.running = False
+            if act == NextSocketAction.CONTINUE:
+                self.next_run()
+
+        except BaseException as e:
+            BayLog.error_e(e)
+            self.close()
+
+    def on_timer(self):
+        duration_sec = int(time.time() - self.start_time)
+        if self.data_listener.check_timeout(duration_sec):
+            self.close()
 
     def next_run(self):
         if self.running:
@@ -79,7 +93,14 @@ class ReadFileTaxi(Taxi, Valve):
 
 
     def close(self):
+        if not self.ch_valid:
+            return
+
         self.ch_valid = False
-        self.infile.close()
+        self.data_listener.notify_eof()
+        try:
+            os.close(self.fd)
+        except:
+            pass
         self.data_listener.notify_close()
 

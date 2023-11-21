@@ -15,6 +15,10 @@ class Taxi(metaclass=ABCMeta):
     def depart(self):
         pass
 
+    @abstractmethod
+    def on_timer(self):
+        pass
+
     taxi_id_counter = Counter()
 
     def __init__(self):
