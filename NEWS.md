@@ -1,5 +1,10 @@
 # BayServer for Python
 
+# 2.3.3
+
+- [Core] Fixes a memory leak in exceptional cases.
+- [CGI] Supports timeout on taxi mode.
+
 # 2.3.2
 
 - [Core] Fixes server crashes that sometimes occur in proxy mode with HTTP/3.
