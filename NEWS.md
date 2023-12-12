@@ -1,5 +1,11 @@
 # BayServer for Python
 
+
+# 2.3.4
+
+- [core] Addresses potential issues arising from I/O errors.
+- [core] Fixes the issue encountered when aborting GrandAgent.
+
 # 2.3.3
 
 - [Core] Fixes a memory leak in exceptional cases.
