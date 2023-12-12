@@ -29,7 +29,7 @@ class CommandReceiver:
                 elif cmd == ga.GrandAgent.CMD_MEM_USAGE:
                     self.agent.print_usage()
                 elif cmd == ga.GrandAgent.CMD_SHUTDOWN:
-                    self.agent.shutdown()
+                    self.agent.req_shutdown()
                     self.aborted = True
                 elif cmd == ga.GrandAgent.CMD_ABORT:
                     IOUtil.send_int32(self.communication_channel, ga.GrandAgent.CMD_OK)

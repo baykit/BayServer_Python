@@ -73,9 +73,14 @@ class ReadFileTaxi(Taxi, Valve):
             if act == NextSocketAction.CONTINUE:
                 self.next_run()
 
+        except IOError as e:
+            BayLog.debug_e(e)
+            self.close()
+
         except BaseException as e:
             BayLog.error_e(e)
             self.close()
+            raise e
 
     def on_timer(self):
         duration_sec = int(time.time() - self.start_time)
@@ -93,14 +98,15 @@ class ReadFileTaxi(Taxi, Valve):
 
 
     def close(self):
-        if not self.ch_valid:
-            return
+        with self.lock:
+            if not self.ch_valid:
+                return
 
-        self.ch_valid = False
-        self.data_listener.notify_eof()
-        try:
-            os.close(self.fd)
-        except:
-            pass
-        self.data_listener.notify_close()
+            self.ch_valid = False
+            self.data_listener.notify_eof()
+            try:
+                os.close(self.fd)
+            except:
+                pass
+            self.data_listener.notify_close()
 

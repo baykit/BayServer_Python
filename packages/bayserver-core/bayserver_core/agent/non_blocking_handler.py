@@ -376,6 +376,11 @@ class NonBlockingHandler(TimerHandler):
         if ch_state is None:
             ch_state = self.find_channel_state(ch)
 
+        if isinstance(ch, int):
+            os.close(ch)
+        else:
+            ch.close()
+
         if ch_state.accepted and self.agent.accept_handler:
            self.agent.accept_handler.on_closed()
 
@@ -387,11 +392,6 @@ class NonBlockingHandler(TimerHandler):
             self.agent.selector.unregister(ch)
         except KeyError or ValueError as e:
             BayLog.debug("%s Unregister error (Ignore): fd=%s chState=%s %s", self, ch, ch_state, e)
-
-        if isinstance(ch, int):
-            os.close(ch)
-        else:
-            ch.close()
 
 
     def add_channel_state(self, ch, ch_state):

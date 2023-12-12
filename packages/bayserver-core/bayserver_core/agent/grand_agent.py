@@ -119,7 +119,7 @@ class GrandAgent:
 
         busy = True
         try:
-            while True:
+            while not self.aborted:
                 if self.accept_handler:
                     test_busy = self.accept_handler.ch_count >= self.max_inbound_ships
                     if test_busy != busy:
@@ -131,7 +131,7 @@ class GrandAgent:
 
                 if self.aborted:
                     # agent finished
-                    BayLog.debug("%s End loop", self)
+                    BayLog.debug("%s aborted by another thread", self)
                     break
 
                 #BayLog.debug("%s select", self)
@@ -144,6 +144,11 @@ class GrandAgent:
                 #BayLog.debug("%s selected %d keys", self, len(selkeys))
                 #for key in selkeys:
                 #    BayLog.debug("%s key=%s", self, key)
+
+                if self.aborted:
+                    # agent finished
+                    BayLog.debug("%s aborted by another thread", self)
+                    break
 
                 # Consume wakeup queue first
                 with self.lock:
@@ -178,31 +183,32 @@ class GrandAgent:
 
         finally:
             BayLog.debug("Agent end: %d", self.agent_id)
-            self.abort(None, 0)
+            self.shutdown()
 
     def shutdown(self):
         BayLog.debug("%s shutdown", self)
         if self.accept_handler:
             self.accept_handler.shutdown()
-        self.abort(None, 0)
-
-    def abort(self, err=None, status=1):
-        if err:
-            BayLog.fatal("%s abort", self)
-            BayLog.fatal_e(err)
 
         self.command_receiver.end()
         for lis in GrandAgent.listeners:
             lis.remove(self)
 
         del GrandAgent.agents[self.agent_id]
+        self.clean()
 
         if bs.BayServer.harbor.multi_core:
             os._exit(1)
-        else:
-            self.clean()
 
+    def abort(self):
+        BayLog.fatal("%s abort", self)
+
+        if bs.BayServer.harbor.multi_core:
+            os._exit(1)
+
+    def req_shutdown(self):
         self.aborted = True
+        self.wakeup()
 
     def reload_cert(self):
         for port in GrandAgent.anchorable_port_map.values():

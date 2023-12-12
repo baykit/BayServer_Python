@@ -109,14 +109,6 @@ class Tour(Reusable):
                 city.enter(self)
             except HttpException as e:
                 self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
-                BayLog.error_e(e)
-                raise e
-            except IOError as e:
-                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
-                BayLog.error_e(e)
-                raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, ExceptionUtil.message(e))
-            except BaseException as e:
-                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
                 raise e
 
     def is_valid(self):

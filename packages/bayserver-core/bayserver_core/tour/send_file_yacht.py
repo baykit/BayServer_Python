@@ -51,8 +51,11 @@ class SendFileYacht(Yacht):
             return NextSocketAction.SUSPEND
 
     def notify_eof(self):
-        BayLog.trace("%s EOF(^o^) %s", self, self.file_name);
-        self.tour.res.end_content(self.tour_id)
+        BayLog.trace("%s EOF(^o^) %s", self, self.file_name)
+        try:
+            self.tour.res.end_content(self.tour_id)
+        except IOError as e:
+            BayLog.debug_e(e)
         return NextSocketAction.CLOSE
 
     def notify_close(self):

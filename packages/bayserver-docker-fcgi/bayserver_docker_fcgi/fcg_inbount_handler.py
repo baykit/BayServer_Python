@@ -138,7 +138,6 @@ class FcgInboundHandler(FcgProtocolHandler, InboundHandler):
             BayLog.error(BayMessage.get(Symbol.INT_NO_MORE_TOURS))
             tur = self.ship.get_tour(cmd.req_id, True)
             tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.SERVICE_UNAVAILABLE, "No available tours")
-            self.ship.agent.shutdown(False)
             return NextSocketAction.CONTINUE
 
         self.req_keep_alive = cmd.keep_conn

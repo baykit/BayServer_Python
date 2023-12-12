@@ -117,7 +117,6 @@ class AjpInboundHandler(AjpProtocolHandler, InboundHandler):
             tur = self.ship.get_tour(AjpInboundHandler.DUMMY_KEY, True)
             tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.SERVICE_UNAVAILABLE, "No available tours")
             tur.res.end_content(Tour.TOUR_ID_NOCHECK)
-            self.ship.agent.shutdown(False)
             return NextSocketAction.CONTINUE
 
         self.cur_tour_id = tur.id

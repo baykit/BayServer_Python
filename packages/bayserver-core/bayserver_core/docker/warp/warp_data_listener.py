@@ -58,16 +58,16 @@ class WarpDataListener(DataListener):
             tur = pair[1]
             tur.check_tour_id(pair[0])
 
-            if not tur.res.header_sent:
-                BayLog.debug("%s Send ServiceUnavailable: tur=%s", self, tur)
-                tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.SERVICE_UNAVAILABLE, "Server closed on reading headers")
-            else:
-                # NOT treat EOF as Error
-                BayLog.debug("%s EOF is not an error: tur=%s", self, tur)
-                try:
+            try:
+                if not tur.res.header_sent:
+                    BayLog.debug("%s Send ServiceUnavailable: tur=%s", self, tur)
+                    tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.SERVICE_UNAVAILABLE, "Server closed on reading headers")
+                else:
+                    # NOT treat EOF as Error
+                    BayLog.debug("%s EOF is not an error: tur=%s", self, tur)
                     tur.res.end_content(Tour.TOUR_ID_NOCHECK)
-                except IOError as e:
-                    BayLog.debug_e(e, "%s end content error: tur=%s", self, tur)
+            except IOError as e:
+                BayLog.debug_e(e)
 
         self.ship.tour_map.clear()
         return NextSocketAction.CLOSE
