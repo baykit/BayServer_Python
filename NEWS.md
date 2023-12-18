@@ -1,5 +1,9 @@
 # BayServer for Python
 
+# 2.3.5
+
+- [core] Fixes the issue encountered when aborting GrandAgent.
+- [core] Fixes some small bugs.
 
 # 2.3.4
 
