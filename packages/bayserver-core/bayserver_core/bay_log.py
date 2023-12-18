@@ -83,7 +83,6 @@ class BayLog:
     @classmethod
     def fatal_e(cls, err, fmt=None, *args):
         BayLog.log(BayLog.LOG_LEVEL_FATAL, 3, err, fmt, args)
-        exit(1)
 
     @classmethod
     def log(cls, lvl, stack_idx, err, fmt, args):
