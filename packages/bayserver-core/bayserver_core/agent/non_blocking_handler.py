@@ -152,11 +152,11 @@ class NonBlockingHandler(TimerHandler):
 
         except BaseException as e:
             if isinstance(e, EOFError):
-                BayLog.info("%s Socket closed by peer: skt=%s", self, ch.inspect)
+                BayLog.debug("%s Socket closed by peer: skt=%s", self, ch.inspect)
             elif isinstance(e, OSError):
-                BayLog.info("%s O/S error: %s (skt=%s)", self, ExceptionUtil.message(e), ch)
+                BayLog.debug("%s O/S error: %s (skt=%s)", self, ExceptionUtil.message(e), ch)
             else:
-                BayLog.info("%s Unhandled error error: %s (skt=%s)", self, e, ch)
+                BayLog.error_e(e, "%s Unhandled error: %s (skt=%s)", self, ExceptionUtil.message(e), ch)
                 raise e
 
             # Cannot handle Exception anymore
@@ -348,7 +348,7 @@ class NonBlockingHandler(TimerHandler):
         ch_state.access()
 
     def close_all(self):
-        for ch in self.channel_map.keys():
+        for ch in list(self.channel_map.keys()):
             st = self.find_channel_state(ch)
             self.close_channel(ch, st)
 
@@ -390,12 +390,14 @@ class NonBlockingHandler(TimerHandler):
         self.remove_channel_state(ch)
         try:
             self.agent.selector.unregister(ch)
-        except KeyError or ValueError as e:
+        except KeyError as e:
+            BayLog.debug("%s Unregister error (Ignore): fd=%s chState=%s %s", self, ch, ch_state, e)
+        except ValueError as e:
             BayLog.debug("%s Unregister error (Ignore): fd=%s chState=%s %s", self, ch, ch_state, e)
 
 
     def add_channel_state(self, ch, ch_state):
-        BayLog.trace("%s add_channel_state ch=%s chState=%s", self, ch, ch_state);
+        BayLog.debug("%s add_channel_state ch=%s(id=%s) chState=%s count=%d", self, ch, id(ch), ch_state, len(self.channel_map))
 
         with self.lock:
             self.channel_map[ch] = ch_state
@@ -403,7 +405,7 @@ class NonBlockingHandler(TimerHandler):
 
 
     def remove_channel_state(self, ch):
-        #BayLog.trace("%s remove ch %s", self.agent, ch);
+        BayLog.debug("%s remove ch=%s count=%d", self, ch, len(self.channel_map))
 
         with self.lock:
             if ch not in self.channel_map.keys():

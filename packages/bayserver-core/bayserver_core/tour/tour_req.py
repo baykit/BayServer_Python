@@ -191,7 +191,7 @@ class TourReq(Reusable):
     def abort(self):
         BayLog.debug("%s abort tour", self.tour)
         if self.tour.is_preparing():
-            self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+            self.tour.change_state(self.tour.tour_id, tour.Tour.TourState.ABORTED)
             return True
 
         elif self.tour.is_running():
@@ -199,11 +199,11 @@ class TourReq(Reusable):
             if self.content_handler is not None:
                 aborted = self.content_handler.on_abort(self.tour)
             if aborted:
-                self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+                self.tour.change_state(self.tour.tour_id, tour.Tour.TourState.ABORTED)
             return aborted
 
         else:
-            BayLog.debug("%s tour is not preparing or not running", self.tour);
+            BayLog.debug("%s tour is not preparing or not running", self.tour)
             return False
 
     def set_content_handler(self, hnd):

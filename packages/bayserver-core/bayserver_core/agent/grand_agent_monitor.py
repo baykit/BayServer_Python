@@ -3,6 +3,8 @@ import threading
 import time
 from multiprocessing import Process
 import sys
+import os
+import signal
 
 from bayserver_core import bayserver as bs
 from bayserver_core.bay_log import BayLog
@@ -20,10 +22,11 @@ class GrandAgentMonitor:
     unanchored_port_map = {}
     finale = False
 
-    def __init__(self, agt_id, anchorable, com_channel):
+    def __init__(self, agt_id, anchorable, com_channel, process):
         self.agent_id = agt_id
         self.anchorable = anchorable
         self.communication_channel = com_channel
+        self.process = process
 
     def __str__(self):
         return f"Monitor#{self.agent_id}"
@@ -34,7 +37,7 @@ class GrandAgentMonitor:
             if res is None or res == ga.GrandAgent.CMD_CLOSE:
                 BayLog.debug("%s read Close", self)
                 self.close()
-                GrandAgentMonitor.agent_aborted(self.agent_id, self.anchorable)
+                self.agent_aborted()
             else:
                 BayLog.debug("%s read: %d", self, res)
         except BlockingIOError as e:
@@ -63,6 +66,27 @@ class GrandAgentMonitor:
 
     def close(self):
         self.communication_channel.close()
+
+    def agent_aborted(self):
+        BayLog.error(BayMessage.get(Symbol.MSG_GRAND_AGENT_SHUTDOWN, self.agent_id))
+
+        if self.process is not None:
+            try:
+                os.kill(self.process.pid, signal.SIGTERM)
+            except BaseException as e:
+                BayLog.debug_e(e, "Error on killing process")
+            self.process.join()
+
+        del GrandAgentMonitor.monitors[self.agent_id]
+
+        if not GrandAgentMonitor.finale:
+            if len(GrandAgentMonitor.monitors) < GrandAgentMonitor.num_agents:
+                try:
+                    if not bs.BayServer.harbor.multi_core:
+                        ga.GrandAgent.add(-1, self.anchorable)
+                    GrandAgentMonitor.add(self.anchorable)
+                except BaseException as e:
+                    BayLog.error_e(e)
 
     ########################################
     # Class methods
@@ -114,24 +138,9 @@ class GrandAgentMonitor:
 
             agent_thread = threading.Thread(target=run)
             agent_thread.start()
+            p = None
 
-        cls.monitors[agt_id] = GrandAgentMonitor(agt_id, anchorable, com_ch[0])
-
-    @classmethod
-    def agent_aborted(cls, agt_id, anchorable):
-        BayLog.error(BayMessage.get(Symbol.MSG_GRAND_AGENT_SHUTDOWN, agt_id))
-
-        del cls.monitors[agt_id]
-
-        if not cls.finale:
-            if len(cls.monitors) < cls.num_agents:
-                try:
-                    if not bs.BayServer.harbor.multi_core:
-                        ga.GrandAgent.add(-1, anchorable)
-                    cls.add(anchorable)
-                except BaseException as e:
-                    BayLog.error_e(e)
-
+        cls.monitors[agt_id] = GrandAgentMonitor(agt_id, anchorable, com_ch[0], p)
 
     @classmethod
     def reload_cert_all(cls):

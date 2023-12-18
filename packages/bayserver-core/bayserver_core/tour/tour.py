@@ -64,10 +64,10 @@ class Tour(Reusable):
         self.town = None
         self.club = None
         self.error_handling = False
+        self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.UNINITIALIZED)
         self.tour_id = Tour.INVALID_TOUR_ID
         self.interval = 0
         self.is_secure = False
-        self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.UNINITIALIZED)
         self.error = None
         self.req.reset()
         self.res.reset()
@@ -79,7 +79,7 @@ class Tour(Reusable):
     ######################################################
     def init(self, key, sip):
         if self.is_initialized():
-            raise Sink(f"{self} Tour already initialized: state=%d", self.state)
+            raise Sink("%s Tour already initialized: state=%d", self, self.state)
 
         self.ship = sip
         self.ship_id = sip.ship_id
@@ -108,7 +108,7 @@ class Tour(Reusable):
             try:
                 city.enter(self)
             except HttpException as e:
-                self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.ABORTED)
+                self.change_state(self.tour_id, Tour.TourState.ABORTED)
                 raise e
 
     def is_valid(self):

@@ -25,7 +25,7 @@ class StringUtil:
         try:
             return s.encode("us-ascii")
         except UnicodeEncodeError as e:
-            bay_log.BayLog.warn("Cannot convert string to byte data (ignore): %s", s)
+            bay_log.BayLog.debug("Cannot convert string to byte data (ignore): %s", s)
             return s.encode("utf-8", errors='replace')
 
     @classmethod

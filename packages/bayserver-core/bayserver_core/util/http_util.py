@@ -92,7 +92,7 @@ class HttpUtil:
             ptn = r"Basic (.*)"
             result = re.match(ptn, auth)
             if result is None:
-                BayLog.warn("Not matched with basic authentication format")
+                BayLog.debug("Not matched with basic authentication format")
             else:
                 try:
                     auth = result.group(1)

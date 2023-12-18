@@ -113,7 +113,7 @@ class TourRes:
         try:
             self.tour.ship.send_headers(self.tour.ship_id, self.tour)
         except IOError as e:
-            self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+            self.tour.change_state(chk_tour_id, tour.Tour.TourState.ABORTED)
             raise e
         finally:
             self.header_sent = True
@@ -128,7 +128,7 @@ class TourRes:
             try:
                 self.tour.ship.send_redirect(self.tour.ship_id, self.tour, status, location)
             except IOError as e:
-                self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+                self.tour.change_state(chk_tour_id, tour.Tour.TourState.ABORTED)
                 raise e
             finally:
                 self.header_sent = True
@@ -165,7 +165,7 @@ class TourRes:
                     self.tour, length, self.bytes_posted, self.bytes_limit, self.bytes_consumed)
 
         if 0 < self.bytes_limit < self.bytes_posted:
-            raise ProtocolException("Post data exceed content-length: " + self.bytes_posted + "/" + self.bytes_limit)
+            raise ProtocolException("Post data exceed content-length: %d/%d", self.bytes_posted, self.bytes_limit)
 
         if self.tour.is_zombie() or self.tour.is_aborted():
             # Don't send peer any data
@@ -179,7 +179,7 @@ class TourRes:
                     self.tour.ship.send_res_content(self.tour.ship_id, self.tour, buf, ofs, length, consumed_cb)
                 except IOError as e:
                     consumed_cb()
-                    self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+                    self.tour.change_state(chk_tour_id, tour.Tour.TourState.ABORTED)
                     raise e
 
         old_available = self.available
@@ -210,6 +210,7 @@ class TourRes:
         # Callback
         tour_returned = []
         callback = lambda: (
+            #BayLog.debug("%s called back to return tour", self),
             self.tour.check_tour_id(chk_id),
             self.tour.ship.return_tour(self.tour),
             tour_returned.append(True))
@@ -231,7 +232,7 @@ class TourRes:
             # it will become uninitialized.
             BayLog.debug("%s Tour is returned: %s", self, tour_returned)
             if len(tour_returned) == 0:
-                self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ENDED)
+                self.tour.change_state(chk_id, tour.Tour.TourState.ENDED)
 
     def consumed(self, check_id, length):
         self.tour.check_tour_id(check_id)
@@ -292,7 +293,7 @@ class TourRes:
                     self.tour.ship.send_error(self.tour.ship_id, self.tour, status, msg, err)
                 except IOError as e:
                     BayLog.debug_e(e, "%s Error in sending error", self)
-                    self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+                    self.tour.change_state(chk_tour_id, tour.Tour.TourState.ABORTED)
             self.header_sent = True
 
         self.end_content(chk_tour_id)

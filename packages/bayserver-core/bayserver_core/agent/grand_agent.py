@@ -191,11 +191,12 @@ class GrandAgent:
             self.accept_handler.shutdown()
 
         self.command_receiver.end()
+        self.clean()
+
         for lis in GrandAgent.listeners:
             lis.remove(self)
 
         del GrandAgent.agents[self.agent_id]
-        self.clean()
 
         if bs.BayServer.harbor.multi_core:
             os._exit(1)

@@ -105,7 +105,10 @@ class ReadFileTaxi(Taxi, Valve):
             self.ch_valid = False
             self.data_listener.notify_eof()
             try:
-                os.close(self.fd)
+                if isinstance(self.infile, io.IOBase):
+                    self.infile.close()
+                else:
+                    os.close(self.fd)
             except:
                 pass
             self.data_listener.notify_close()

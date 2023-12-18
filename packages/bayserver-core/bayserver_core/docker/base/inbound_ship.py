@@ -225,10 +225,13 @@ class InboundShip(Ship):
         self.port_docker.return_ship(self)
 
     def abort_tours(self):
+        BayLog.debug("%s abort tours", self)
+
         return_list = []
 
         # Abort tours
         for tur in self.active_tours:
+            BayLog.debug("%s tour: %s valid=%s", self, tur, tur.is_valid())
             if tur.is_valid():
                 BayLog.debug("%s is valid, abort it: stat=%s", tur, tur.state)
                 if tur.req.abort():
