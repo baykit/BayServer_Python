@@ -1,11 +1,10 @@
 from bayserver_core.bay_log import BayLog
-from bayserver_core.watercraft.boat import Boat
 from bayserver_core.protocol.packet import Packet
 
 from bayserver_core.util.char_util import CharUtil
 from bayserver_core.util.string_util import StringUtil
 
-class LogBoat(Boat):
+class LogBoat:
     class LogPacket(Packet):
 
         def __init__(self, data):
@@ -34,7 +33,6 @@ class LogBoat(Boat):
     ######################################################
 
     def init(self, file_name, postman):
-        self.init_boat()
         self.file_name = file_name
         self.postman = postman
 

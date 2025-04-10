@@ -21,7 +21,7 @@ class StringUtil:
         return a.lower() == b.lower()
 
     @classmethod
-    def to_bytes(cls, s):
+    def to_bytes(cls, s: str) -> bytes:
         try:
             return s.encode("us-ascii")
         except UnicodeEncodeError as e:
@@ -29,7 +29,7 @@ class StringUtil:
             return s.encode("utf-8", errors='replace')
 
     @classmethod
-    def from_bytes(cls, byte_array):
+    def from_bytes(cls, byte_array: bytes) -> str:
         try:
             return byte_array.decode("us-ascii")
         except UnicodeDecodeError as e:

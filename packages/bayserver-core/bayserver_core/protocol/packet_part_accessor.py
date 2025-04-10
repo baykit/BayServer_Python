@@ -9,12 +9,12 @@ class PacketPartAccessor:
         self.max_len = max_len
         self.pos = 0
 
-    def put_byte(self, b):
+    def put_byte(self, b: int):
         buf = bytearray(1)
         buf[0] = b
         self.put_bytes(buf, 0, 1)
 
-    def put_bytes(self, buf, ofs=0, length=None):
+    def put_bytes(self, buf: bytes, ofs=0, length=None):
         if isinstance(buf, str):
             raise TypeError("buffer type error")
 
@@ -25,7 +25,7 @@ class PacketPartAccessor:
             self.packet.buf[self.start + self.pos: self.start + self.pos + length] = buf[ofs: ofs + length]
             self.forward(length)
 
-    def put_short(self, val):
+    def put_short(self, val: int):
         h = val >> 8 & 0xFF
         l = val & 0xFF
         buf = bytearray()
@@ -33,7 +33,7 @@ class PacketPartAccessor:
         buf.append(l)
         self.put_bytes(buf, 0, len(buf))
 
-    def put_int(self, val):
+    def put_int(self, val: int):
         b1 = val >> 24 & 0xFF
         b2 = val >> 16 & 0xFF
         b3 = val >> 8 & 0xFF
@@ -45,18 +45,18 @@ class PacketPartAccessor:
         buf.append(b4)
         self.put_bytes(buf, 0, len(buf))
 
-    def put_string(self, s):
+    def put_string(self, s: str) -> None:
         if s is None:
             raise Sink()
 
         self.put_bytes(StringUtil.to_bytes(s))
 
-    def get_byte(self):
+    def get_byte(self) -> int:
         buf = bytearray(1)
         self.get_bytes(buf, 0, 1)
         return buf[0]
 
-    def get_bytes(self, buf, ofs, length):
+    def get_bytes(self, buf: bytearray, ofs: int, length: int):
         if buf is None:
             raise Sink("buf is null")
         if not isinstance(buf, bytearray):
@@ -66,12 +66,12 @@ class PacketPartAccessor:
         buf[ofs: ofs + length] = self.packet.buf[self.start + self.pos: self.start + self.pos + length]
         self.pos += length
 
-    def get_short(self):
+    def get_short(self) -> int:
         h = self.get_byte()
         l = self.get_byte()
         return h << 8 | l
 
-    def get_int(self):
+    def get_int(self) -> int:
         b1 = self.get_byte()
         b2 = self.get_byte()
         b3 = self.get_byte()
@@ -81,11 +81,11 @@ class PacketPartAccessor:
     def check_read(self, length):
         max_len = self.max_len if (self.max_len >= 0) else (self.packet.buf_len - self.start)
         if self.pos + length > max_len:
-            raise Sink("Invalid array index")
+            raise IOError("Invalid array index: pos=%d len=%d max_len=%d", self.pos, length, max_len)
 
     def check_write(self, length):
         if self.max_len > 0 and self.pos + length > self.max_len:
-            raise Sink("Buffer overflow")
+            raise IOError("Buffer overflow")
 
     def forward(self, length):
         self.pos += length

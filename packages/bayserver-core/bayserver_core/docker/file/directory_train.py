@@ -39,7 +39,7 @@ class DirectoryTrain(Train, ReqContentHandler):
 
             self.tour.res.set_consume_listener(callback)
 
-            self.tour.res.send_headers(self.tour_id)
+            self.tour.res.send_res_headers(self.tour_id)
 
             w = io.StringIO()
             w.write("<html><body><br>")
@@ -75,10 +75,10 @@ class DirectoryTrain(Train, ReqContentHandler):
     # Implements ReqContentHandler
     #######################################################
 
-    def on_read_content(self, tur, buf, start, length):
+    def on_read_req_content(self, tur, buf, start, length):
         BayLog.debug("%s onReadContent(Ignore) len=%d", tur, length)
 
-    def on_end_content(self, tur):
+    def on_end_req_content(self, tur):
         BayLog.debug("%s endContent", tur)
 
         self.abortable = False
@@ -86,7 +86,7 @@ class DirectoryTrain(Train, ReqContentHandler):
         if not TrainRunner.post(self):
             raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "TourRunner is busy")
 
-    def on_abort(self, tur):
+    def on_abort_req(self, tur):
         BayLog.debug("%s onAbort aborted=%s", tur, self.abortable)
         return self.abortable
 

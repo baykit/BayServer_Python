@@ -1,19 +1,22 @@
 from abc import ABCMeta, abstractmethod
 
+from bayserver_core.util.data_consume_listener import DataConsumeListener
+
+
 class ReqContentHandler(metaclass=ABCMeta):
     #
     # interface
     #
     @abstractmethod
-    def on_read_content(self, tur, buf, start, len):
+    def on_read_req_content(self, tur: "Tour", buf: bytearray, start: int, length: int, lis: DataConsumeListener):
         pass
 
     @abstractmethod
-    def on_end_content(self, tur):
+    def on_end_req_content(self, tur: "Tour"):
         pass
 
     @abstractmethod
-    def on_abort(self, tur):
+    def on_abort_req(self, tur: "Tour"):
         return False
 
     dev_null = None
@@ -23,13 +26,13 @@ class ReqContentHandler(metaclass=ABCMeta):
 # private
 #
 class _DevNullReqContentHandler(ReqContentHandler):
-    def on_read_content(self, tur, buf, start, len):
+    def on_read_req_content(self, tur, buf, start, length, lis):
         pass
 
-    def on_end_content(self, tur):
+    def on_end_req_content(self, tur):
         pass
 
-    def on_abort(self, tur):
+    def on_abort_req(self, tur):
         return False
 
 

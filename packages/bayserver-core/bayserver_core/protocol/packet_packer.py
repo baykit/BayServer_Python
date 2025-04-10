@@ -1,4 +1,7 @@
+from bayserver_core.protocol.packet import Packet
+from bayserver_core.ship.ship import Ship
 from bayserver_core.sink import Sink
+from bayserver_core.util.data_consume_listener import DataConsumeListener
 from bayserver_core.util.reusable import Reusable
 
 class PacketPacker(Reusable):
@@ -6,11 +9,11 @@ class PacketPacker(Reusable):
     def reset(self):
         pass
 
-    def post(self, postman, pkt, lsnr):
-        if postman is None or pkt is None or lsnr is None:
+    def post(self, sip: Ship, pkt: Packet, lsnr: DataConsumeListener):
+        if lsnr is None:
             raise Sink()
 
-        postman.post(pkt.buf[0:pkt.buf_len], None, pkt, lsnr)
+        sip.transporter.req_write(sip.rudder, pkt.buf.copy(), None, pkt, lsnr)
 
 
     def flush(self, postman):

@@ -11,6 +11,7 @@ from bayserver_core.symbol import Symbol
 from bayserver_core.docker.harbor import Harbor
 from bayserver_core.docker.base.docker_base import DockerBase
 from bayserver_core.docker.trouble import Trouble
+from bayserver_core.util.locale import Locale
 
 from bayserver_core.util.sys_util import SysUtil
 from bayserver_core.util.string_util import StringUtil
@@ -29,89 +30,175 @@ class BuiltInHarborDocker(DockerBase, Harbor):
     DEFAULT_CONTROL_PORT = -1
     DEFAULT_MULTI_CORE = True
     DEFAULT_GZIP_COMP = False
-    DEFAULT_FILE_SEND_METHOD = Harbor.FILE_SEND_METHOD_TAXI
+    DEFAULT_NET_MULTIPLEXER = Harbor.MULTIPLEXER_TYPE_SPIDER
+    DEFAULT_FILE_MULTIPLEXER = Harbor.MULTIPLEXER_TYPE_TAXI
+    DEFAULT_LOG_MULTIPLEXER = Harbor.MULTIPLEXER_TYPE_TAXI
+    DEFAULT_CGI_MULTIPLEXER = Harbor.MULTIPLEXER_TYPE_SPIDER
+    DEFAULT_RECIPIENT = Harbor.RECIPIENT_TYPE_SPIDER
     DEFAULT_PID_FILE = "bayserver.pid"
+
+    # Default charset
+    _charset: str
+
+    # Default locale
+    _locale: Locale
+
+    # Number of grand agents
+    _grand_agents: int
+
+    # Number of train runners
+    _train_runners: int
+
+    # Number of taxi runners
+    _taxi_runners: int
+
+    # Max count of watercraft
+    _max_ships: int
+
+    # Socket timeout in seconds
+    _socket_timeout_sec: int
+
+    # Keep-Alive timeout in seconds
+    _keep_timeout_sec: int
+
+    # Internal buffer size of Tour
+    _tour_buffer_size: int
+
+    # Trace req/res header flag
+    _trace_header: bool
+
+    # Trouble docker
+    _trouble: Trouble
+
+    # Auth groups
+    _groups: Groups
+
+    # File name to redirect stdout/stderr
+    _redirect_file: str
+
+    # Gzip compression flag
+    _gzip_comp: bool
+
+    # Port number of signal agent
+    _control_port: int
+
+    # Multi core flag
+    _multi_core: bool
+
+    # Multiplexer type of network I/O
+    _net_multiplexer: int
+
+    # Multiplexer type of file read
+    _file_multiplexer: int
+
+    # Multiplexer type of log output
+    log_multiplexer: int
+
+    # Multiplexer type of CGI input
+    _cgi_multiplexer: int
+
+    # Recipient type
+    _recipient: int
+
+    # PID file name
+    _pid_file: str
 
     def __init__(self):
         super().__init__()
 
-        # Default charset
-        self.charset = BuiltInHarborDocker.DEFAULT_CHARSET
-
-        # Default locale
-        self.locale = None
-
-        # Number of ship agents
-        self.grand_agents = BuiltInHarborDocker.DEFAULT_GRAND_AGENTS
-
-        # Number of train runners
-        self.train_runners = BuiltInHarborDocker.DEFAULT_TRAIN_RUNNERS
-
-        # Number of taxi runners
-        self.taxi_runners = BuiltInHarborDocker.DEFAULT_TAXI_RUNNERS
-
-        # Max count of ships
-        self.max_ships = BuiltInHarborDocker.DEFAULT_MAX_SHIPS
-
-        # Socket timeout in seconds
-        self.socket_timeout_sec = BuiltInHarborDocker.DEFAULT_WAIT_TIMEOUT_SEC
-
-        # Keep-Alive timeout in seconds
-        self.keep_timeout_sec = BuiltInHarborDocker.DEFAULT_KEEP_TIMEOUT_SEC
-
-        # Internal buffer size of Tour
-        self.tour_buffer_size = BuiltInHarborDocker.DEFAULT_TOUR_BUFFER_SIZE
-
-        # Trace req/res header flag
-        self.trace_header = BuiltInHarborDocker.DEFAULT_TRACE_HEADER
-
-        # Trouble docker
-        self.trouble = None
-
-        # Auth groups
-        self.groups = Groups()
-
-        # File name to redirect stdout/stderr
-        self.redirect_file = None
-
-        # Gzip compression flag
-        self.gzip_comp = BuiltInHarborDocker.DEFAULT_GZIP_COMP
-
-        # Port number of signal agent
-        self.control_port = BuiltInHarborDocker.DEFAULT_CONTROL_PORT
-
-        # Multi core flag
-        self.multi_core = BuiltInHarborDocker.DEFAULT_MULTI_CORE
-
-        # Method to send file
-        self.file_send_method = BuiltInHarborDocker.DEFAULT_FILE_SEND_METHOD
+        self._charset = BuiltInHarborDocker.DEFAULT_CHARSET
+        self._locale = None
+        self._grand_agents = BuiltInHarborDocker.DEFAULT_GRAND_AGENTS
+        self._train_runners = BuiltInHarborDocker.DEFAULT_TRAIN_RUNNERS
+        self._taxi_runners = BuiltInHarborDocker.DEFAULT_TAXI_RUNNERS
+        self._max_ships = BuiltInHarborDocker.DEFAULT_MAX_SHIPS
+        self._socket_timeout_sec = BuiltInHarborDocker.DEFAULT_WAIT_TIMEOUT_SEC
+        self._keep_timeout_sec = BuiltInHarborDocker.DEFAULT_KEEP_TIMEOUT_SEC
+        self._tour_buffer_size = BuiltInHarborDocker.DEFAULT_TOUR_BUFFER_SIZE
+        self._trace_header = BuiltInHarborDocker.DEFAULT_TRACE_HEADER
+        self._trouble = None
+        self._groups = Groups()
+        self._redirect_file = None
+        self._gzip_comp = BuiltInHarborDocker.DEFAULT_GZIP_COMP
+        self._control_port = BuiltInHarborDocker.DEFAULT_CONTROL_PORT
+        self._net_multiplexer = BuiltInHarborDocker.DEFAULT_NET_MULTIPLEXER
+        self._file_multiplexer = BuiltInHarborDocker.DEFAULT_FILE_MULTIPLEXER
+        self._log_multiplier = BuiltInHarborDocker.DEFAULT_LOG_MULTIPLEXER
+        self._cgi_multiplexer = BuiltInHarborDocker.DEFAULT_CGI_MULTIPLEXER
+        self._recipient = BuiltInHarborDocker.DEFAULT_RECIPIENT
 
         # PID file name
-        self.pid_file = BuiltInHarborDocker.DEFAULT_PID_FILE
+        self._pid_file = BuiltInHarborDocker.DEFAULT_PID_FILE
 
     ######################
     # Implements Docker
     ######################
     def init(self, bcf, parent):
         super().init(bcf, parent)
-        if self.grand_agents <= 0:
-            self.grand_agents = SysUtil.processor_count()
-        if self.train_runners <= 0:
-            self.train_runners = 1
-        if self.max_ships <= 0:
-            self.max_ships = BuiltInHarborDocker.DEFAULT_MAX_SHIPS
+        if self._grand_agents <= 0:
+            self._grand_agents = SysUtil.processor_count()
+        if self._train_runners <= 0:
+            self._train_runners = 1
+        if self._max_ships <= 0:
+            self._max_ships = BuiltInHarborDocker.DEFAULT_MAX_SHIPS
 
-        if self.max_ships <= BuiltInHarborDocker.DEFAULT_MAX_SHIPS:
-            self.max_ships = BuiltInHarborDocker.DEFAULT_MAX_SHIPS
-            BayLog.warn(BayMessage.get(Symbol.CFG_MAX_SHIPS_IS_TO_SMALL, self.max_ships))
+        if self._max_ships <= BuiltInHarborDocker.DEFAULT_MAX_SHIPS:
+            self._max_ships = BuiltInHarborDocker.DEFAULT_MAX_SHIPS
+            BayLog.warn(BayMessage.get(Symbol.CFG_MAX_SHIPS_IS_TO_SMALL, self._max_ships))
 
-        if self.file_send_method == Harbor.FILE_SEND_METHOD_SELECT and not SysUtil.support_select_file():
-            BayLog.warn(BayMessage.get(Symbol.CFG_FILE_SEND_METHOD_SELECT_NOT_SUPPORTED))
-            self.file_send_method = Harbor.FILE_SEND_METHOD_TAXI
+        if self._net_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_TAXI or \
+            self._net_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_TRAIN or \
+            self._net_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_SPIN or \
+            self._net_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_PIGEON:
+            BayLog.warn(
+                BayMessage.get(Symbol.CFG_NET_MULTIPLEXER_NOT_SUPPORTED,
+                               Harbor.get_multiplexer_type_name(self._net_multiplexer),
+                               Harbor.get_multiplexer_type_name(BuiltInHarborDocker.DEFAULT_NET_MULTIPLEXER)))
+            self._net_multiplexer = BuiltInHarborDocker.DEFAULT_NET_MULTIPLEXER
 
-        if self.file_send_method == Harbor.FILE_SEND_METHOD_SPIN and not SysUtil.support_nonblock_file_read():
-            BayLog.warn(BayMessage.get(Symbol.CFG_FILE_SEND_METHOD_SPIN_NOT_SUPPORTED))
-            self.file_send_method = Harbor.FILE_SEND_METHOD_TAXI
+
+        if self._file_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_SPIDER and not SysUtil.support_select_file() or \
+            self._file_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_SPIN and not SysUtil.support_nonblock_file_read() or \
+            self._file_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_TRAIN:
+
+            BayLog.warn(
+                BayMessage.get(
+                    Symbol.CFG_FILE_MULTIPLEXER_NOT_SUPPORTED,
+                    Harbor.get_multiplexer_type_name(self._file_multiplexer),
+                    Harbor.get_multiplexer_type_name(BuiltInHarborDocker.DEFAULT_FILE_MULTIPLEXER)))
+
+            self._file_multiplexer = BuiltInHarborDocker.DEFAULT_FILE_MULTIPLEXER
+
+        if self.log_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_SPIDER and not SysUtil.support_select_write_file() or \
+            self.log_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_SPIN and not SysUtil.support_nonblock_file_write() or \
+            self.log_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_TRAIN:
+            BayLog.warn(
+                BayMessage.get(
+                    Symbol.CFG_LOG_MULTIPLEXER_NOT_SUPPORTED,
+                    Harbor.get_multiplexer_type_name(self.log_multiplexer),
+                    Harbor.get_multiplexer_type_name(BuiltInHarborDocker.DEFAULT_LOG_MULTIPLEXER)))
+
+            self.log_multiplexer = BuiltInHarborDocker.DEFAULT_LOG_MULTIPLEXER
+
+        if self._cgi_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_SPIN or \
+            self._cgi_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_PIGEON:
+            BayLog.warn(
+                BayMessage.get(
+                    Symbol.CFG_CGI_MULTIPLEXER_NOT_SUPPORTED,
+                    Harbor.get_multiplexer_type_name(self._cgi_multiplexer),
+                    Harbor.get_multiplexer_type_name(BuiltInHarborDocker.DEFAULT_CGI_MULTIPLEXER)))
+            self._cgi_multiplexer = BuiltInHarborDocker.DEFAULT_CGI_MULTIPLEXER
+
+        if self._net_multiplexer == BuiltInHarborDocker.MULTIPLEXER_TYPE_SPIDER and self._recipient != BuiltInHarborDocker.RECIPIENT_TYPE_SPIDER:
+            BayLog.warn(
+                BayMessage.get(
+                    Symbol.CFG_NET_MULTIPLEXER_DOES_NOT_SUPPORT_THIS_RECIPIENT,
+                    Harbor.get_multiplexer_type_name(self._net_multiplexer),
+                    Harbor.get_recipient_type_name(self._recipient),
+                    Harbor.get_recipient_type_name(BuiltInHarborDocker.RECIPIENT_TYPE_SPIDER)))
+
+            self._recipient = BuiltInHarborDocker.RECIPIENT_TYPE_SPIDER
+
 
     #######################
     # Implements DockerBase
@@ -119,7 +206,7 @@ class BuiltInHarborDocker(DockerBase, Harbor):
 
     def init_docker(self, dkr):
         if isinstance(dkr, Trouble):
-            self.trouble = dkr
+            self._trouble = dkr
         else:
             return super().init_docker(dkr)
 
@@ -130,55 +217,140 @@ class BuiltInHarborDocker(DockerBase, Harbor):
         if key == "loglevel":
             BayLog.set_log_level(kv.value)
         elif key == "charset":
-            self.charset = kv.value
+            self._charset = kv.value
         elif key == "locale":
-            self.locale = kv.value
+            self._locale = kv.value
         elif key == "groups":
             try:
                 fname = bs.BayServer.parse_path(kv.value)
-                self.groups.init(fname)
+                self._groups.init(fname)
             except FileNotFoundError:
                 raise ConfigException(kv.file_name, kv.line_no, BayMessage.get(Symbol.CFG_FILE_NOT_FOUND, kv.value))
         elif key == "trains":
-            self.train_runners = int(kv.value)
+            self._train_runners = int(kv.value)
         elif key == "taxis" or key == "taxies":
-            self.taxi_runners = int(kv.value)
+            self._taxi_runners = int(kv.value)
         elif key == "grandagents":
-            self.grand_agents = int(kv.value)
+            self._grand_agents = int(kv.value)
         elif key == "maxships":
-            self.max_ships = int(kv.value)
+            self._max_ships = int(kv.value)
         elif key == "timeout":
-            self.socket_timeout_sec = int(kv.value)
+            self._socket_timeout_sec = int(kv.value)
         elif key == "keeptimeout":
-            self.keep_timeout_sec = int(kv.value)
+            self._keep_timeout_sec = int(kv.value)
         elif key == "tourbuffersize":
-            self.tour_buffer_size = StringUtil.parse_size(kv.value)
+            self._tour_buffer_size = StringUtil.parse_size(kv.value)
         elif key == "traceheader":
-            self.trace_header = StringUtil.parse_bool(kv.value)
+            self._trace_header = StringUtil.parse_bool(kv.value)
         elif key == "redirectfile":
-            self.redirect_file = kv.value
+            self._redirect_file = kv.value
         elif key == "controlport":
-            self.control_port = int(kv.value)
+            self._control_port = int(kv.value)
         elif key == "multicore":
-            self.multi_core = StringUtil.parse_bool(kv.value)
+            self._multi_core = StringUtil.parse_bool(kv.value)
         elif key == "gzipcomp":
-            self.gzip_comp = StringUtil.parse_bool(kv.value)
-        elif key == "sendfilemethod":
-            v = kv.value.lower()
-            if v == "select":
-                self.file_send_method = Harbor.FILE_SEND_METHOD_SELECT
-            elif v == "spin":
-                self.file_send_method = Harbor.FILE_SEND_METHOD_SPIN
-            elif v == "taxi":
-                self.file_send_method = Harbor.FILE_SEND_METHOD_TAXI
-            else:
+            self._gzip_comp = StringUtil.parse_bool(kv.value)
+        elif key == "netmultiplexer":
+            try:
+                self._net_multiplexer = Harbor.get_multiplexer_type(kv.value)
+            except Exception:
+                raise ConfigException(kv.file_name, kv.line_no,
+                                      BayMessage.get(Symbol.CFG_INVALID_PARAMETER_VALUE, kv.value))
+        elif key == "filemultiplexer":
+            try:
+                self._file_multiplexer = Harbor.get_multiplexer_type(kv.value)
+            except Exception:
+                raise ConfigException(kv.file_name, kv.line_no,
+                                      BayMessage.get(Symbol.CFG_INVALID_PARAMETER_VALUE, kv.value))
+        elif key == "logmultiplexer":
+            try:
+                self.log_multiplexer = Harbor.get_multiplexer_type(kv.value)
+            except Exception:
+                raise ConfigException(kv.file_name, kv.line_no,
+                                      BayMessage.get(Symbol.CFG_INVALID_PARAMETER_VALUE, kv.value))
+        elif key == "cgimultiplexer":
+            try:
+                self._cgi_multiplexer = Harbor.get_multiplexer_type(kv.value)
+            except Exception:
                 raise ConfigException(kv.file_name, kv.line_no,
                                       BayMessage.get(Symbol.CFG_INVALID_PARAMETER_VALUE, kv.value))
 
         elif key == "pidfile":
-            self.pid_file = kv.value
+            self._pid_file = kv.value
 
         else:
             return False
 
         return True
+
+    #######################
+    # Implements Harbor
+    #######################
+
+    def charset(self) -> str:
+        return self._charset
+
+    def locale(self) -> Locale:
+        return self._locale
+
+    def grand_agents(self) -> int:
+        return self._grand_agents
+
+    def train_runners(self) -> int:
+        return self._train_runners
+
+    def taxi_runners(self) -> int:
+        return self._taxi_runners
+
+    def max_ships(self) -> int:
+        return self._max_ships
+
+    def socket_timeout_sec(self) -> int:
+        return self._socket_timeout_sec
+
+    def keep_timeout_sec(self) -> int:
+        return self._keep_timeout_sec
+
+    def tour_buffer_size(self) -> int:
+        return self._tour_buffer_size
+
+    def trace_header(self) -> bool:
+        return self._trace_header
+
+    def trouble(self) -> Trouble:
+        return self._trouble
+
+    def groups(self) -> Groups:
+        return self._groups
+
+    def redirect_file(self) -> str:
+        return self._redirect_file
+
+    def gzip_comp(self) -> bool:
+        return self._gzip_comp
+
+    def control_port(self) -> int:
+        return self._control_port
+
+    def multi_core(self) -> bool:
+        return self._multi_core
+
+    def net_multiplexer(self) -> int:
+        return self._net_multiplexer
+
+    def file_multiplexer(self) -> int:
+        return self._file_multiplexer
+
+    def log_multiplexer(self) -> int:
+        return self._log_multiplier
+
+    def cgi_multiplexer(self) -> int:
+        return self._cgi_multiplexer
+
+    def recipient(self) -> int:
+        return self._recipient
+
+    def pid_file(self) -> str:
+        return self._pid_file
+
+

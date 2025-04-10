@@ -13,7 +13,7 @@ class IOUtil:
 
 
     @classmethod
-    def write_int32(cls, io, i):
+    def write_int32(cls, io: int, i):
         data = bytearray(4)
         data[0] = i >> 24
         data[1] = i >> 16 & 0xFF
@@ -33,7 +33,7 @@ class IOUtil:
 
 
     @classmethod
-    def send_int32(cls, skt, i):
+    def send_int32(cls, skt: socket.socket, i):
         data = bytearray(4)
         data[0] = i >> 24
         data[1] = i >> 16 & 0xFF

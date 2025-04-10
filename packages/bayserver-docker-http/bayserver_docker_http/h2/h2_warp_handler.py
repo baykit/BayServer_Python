@@ -1,4 +1,4 @@
-from bayserver_core.docker.warp.warp_handler import WarpHandler
+from bayserver_core.common.warp_handler import WarpHandler
 
 from bayserver_core.protocol.protocol_handler_factory import ProtocolHandlerFactory
 

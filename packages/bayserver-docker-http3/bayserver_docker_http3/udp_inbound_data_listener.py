@@ -11,7 +11,7 @@ from bayserver_core.sink import Sink
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.agent.transporter.data_listener import DataListener
 from bayserver_core.protocol.protocol_exception import ProtocolException
-from bayserver_core.docker.base.inbound_ship import InboundShip
+from bayserver_core.common.inbound_ship import InboundShip
 from bayserver_core.util.exception_util import ExceptionUtil
 
 from bayserver_docker_http3.qic_packet import QicPacket

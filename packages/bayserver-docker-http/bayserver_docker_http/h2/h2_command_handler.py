@@ -39,6 +39,3 @@ class H2CommandHandler(CommandHandler, metaclass=ABCMeta):
     @abstractmethod
     def handle_rst_stream(self, cmd):
         pass
-
-    def __init__(self, pkt_store):
-        super().__init__(pkt_store)

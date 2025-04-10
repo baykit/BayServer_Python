@@ -1,24 +1,31 @@
-from bayserver_core.bay_log import BayLog
+from typing import Dict
 
 from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent.lifecycle_listener import LifecycleListener
+from bayserver_core.bay_log import BayLog
 from bayserver_core.protocol.packet_factory import PacketFactory
-from bayserver_core.util.reusable import Reusable
 from bayserver_core.util.object_store import ObjectStore
+from bayserver_core.util.reusable import Reusable
 from bayserver_core.util.string_util import StringUtil
 
+
 class PacketStore(Reusable):
-    class AgentListener(GrandAgent.GrandAgentLifecycleListener):
+    class AgentListener(LifecycleListener):
 
-        def add(self, agt):
+        def add(self, agt_id: int):
             for ifo in PacketStore.proto_map.values():
-                ifo.add_agent(agt.agent_id)
+                ifo.add_agent(agt_id)
 
-        def remove(self, agt):
+        def remove(self, agt_id: int):
             for ifo in PacketStore.proto_map.values():
-                ifo.remove_agent(agt.agent_id)
+                ifo.remove_agent(agt_id)
 
 
     class ProtocolInfo:
+        protocol: str
+        stores: Dict[int, "PacketStore"]
+        packet_factory: PacketFactory
+
         def __init__(self, proto, pkt_factory):
             self.protocol = proto
 
@@ -27,16 +34,18 @@ class PacketStore(Reusable):
 
             self.packet_factory = pkt_factory
 
-        def add_agent(self, agt_id):
+        def add_agent(self, agt_id: int):
             store = PacketStore(self.protocol, self.packet_factory);
-            self.stores[agt_id] = store;
+            self.stores[agt_id] = store
 
 
-        def remove_agent(self, agt_id):
+        def remove_agent(self, agt_id: int):
+            BayLog.info(f"ProtocolInfo[{self.protocol}]: Removing agent {agt_id}")
+            store = self.stores[agt_id]
             del self.stores[agt_id]
 
 
-    proto_map = {}
+    proto_map: Dict[str, ProtocolInfo] = None
 
     def __init__(self, proto, factory):
         self.protocol = proto
@@ -83,7 +92,9 @@ class PacketStore(Reusable):
 
     @classmethod
     def init(cls):
-        GrandAgent.add_lifecycle_listener(PacketStore.AgentListener())
+        if cls.proto_map is None:
+            cls.proto_map = {}
+            GrandAgent.add_lifecycle_listener(PacketStore.AgentListener())
 
 
     @classmethod

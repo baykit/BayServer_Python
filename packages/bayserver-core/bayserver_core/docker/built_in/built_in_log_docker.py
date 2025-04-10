@@ -1,69 +1,99 @@
 import os
 import os.path
+from typing import Dict, List
 
-from bayserver_core.agent.transporter.plain_transporter import PlainTransporter
-from bayserver_core.agent.transporter.spin_write_transporter import SpinWriteTransporter
+from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.bayserver import BayServer
+from bayserver_core.common.multiplexer import Multiplexer
+from bayserver_core.common.rudder_state import RudderState
 from bayserver_core.config_exception import ConfigException
-
-from bayserver_core.agent.grand_agent import GrandAgent
-
 from bayserver_core.docker.base.docker_base import DockerBase
-from bayserver_core.docker.log import Log
-from bayserver_core.docker.built_in.log_boat import LogBoat
+from bayserver_core.docker.built_in.log_item import LogItem
 from bayserver_core.docker.built_in.log_items import LogItems
-from bayserver_core.docker.built_in.write_file_taxi import WriteFileTaxi
+from bayserver_core.docker.harbor import Harbor
+from bayserver_core.docker.log import Log
+from bayserver_core.rudder.io_rudder import IORudder
+from bayserver_core.rudder.rudder import Rudder
+from bayserver_core.sink import Sink
 from bayserver_core.symbol import Symbol
-from bayserver_core.util.sys_util import SysUtil
 
 
 class BuiltInLogDocker(DockerBase, Log):
-    class AgentListener(GrandAgent.GrandAgentLifecycleListener):
+    class AgentListener(LifecycleListener):
 
-        def __init__(self, dkr):
+        log_docker: "BuiltInLogDocker"
+
+        def __init__(self, dkr: "BuiltInLogDocker"):
             self.log_docker = dkr
 
-        def add(self, agt):
-            file_name = f"{self.log_docker.file_prefix}_{agt.agent_id}.{self.log_docker.file_ext}";
-
-            boat = LogBoat()
-
-            if self.log_docker.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_SELECT:
-                tp = PlainTransporter(False, 0, True)  # write only
-                tp.init(agt.non_blocking_handler, open(file_name, "ab"), boat)
-
-            elif self.log_docker.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_SPIN:
-                tp = SpinWriteTransporter()
-                tp.init(agt.spin_handler, open(file_name, "ab"), boat)
-
-            elif self.log_docker.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_TAXI:
-                tp = WriteFileTaxi()
-                tp.init(agt.agent_id, open(file_name, "ab"), boat)
+        def add(self, agt_id: int) -> None:
+            file_name = f"{self.log_docker.file_prefix}_{agt_id}.{self.log_docker.file_ext}"
+            size = 0
+            if os.path.exists(file_name):
+                size = os.path.getsize(file_name)
+            agt = GrandAgent.get(agt_id)
 
             try:
-                boat.init(file_name, tp)
+                f = open(file_name, "ab")
             except IOError as e:
-                BayLog.fatal(BayMessage.get(Symbol.INT_CANNOT_OPEN_LOG_FILE, file_name));
-                BayLog.fatal_e(e);
+                BayLog.fatal(BayMessage.get(Symbol.INT_CANNOT_OPEN_LOG_FILE, file_name))
+                raise e
 
-            self.log_docker.loggers[agt.agent_id] = boat
+            rd = IORudder(f)
 
-        def remove(self, agt):
-            del self.log_docker.loggers[agt.agent_id]
+            if BayServer.harbor.log_multiplexer() == Harbor.MULTIPLEXER_TYPE_TAXI:
+                mpx = agt.taxi_multiplexer
 
-    LOG_WRITE_METHOD_SELECT = 1
-    LOG_WRITE_METHOD_SPIN = 2
-    LOG_WRITE_METHOD_TAXI = 3
-    DEFAULT_LOG_WRITE_METHOD = LOG_WRITE_METHOD_TAXI
+            elif BayServer.harbor.log_multiplexer() == Harbor.MULTIPLEXER_TYPE_SPIN:
+                mpx = agt.spin_multiplexer
+
+            elif BayServer.harbor.log_multiplexer() == Harbor.MULTIPLEXER_TYPE_SPIDER:
+                mpx = agt.spider_multiplexer
+
+            elif BayServer.harbor.log_multiplexer() == Harbor.MULTIPLEXER_TYPE_JOB:
+                mpx = agt.job_multiplexer
+
+            else:
+                raise Sink()
+
+            st = RudderState(rd)
+            st.bytes_written = size
+            mpx.add_rudder_state(rd, st)
+
+            self.log_docker.multiplexers[agt_id] = mpx
+            self.log_docker.rudders[agt_id] = rd
+
+
+        def remove(self, agt_id: int) -> None:
+            rd = self.log_docker.rudders[agt_id]
+            self.log_docker.multiplexers[agt_id].req_close(rd)
+            self.log_docker.multiplexers[agt_id] = None
+            self.log_docker.rudders[agt_id] = None
 
     # Mapping table for format
-    log_item_map = {}
+    log_item_map: Dict[str, object] = {}
+
+    # Log send_file name parts
+    file_prefix: str
+    file_ext: str
+
+    # Log format
+    format: str
+
+    # Log items
+    log_items: List[LogItem]
+
+    rudders: Dict[int, Rudder]
+
+    # Multiplexer to write to file
+    multiplexers: Dict[int, Multiplexer]
+
 
     def __init__(self):
         super().__init__()
-        # Log send_file name parts
         self.file_prefix = None
         self.file_ext = None
 
@@ -71,14 +101,12 @@ class BuiltInLogDocker(DockerBase, Log):
         #    Map of Agent ID => LogBoat
         self.loggers = {}
 
-        # Log format
         self.format = None
 
-        # Log items
         self.log_items = []
+        self.rudders = {}
+        self.multiplexers = {}
 
-        # Log write method
-        self.log_write_method = BuiltInLogDocker.DEFAULT_LOG_WRITE_METHOD
 
     ######################################################
     # Implements Docker
@@ -107,15 +135,6 @@ class BuiltInLogDocker(DockerBase, Log):
         # Parse format
         self.compile(self.format, self.log_items, elm.file_name, elm.line_no)
 
-        # Check log write method
-        if self.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_SELECT and not SysUtil.support_select_file():
-            BayLog.warn(BayMessage.get(Symbol.CFG_LOG_WRITE_METHOD_SELECT_NOT_SUPPORTED))
-            self.log_write_method = BuiltInLogDocker.LOG_WRITE_METHOD_TAXI
-
-        if self.log_write_method == BuiltInLogDocker.LOG_WRITE_METHOD_SPIN and not SysUtil.support_nonblock_file_write():
-            BayLog.warn(BayMessage.get(Symbol.CFG_LOG_WRITE_METHOD_SPIN_NOT_SUPPORTED))
-            self.log_write_method = BuiltInLogDocker.LOG_WRITE_METHOD_TAXI
-
         GrandAgent.add_lifecycle_listener(BuiltInLogDocker.AgentListener(self))
 
     ######################################################
@@ -126,17 +145,6 @@ class BuiltInLogDocker(DockerBase, Log):
         key = kv.key.lower()
         if key == "format":
             self.format = kv.value
-        elif key == "logwritemethod":
-            value = kv.value.lower()
-            if value == "select":
-                self.log_write_method = BuiltInLogDocker.LOG_WRITE_METHOD_SELECT
-            elif value == "spin":
-                self.log_write_method = BuiltInLogDocker.LOG_WRITE_METHOD_SPIN
-            elif value == "taxi":
-                self.log_write_method = BuiltInLogDocker.LOG_WRITE_METHOD_TAXI
-            else:
-                raise ConfigException(kv.file_name, kv.line_no,
-                                      BayMessage.get(Symbol.CFG_INVALID_PARAMETER_VALUE, kv.value))
 
         else:
             return False
@@ -159,17 +167,16 @@ class BuiltInLogDocker(DockerBase, Log):
 
         # If threre are message to write, write it
         if len(sb) > 0:
-            self.get_logger(tour.ship.agent).log(''.join(sb))
+            self.multiplexers[tour.ship.agent_id].req_write(
+                self.rudders[tour.ship.agent_id],
+                bytearray(''.join(sb).encode()),
+                None,
+                "log",
+            None)
 
     ######################################################
     # Private methods
     ######################################################
-
-    def get_logger(self, agt):
-        logger = self.loggers.get(agt.agent_id)
-        if logger is None:
-            raise KeyError(agt.agent_id)
-        return logger
 
     #
     # Compile format pattern

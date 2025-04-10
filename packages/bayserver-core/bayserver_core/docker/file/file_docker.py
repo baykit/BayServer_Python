@@ -34,7 +34,7 @@ class FileDocker(ClubBase):
         if pos >= 0:
             rel_path = rel_path[0: pos]
 
-        rel_path = urllib.parse.unquote(rel_path, tur.req.charset)
+        rel_path = urllib.parse.unquote(rel_path, tur.req._charset)
         real = f"{tur.town.location}/{rel_path}"
 
         if os.path.isdir(real) and self.list_files:

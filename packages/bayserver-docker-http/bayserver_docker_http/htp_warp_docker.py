@@ -1,25 +1,28 @@
 import ssl
 
+from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
+from bayserver_core.agent.multiplexer.secure_transporter import SecureTransporter
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
+from bayserver_core.rudder.socket_rudder import SocketRudder
+from bayserver_core.ship.ship import Ship
 from bayserver_core.symbol import Symbol
 from bayserver_core.config_exception import ConfigException
 
-from bayserver_core.agent.transporter.plain_transporter import PlainTransporter
-from bayserver_core.agent.transporter.secure_transporter import SecureTransporter
 from bayserver_docker_http.h1.h1_packet_factory import H1PacketFactory
 from bayserver_docker_http.h1.h1_warp_handler import H1WarpHandler
 from bayserver_docker_http.h2.h2_packet_factory import H2PacketFactory
 from bayserver_docker_http.h2.h2_warp_handler import H2WarpHandler
 from bayserver_docker_http.htp_docker import HtpDocker
-from bayserver_core.docker.warp.warp_docker import WarpDocker
+from bayserver_core.docker.base.warp_base import WarpBase
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
 from bayserver_core.util.io_util import IOUtil
 from bayserver_core.util.string_util import StringUtil
 
 
-class HtpWarpDocker(WarpDocker, HtpDocker):
+class HtpWarpDocker(WarpBase, HtpDocker):
 
     def __init__(self):
         super().__init__()
@@ -79,11 +82,28 @@ class HtpWarpDocker(WarpDocker, HtpDocker):
     def protocol(self):
         return HtpDocker.H1_PROTO_NAME
 
-    def new_transporter(self, agt, skt):
+    def new_transporter(self, agt: GrandAgent, rd: SocketRudder, sip: Ship):
         if self.secure:
-            return SecureTransporter(self.ssl_ctx, False, IOUtil.get_sock_recv_buf_size(skt), self.trace_ssl)
+            app_protocols = ["h2"] if self.support_h2 else None
+            tp = SecureTransporter(
+                agt.net_multiplexer,
+                sip,
+                False,
+                -1,
+                self.trace_ssl,
+                self.ssl_ctx,
+                app_protocols)
         else:
-            return PlainTransporter(False, IOUtil.get_sock_recv_buf_size(skt))
+            tp = PlainTransporter(
+                agt.net_multiplexer,
+                sip,
+                False,
+                IOUtil.get_sock_recv_buf_size(rd.key()),
+                False
+            )
+
+        tp.init()
+        return tp
 
     ######################################################
     # Class initializer

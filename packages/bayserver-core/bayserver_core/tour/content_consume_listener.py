@@ -1,16 +1,7 @@
-class ContentConsumeListener:
-    # interface
-    #
-    #        void contentConsumed(int len, boolean resume);
-    #
+from typing import Callable
 
-    @classmethod
-    def call(cls, lis, length, resume):
-        if isinstance(lis, ContentConsumeListener):
-            lis.content_consumed(length, resume)
-        else:
-            lis(length, resume)
+ContentConsumeListener = Callable[[int, bool], None]
 
 
-    dev_null = lambda length, resume: None
-
+def content_consume_listener_dev_null(length: int, resume: bool) -> None:
+    pass

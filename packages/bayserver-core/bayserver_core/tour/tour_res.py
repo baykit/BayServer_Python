@@ -1,29 +1,31 @@
-import os
-
 from bayserver_core import bayserver as bs
 from bayserver_core.bay_log import BayLog
+from bayserver_core.docker.trouble import Trouble
 from bayserver_core.http_exception import HttpException
 from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.sink import Sink as Sink
-
-from bayserver_core.tour.send_file_yacht import SendFileYacht
-from bayserver_core.taxi.taxi_runner import TaxiRunner
-from bayserver_core.agent.transporter.plain_transporter import PlainTransporter
-from bayserver_core.agent.transporter.spin_read_transporter import SpinReadTransporter
-
 from bayserver_core.tour import tour
-from bayserver_core.tour.content_consume_listener import ContentConsumeListener
-from bayserver_core.tour.send_file_train import SendFileTrain
-from bayserver_core.tour.read_file_taxi import ReadFileTaxi
-from bayserver_core.docker.harbor import Harbor
-
+from bayserver_core.tour.content_consume_listener import ContentConsumeListener, content_consume_listener_dev_null
+from bayserver_core.util.gzip_compressor import GzipCompressor
 from bayserver_core.util.headers import Headers
 from bayserver_core.util.http_status import HttpStatus
-from bayserver_core.util.mimes import Mimes
-from bayserver_core.util.gzip_compressor import GzipCompressor
-from bayserver_core.util.io_util import IOUtil
+
 
 class TourRes:
+
+    tour: "tour.Tour"
+
+    headers: Headers
+    charset: str
+    header_send: bool
+
+    available: bool
+    bytes_posted: int
+    bytes_consumed: int
+    bytes_limit: int
+    res_consume_listener: ContentConsumeListener
+    can_compress: bool
+    compressor: GzipCompressor
 
     def __init__(self, tur):
         self.tour = tur
@@ -34,10 +36,9 @@ class TourRes:
         self.headers = Headers()
         self.charset = None
         self.available = None
-        self.consume_listener = None
+        self.res_consume_listener = None
 
         self.header_sent = None
-        self.yacht = None
 
         ###########################
         #  Response Content info
@@ -54,7 +55,7 @@ class TourRes:
         return str(self.tour)
 
     def init(self):
-        self.yacht = SendFileYacht()
+        pass
 
     ######################################################
     # Implements Reusable
@@ -63,12 +64,9 @@ class TourRes:
     def reset(self):
         self.charset = None
         self.header_sent = False
-        if(self.yacht is not None):
-            self.yacht.reset()
-        self.yacht = None
 
         self.available = False
-        self.consume_listener = None
+        self.res_consume_listener = None
         self.can_compress = False
         self.compressor = None
         self.headers.clear()
@@ -80,7 +78,7 @@ class TourRes:
     # other methods
     ######################################################
 
-    def send_headers(self, chk_tour_id):
+    def send_res_headers(self, chk_tour_id):
         self.tour.check_tour_id(chk_tour_id)
         BayLog.debug("%s send headers", self)
 
@@ -95,7 +93,7 @@ class TourRes:
         self.bytes_limit = self.headers.content_length()
 
         # Compress check
-        if bs.BayServer.harbor.gzip_comp and \
+        if bs.BayServer.harbor.gzip_comp() and \
             self.headers.contains(Headers.CONTENT_TYPE) and \
             self.headers.content_type().lower().startswith("text/") and \
             not self.headers.contains(Headers.CONTENT_ENCODING):
@@ -111,7 +109,38 @@ class TourRes:
                         break
 
         try:
-            self.tour.ship.send_headers(self.tour.ship_id, self.tour)
+            handled = False
+            if not self.tour.error_handling and self.tour.res.headers.status >= 400:
+                trouble = bs.BayServer.harbor.trouble()
+                if trouble is not None:
+                    cmd = trouble.find(self.tour.res.headers.status)
+                    if cmd is not None:
+                        err_tour = self.tour.ship.get_error_tour()
+                        err_tour.req.uri = cmd.target
+                        self.tour.req.headers.copy_to(err_tour.req.headers)
+                        self.tour.res.headers.copy_to(err_tour.res.headers)
+                        err_tour.req.remote_port = self.tour.req.remote_port
+                        err_tour.req.remote_address = self.tour.req.remote_address
+                        err_tour.req.server_address = self.tour.req.server_address
+                        err_tour.req.server_port = self.tour.req.server_port
+                        err_tour.req.server_name = self.tour.req.server_name
+                        self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ZOMBIE)
+
+                        if cmd.method == Trouble.GUIDE:
+                            err_tour.go()
+                        elif cmd.method == Trouble.TEXT:
+                            self.tour.ship.send_headers(self.tour.ship_id, err_tour)
+                            data = cmd.target
+                            err_tour.res.send_res_content(tour.Tour.TOUR_ID_NOCHECK, err_tour, data, 0, len(data))
+                            err_tour.res.send_end_tour(tour.Tour.TOUR_ID_NOCHECK, err_tour)
+                        elif cmd.method == Trouble.REROUTE:
+                            err_tour.res.send_http_exception(tour.Tour.TOUR_ID_NOCHECK, HttpException.moved_temp(cmd.target))
+
+                        handled = True
+
+            if not handled:
+                self.tour.ship.send_headers(self.tour.ship_id, self.tour)
+
         except IOError as e:
             self.tour.change_state(chk_tour_id, tour.Tour.TourState.ABORTED)
             raise e
@@ -124,7 +153,7 @@ class TourRes:
         if self.header_sent:
             BayLog.error("Try to redirect after response header is sent (Ignore)")
         else:
-            self.set_consume_listener(ContentConsumeListener.dev_null)
+            self.set_res_consume_listener(ContentConsumeListener.dev_null)
             try:
                 self.tour.ship.send_redirect(self.tour.ship_id, self.tour, status, location)
             except IOError as e:
@@ -132,15 +161,15 @@ class TourRes:
                 raise e
             finally:
                 self.header_sent = True
-                self.end_content(chk_tour_id)
+                self.end_res_content(chk_tour_id)
 
-    def set_consume_listener(self, listener):
-        self.consume_listener = listener
+    def set_res_consume_listener(self, listener):
+        self.res_consume_listener = listener
         self.bytes_consumed = 0
         self.bytes_posted = 0
         self.available = True
 
-    def send_content(self, chk_tour_id, buf, ofs, length):
+    def send_res_content(self, chk_tour_id, buf, ofs, length):
         self.tour.check_tour_id(chk_tour_id)
         BayLog.debug("%s send content: len=%d", self, length)
 
@@ -156,9 +185,6 @@ class TourRes:
 
         if not self.header_sent:
             raise Sink("Header not sent")
-
-        if self.consume_listener is None:
-            raise Sink("Response consume listener is null")
 
         self.bytes_posted += length
         BayLog.debug("%s posted res content len=%d posted=%d limit=%d consumed=%d",
@@ -192,7 +218,7 @@ class TourRes:
 
         return self.available
 
-    def end_content(self, chk_id):
+    def end_res_content(self, chk_id):
         self.tour.check_tour_id(chk_id)
 
         BayLog.debug("%s end ResContent: chk_id=%d", self, chk_id)
@@ -237,9 +263,6 @@ class TourRes:
     def consumed(self, check_id, length):
         self.tour.check_tour_id(check_id)
 
-        if self.consume_listener is None:
-            raise Sink("Response consume listener is null")
-
         self.bytes_consumed += length
 
         BayLog.debug("%s resConsumed: len=%d posted=%d consumed=%d limit=%d",
@@ -255,8 +278,11 @@ class TourRes:
                          self.bytes_consumed);
             resume = True
 
-        if self.tour.is_running():
-            ContentConsumeListener.call(self.consume_listener, length, resume)
+        if not self.tour.is_zombie():
+            if self.res_consume_listener is None:
+                BayLog.debug("Consume listener is null, so can not invoke callback")
+            else:
+                self.res_consume_listener(length, resume)
 
 
     def send_http_exception(self, chk_tour_id, http_ex):
@@ -283,7 +309,7 @@ class TourRes:
             if err:
                 BayLog.error_e(err);
         else:
-            self.set_consume_listener(ContentConsumeListener.dev_null)
+            self.set_res_consume_listener(content_consume_listener_dev_null)
 
             if self.tour.is_zombie() or self.tour.is_aborted():
                 # Don't send peer any data
@@ -296,79 +322,7 @@ class TourRes:
                     self.tour.change_state(chk_tour_id, tour.Tour.TourState.ABORTED)
             self.header_sent = True
 
-        self.end_content(chk_tour_id)
-
-    def send_file(self, chk_tour_id, file, charset, async_mode):
-        self.tour.check_tour_id(chk_tour_id)
-
-        if self.tour.is_zombie():
-            return
-
-        if os.path.isdir(file):
-            raise HttpException(HttpStatus.FORBIDDEN, file)
-        elif not os.path.exists(file):
-            raise HttpException(HttpStatus.NOT_FOUND, file)
-
-        mime_type = None
-        rname = os.path.basename(file)
-
-        pos = rname.rfind('.')
-        if pos > 0:
-            ext = rname[pos + 1:].lower()
-            mime_type = Mimes.type(ext)
-
-        if mime_type is None:
-            mime_type = "application/octet-stream"
-
-        if mime_type.startswith("text/") and charset is not None:
-            mime_type = mime_type + "; charset=" + charset
-
-        file_len = os.path.getsize(file)
-        BayLog.debug("%s send_file %s async=%s len=%d", self.tour, file, async_mode, file_len)
-
-        self.headers.set_content_type(mime_type)
-        self.headers.set_content_length(file_len)
-
-        try:
-            self.send_headers(tour.Tour.TOUR_ID_NOCHECK)
-
-            if async_mode:
-                bufsize = self.tour.ship.protocol_handler.max_res_packet_data_size()
-                method = bs.BayServer.harbor.file_send_method
-                infile = open(file, "rb", buffering=False)
-
-                if method == Harbor.FILE_SEND_METHOD_SELECT:
-                    IOUtil.set_non_blocking(infile)
-                    tp = PlainTransporter(False, bufsize)
-                    self.yacht.init(self.tour, file, tp)
-                    tp.init(self.tour.ship.agent.non_blocking_handler, infile, self.yacht)
-                    tp.open_valve()
-
-                elif method == Harbor.FILE_SEND_METHOD_SPIN:
-                    timeout = 10
-                    IOUtil.set_non_blocking(infile)
-                    tp = SpinReadTransporter(bufsize)
-                    self.yacht.init(self.tour, file, tp);
-                    tp.init(self.tour.ship.agent.spin_handler, self.yacht, infile, os.path.getsize(file), timeout, None)
-                    tp.open_valve()
-
-                elif method == Harbor.FILE_SEND_METHOD_TAXI:
-                    txi = ReadFileTaxi(self.tour.ship.agent, bufsize)
-                    self.yacht.init(self.tour, file, txi);
-                    txi.init(infile, self.yacht)
-                    if not TaxiRunner.post(self.tour.ship.agent.agent_id, txi):
-                        raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "Taxi is busy!");
-
-                else:
-                    raise Sink()
-
-            else:
-                SendFileTrain(self.tour, file).run()
-        except HttpException as e:
-            raise e
-        except Exception as e:
-            BayLog.error_e(e)
-            raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, file)
+        self.end_res_content(chk_tour_id)
 
     def get_compressor(self):
         if self.compressor is None:
@@ -387,6 +341,6 @@ class TourRes:
 
 
     def buffer_available(self):
-          return self.bytes_posted - self.bytes_consumed < self.buffer_size
+          return self.bytes_posted - self.bytes_consumed < bs.BayServer.harbor.tour_buffer_size()
 
 

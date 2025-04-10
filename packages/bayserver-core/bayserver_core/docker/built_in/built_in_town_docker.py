@@ -1,4 +1,5 @@
 import os.path
+from typing import List
 
 from bayserver_core.bayserver import BayServer
 from bayserver_core.config_exception import ConfigException
@@ -72,9 +73,25 @@ class BuiltInTownDocker(DockerBase, Town):
             return super().init_key_val(kv)
         return True
 
+
     ######################################################
     # Implements Town
     ######################################################
+
+    def name(self) -> str:
+        return self.name
+
+    def city(self) -> "c.City":
+        return self.city
+
+    def location(self) -> str:
+        return self.location
+
+    def welcome_file(self) -> str:
+        return self.welcome
+
+    def clubs(self) -> List[Club]:
+        return self.clubs
 
     def reroute(self, uri):
         for r in self.reroute_list:

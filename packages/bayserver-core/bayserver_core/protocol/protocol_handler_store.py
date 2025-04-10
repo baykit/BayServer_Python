@@ -1,3 +1,6 @@
+from typing import Dict
+
+from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.bay_log import BayLog
 
 from bayserver_core.agent.grand_agent import GrandAgent
@@ -6,7 +9,7 @@ from bayserver_core.util.object_store import ObjectStore
 from bayserver_core.util.string_util import StringUtil
 
 class ProtocolHandlerStore(ObjectStore):
-    class AgentListener(GrandAgent.GrandAgentLifecycleListener):
+    class AgentListener(LifecycleListener):
 
         def add(self, agt):
             for ifo in ProtocolHandlerStore.proto_map.values():
@@ -26,15 +29,15 @@ class ProtocolHandlerStore(ObjectStore):
             # Agent ID => ProtocolHandlerStore
             self.stores = {}
 
-        def add_agent(self, agt):
-            store = PacketStore.get_store(self.protocol, agt.agent_id);
-            self.stores[agt.agent_id] = ProtocolHandlerStore(self.protocol, self.server_mode,
+        def add_agent(self, agt_id: int):
+            store = PacketStore.get_store(self.protocol, agt_id);
+            self.stores[agt_id] = ProtocolHandlerStore(self.protocol, self.server_mode,
                                                              self.protocol_handler_factory, store);
 
-        def remove_agent(self, agt):
-            del self.stores[agt.agent_id]
+        def remove_agent(self, agt_id: int):
+            del self.stores[agt_id]
 
-    proto_map = {}
+    proto_map: Dict[str, ProtocolInfo] = None
 
     def __init__(self, proto, svr_mode, proto_hnd_factory, pkt_store):
         ObjectStore.__init__(self)
@@ -46,18 +49,20 @@ class ProtocolHandlerStore(ObjectStore):
 
     def print_usage(self, indent):
         BayLog.info("%sProtocolHandlerStore(%s%s) Usage:", StringUtil.indent(indent), self.protocol, "s" if self.server_mode else "c")
-        super().print_usage(indent+1);
+        super().print_usage(indent+1)
 
     ######################################################
     # class methods
     ######################################################
     @classmethod
     def init(cls):
-        GrandAgent.add_lifecycle_listener(ProtocolHandlerStore.AgentListener())
+        if cls.proto_map is None:
+            cls.proto_map = {}
+            GrandAgent.add_lifecycle_listener(ProtocolHandlerStore.AgentListener())
 
 
     @classmethod
-    def get_store(cls, protocol, svr_mode, agent_id):
+    def get_store(cls, protocol: str, svr_mode: bool, agent_id: int):
         return ProtocolHandlerStore.proto_map[ProtocolHandlerStore.construct_protocol(protocol, svr_mode)].stores[agent_id]
 
 
@@ -71,6 +76,7 @@ class ProtocolHandlerStore(ObjectStore):
 
     @classmethod
     def register_protocol(cls, protocol, svr_mode, proto_hnd_factory):
+        BayLog.info("register protocol: %s %s", protocol, svr_mode)
         if ProtocolHandlerStore.construct_protocol(protocol, svr_mode) not in ProtocolHandlerStore.proto_map.keys():
             ProtocolHandlerStore.proto_map[ProtocolHandlerStore.construct_protocol(protocol, svr_mode)] = \
                 ProtocolHandlerStore.ProtocolInfo(protocol, svr_mode, proto_hnd_factory)

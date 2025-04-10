@@ -31,13 +31,6 @@ class IpMatcher:
 
     @classmethod
     def parse_ip(cls, ip_desc):
-        items = ip_desc.split("/")
-        if len(items) == 0:
-            raise Exception(BayMessage.get(Symbol.CFG_INVALID_IP_DESC, ip_desc))
-
-        if len(items) == 1:
-            ip_desc = ip_desc + "/32"
-
         try:
             return ipaddress.ip_network(ip_desc, False)
         except ValueError as e:

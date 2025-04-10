@@ -3,7 +3,9 @@
 #   You must lock object before call methods because all the methods may be called by different threads. (agent, tours agent)
 #
 import threading
+from typing import Dict
 
+from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.bay_log import BayLog
 from bayserver_core.sink import Sink
 from bayserver_core.tour import tour
@@ -13,13 +15,13 @@ from bayserver_core.util.string_util import StringUtil
 
 class TourStore:
 
-    class AgentListener(GrandAgent.GrandAgentLifecycleListener):
+    class AgentListener(LifecycleListener):
 
-        def add(self, agt):
-            TourStore.stores[agt.agent_id] = TourStore()
+        def add(self, agt_id: int):
+            TourStore.stores[agt_id] = TourStore()
 
-        def remove(self, agt):
-            del TourStore.stores[agt.agent_id]
+        def remove(self, agt_id: int):
+            del TourStore.stores[agt_id]
 
 
     MAX_TOURS = 1024
@@ -28,7 +30,7 @@ class TourStore:
     max_count = None
 
     # Agent ID => TourStore
-    stores = {}
+    stores: Dict[int, "TourStore"] = None
 
     def __init__(self):
         self.free_tours = []
@@ -83,9 +85,11 @@ class TourStore:
     ######################################################
     @classmethod
     def init(cls, max_tours):
-        TourStore.max_count = max_tours
-        GrandAgent.add_lifecycle_listener(TourStore.AgentListener())
+        if cls.max_count is None:
+            cls.max_count = max_tours
+            cls.stores = {}
+            GrandAgent.add_lifecycle_listener(TourStore.AgentListener())
 
     @classmethod
-    def get_store(cls, agent_id):
+    def get_store(cls, agent_id: int):
         return TourStore.stores[agent_id]

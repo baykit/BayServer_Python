@@ -1,11 +1,13 @@
 import socket
 import signal
+import threading
+from typing import ClassVar, List, Dict
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.symbol import Symbol
 
-from bayserver_core.agent.grand_agent_monitor import GrandAgentMonitor
+from bayserver_core.agent.monitor.grand_agent_monitor import GrandAgentMonitor
 from bayserver_core.agent.signal.signal_proxy import SignalProxy
 
 from bayserver_core.util.sys_util import SysUtil
@@ -19,52 +21,18 @@ class SignalAgent:
     COMMAND_SHUTDOWN = "shutdown"
     COMMAND_ABORT = "abort"
 
-    signal_agent = None
-    commands = []
-    signal_map = {}
+    commands: ClassVar[List[str]] = [
+        COMMAND_RELOAD_CERT,
+        COMMAND_MEM_USAGE,
+        COMMAND_RESTART_AGENTS,
+        COMMAND_SHUTDOWN,
+        COMMAND_ABORT
+    ]
 
-    def __init__(self, port):
-        self.closed = False
-        self.port = port
-        self.server_skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if not SysUtil.run_on_windows():
-            self.server_skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        try:
-            self.server_skt.bind(("0.0.0.0", port))
-        except OSError as e:
-            BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, "0.0.0.0", port, ExceptionUtil.message(e)))
-
-        self.server_skt.listen(0)
-        BayLog.info(BayMessage.get(Symbol.MSG_OPEN_CTL_PORT, self.port))
+    signal_agent: ClassVar["SignalAgent"] = None
+    signal_map: ClassVar[Dict[int, str]] = {}
 
 
-    def on_socket_readable(self):
-
-        try:
-            skt = None
-            skt, adr = self.server_skt.accept()
-            skt.settimeout(5)
-
-            f = skt.makefile("rw")
-            line = f.readline().strip()
-            BayLog.info(BayMessage.get(Symbol.MSG_COMMAND_RECEIVED, line))
-            SignalAgent.handle_command(line)
-            f.write("OK\r\n")
-            f.flush()
-
-        except BaseException as e:
-            if not self.closed:
-                BayLog.error_e(e)
-
-        finally:
-            if skt:
-                skt.close()
-
-
-    def close(self):
-        self.closed = True
-        self.server_skt.close()
 
     ######################################################
     # class methods
@@ -73,17 +41,9 @@ class SignalAgent:
     def init(cls, bay_port):
 
         if bay_port > 0:
-            cls.signal_agent = SignalAgent(bay_port)
+            threading.Thread(target=cls.run_signal_agent, args=[bay_port]).start()
 
         else:
-            cls.commands = [
-                cls.COMMAND_RELOAD_CERT,
-                cls.COMMAND_MEM_USAGE,
-                cls.COMMAND_RESTART_AGENTS,
-                cls.COMMAND_SHUTDOWN,
-                cls.COMMAND_ABORT
-            ]
-
             for cmd in cls.commands:
                 sig = cls.get_signal_from_command(cmd)
 
@@ -148,14 +108,38 @@ class SignalAgent:
           cls.signal_map[signal.SIGTERM] = cls.COMMAND_SHUTDOWN
           cls.signal_map[signal.SIGABRT] = cls.COMMAND_ABORT
 
-
     @classmethod
-    def term(cls):
-        if cls.signal_agent:
-            cls.signal_agent.close()
+    def run_signal_agent(cls, port):
+        server_skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if not SysUtil.run_on_windows():
+            server_skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
+        try:
+            server_skt.bind(("0.0.0.0", port))
+        except OSError as e:
+            BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, "0.0.0.0", port, ExceptionUtil.message(e)))
 
+        server_skt.listen(0)
+        BayLog.info(BayMessage.get(Symbol.MSG_OPEN_CTL_PORT, port))
 
+        skt: socket.socket = None
+        try:
+            while True:
+                skt, adr = server_skt.accept()
+                skt.settimeout(5)
+
+                f = skt.makefile("rw")
+                line = f.readline().strip()
+                BayLog.info(BayMessage.get(Symbol.MSG_COMMAND_RECEIVED, line))
+                SignalAgent.handle_command(line)
+                f.write("OK\r\n")
+                f.flush()
+        except BaseException as e:
+            BayLog.error_e(e)
+
+        finally:
+            if skt:
+                skt.close()
 
 
 

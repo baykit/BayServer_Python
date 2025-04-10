@@ -1,28 +1,17 @@
 from bayserver_core.bay_log import BayLog
+from bayserver_core.protocol.command import Command
+from bayserver_core.protocol.packet_packer import PacketPacker
+from bayserver_core.protocol.packet_store import PacketStore
+from bayserver_core.ship.ship import Ship
 from bayserver_core.util.reusable import Reusable
 from bayserver_core.util.data_consume_listener import DataConsumeListener
 
 class CommandPacker(Reusable):
 
-    class PostDoneListener(DataConsumeListener):
-        def __init__(self, cmd_pkr, pkt, sip, lsnr):
-            self.command_packer = cmd_pkr
-            self.packet = pkt
-            self.ship = sip
-            self.listener = lsnr
+    pkt_packer: PacketPacker
+    pkt_srtore: PacketStore
 
-
-        def done(self):
-            self.command_packer.pkt_store.Return(self.packet)
-            if self.listener is not None:
-                if isinstance(self.listener, DataConsumeListener):
-                    self.listener.done()
-                else:
-                    # function
-                    self.listener()
-
-
-    def __init__(self, pkt_packer, store):
+    def __init__(self, pkt_packer: PacketPacker, store: PacketStore):
         self.pkt_packer = pkt_packer
         self.pkt_store = store
 
@@ -39,20 +28,18 @@ class CommandPacker(Reusable):
     # Other methods
     ######################################################
 
-    def post(self, sip, cmd, callback=None):
+    def post(self, sip: Ship, cmd: Command, lis: DataConsumeListener=None):
         pkt = self.pkt_store.rent(cmd.type)
 
         try:
             cmd.pack(pkt)
 
-            self.pkt_packer.post(sip.postman, pkt, CommandPacker.PostDoneListener(self, pkt, sip, callback))
+            def done() -> None:
+                self.pkt_store.Return(pkt)
+                if lis is not None:
+                    lis()
+
+            self.pkt_packer.post(sip, pkt, done)
         except IOError as e:
             self.pkt_store.Return(pkt)
             raise e
-
-
-    def flush(self, sip):
-        self.pkt_packer.flush(sip.postman)
-
-    def end(self, sip):
-        self.pkt_packer.end(sip.postman)

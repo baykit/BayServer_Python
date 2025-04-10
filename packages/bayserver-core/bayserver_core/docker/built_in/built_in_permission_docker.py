@@ -3,6 +3,7 @@ import ipaddress
 
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.bayserver import BayServer
+from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.symbol import Symbol
 from bayserver_core.bay_log import BayLog
 
@@ -23,8 +24,8 @@ class BuiltInPermissionDocker(DockerBase, Permission):
             self.matcher = matcher
             self.admit = admit
 
-        def socket_admitted(self, skt):
-            return self.matcher.match_socket(skt) == self.admit
+        def socket_admitted(self, rd: Rudder):
+            return self.matcher.match_socket(rd) == self.admit
 
         def tour_admitted(self, tur):
             return self.matcher.match_tour(tur) == self.admit
@@ -32,7 +33,7 @@ class BuiltInPermissionDocker(DockerBase, Permission):
     # interface
     class PermissionMatcher(metaclass=ABCMeta):
         @abstractmethod
-        def match_socket(self, skt):
+        def match_socket(self, rd: Rudder):
             pass
 
         @abstractmethod
@@ -45,8 +46,8 @@ class BuiltInPermissionDocker(DockerBase, Permission):
         def __init__(self, host):
             self.mch = HostMatcher(host)
 
-        def match_socket(self, skt):
-            return self.mch.match(skt.remote_address.getnameinfo[0])
+        def match_socket(self, rd: Rudder):
+            return self.mch.match(rd.key().remote_address.getnameinfo[0])
 
         def match_tour(self, tur):
             return self.mch.match(tur.req.remote_host())
@@ -57,8 +58,8 @@ class BuiltInPermissionDocker(DockerBase, Permission):
         def __init__(self, ip_desc):
             self.mch = IpMatcher(ip_desc)
 
-        def match_socket(self, skt):
-            return self.mch.match(IpMatcher.parse_ip(skt.getpeername()[0]))
+        def match_socket(self, rd: Rudder):
+            return self.mch.match(IpMatcher.parse_ip(rd.key().getpeername()[0]))
 
         def match_tour(self, tur):
             return self.mch.match(ipaddress.ip_network(tur.req.remote_address))
@@ -95,22 +96,22 @@ class BuiltInPermissionDocker(DockerBase, Permission):
 
         return True
 
-    def socket_admitted(self, skt):
+    def socket_admitted(self, rd: Rudder):
         # Check remote host
         isOk = True
 
         for chk in self.check_list:
             if chk.admit:
-                if chk.socket_admitted(skt):
+                if chk.socket_admitted(rd):
                     isOk = True
                     break
             else:
-                if not chk.socket_admitted(skt):
+                if not chk.socket_admitted(rd):
                     isOk = False
                     break
 
         if not isOk:
-            BayLog.error("Permission error: socket not admitted: %s", skt)
+            BayLog.error("Permission error: socket not admitted: %s", rd)
             raise HttpException(HttpStatus.FORBIDDEN)
 
     def tour_admitted(self, tur):

@@ -70,7 +70,7 @@ class CgiUtil:
         if StringUtil.is_set(ctype):
             pos = ctype.find("charset=")
             if pos >= 0:
-                tur.req.charset = ctype[pos + 8:].strip()
+                tur.req._charset = ctype[pos + 8:].strip()
 
         cls.add_env(CgiUtil.REQUEST_METHOD, tur.req.method, cb)
         cls.add_env(CgiUtil.REQUEST_URI, tur.req.uri, cb)

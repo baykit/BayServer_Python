@@ -142,13 +142,13 @@ class CgiTrain(Train, ReqContentHandler):
         BayLog.info("%s CGITask:onReadContent: wrote=%d", tur, wrote_len)
         tur.req.consumed(Tour.TOUR_ID_NOCHECK, length)
 
-    def on_end_content(self, tur):
+    def on_end_req_content(self, tur):
         BayLog.trace("%s CGITask:endContent", tur)
 
         if not TrainRunner.post(self):
             raise HttpException(HttpStatus.SERVICE_UNAVAILABLE, "TourAgents is busy")
 
-    def on_abort(self, tur):
+    def on_abort_req(self, tur):
         BayLog.trace("%s CGITask:abort", tur)
         self.close_pipes()
 

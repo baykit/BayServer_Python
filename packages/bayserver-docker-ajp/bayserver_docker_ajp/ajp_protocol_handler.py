@@ -4,21 +4,30 @@ from bayserver_core.protocol.command_packer import CommandPacker
 
 from bayserver_docker_ajp.ajp_command_unpacker import AjpCommandUnPacker
 from bayserver_docker_ajp.ajp_docker import AjpDocker
+from bayserver_docker_ajp.ajp_handler import AjpHandler
 from bayserver_docker_ajp.ajp_packet_unpacker import AjpPacketUnPacker
 from bayserver_docker_ajp.ajp_command_handler import AjpCommandHandler
 from bayserver_docker_ajp.command.cmd_data import CmdData
 from bayserver_docker_ajp.command.cmd_send_body_chunk import CmdSendBodyChunk
 
 
-class AjpProtocolHandler(ProtocolHandler, AjpCommandHandler):
+class AjpProtocolHandler(ProtocolHandler):
 
-    def __init__(self, pkt_store, svr_mode):
-        super().__init__()
-        self.command_unpacker = AjpCommandUnPacker(self)
-        self.packet_unpacker = AjpPacketUnPacker(pkt_store, self.command_unpacker)
-        self.packet_packer = PacketPacker()
-        self.command_packer = CommandPacker(self.packet_packer, pkt_store)
-        self.server_mode = svr_mode
+    def __init__(self,
+                 h1_handler: AjpHandler,
+                 packet_unpacker: AjpPacketUnPacker,
+                 packet_packer: PacketPacker,
+                 command_unpacker: AjpCommandUnPacker,
+                 command_packer: CommandPacker,
+                 svr_mode: bool):
+        super().__init__(
+            packet_unpacker,
+            packet_packer,
+            command_unpacker,
+            command_packer,
+            h1_handler,
+            svr_mode
+        )
 
     def __str__(self):
         return f"pch[{self.ship}]"

@@ -1,5 +1,6 @@
 import os.path
 import urllib.parse
+from typing import List
 
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_log import BayLog
@@ -112,17 +113,17 @@ class BuiltInCityDocker(DockerBase, City):
             tur.req.query_string = match_info.query_string
             tur.req.script_name = match_info.club_match.script_name
 
-            if StringUtil.is_set(match_info.club_match.club.charset):
-                tur.req.charset = match_info.club_match.club.charset
-                tur.res.charset = match_info.club_match.club.charset
+            if StringUtil.is_set(match_info.club_match.club.charset()):
+                tur.req._charset = match_info.club_match.club.charset()
+                tur.res._charset = match_info.club_match.club.charset()
             else:
-                tur.req.charset = BayServer.harbor.charset
-                tur.res.charset = BayServer.harbor.charset
+                tur.req._charset = BayServer.harbor.charset()
+                tur.res._charset = BayServer.harbor.charset()
 
             tur.req.path_info = match_info.club_match.path_info
             if StringUtil.is_set(tur.req.path_info) and match_info.club_match.club.decode_path_info:
                 try:
-                    tur.req.path_info = urllib.parse.unquote(tur.req.path_info, tur.req.charset)
+                    tur.req.path_info = urllib.parse.unquote(tur.req.path_info, tur.req._charset)
                 except BaseException as e:
                     BayLog.error_e("%s %s", tur, e)
                     tur.req.path_info = urllib.parse.unquote(tur.req.path_info, "us-ascii")
@@ -141,6 +142,22 @@ class BuiltInCityDocker(DockerBase, City):
                 dkr.log(tur)
             except BaseException as e:
                 BayLog.error_e(e)
+
+    ######################################################
+    # Implements City
+    ######################################################
+
+    def name(self) -> str:
+        return self.name
+
+    def clubs(self) -> List[Club]:
+        return self.clubs
+
+    def towns(self) -> List[Town]:
+        return self.towns
+
+    def get_trouble(self) -> Trouble:
+        return self.trouble
 
 
     ######################################################

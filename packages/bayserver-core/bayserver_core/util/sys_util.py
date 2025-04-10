@@ -39,6 +39,22 @@ class SysUtil:
                     sel.close()
 
     @classmethod
+    def support_select_write_file(cls):
+        with tempfile.TemporaryDirectory() as dir:
+            with open(os.path.join(dir, "test_file"), "wb") as f:
+                try:
+                    sel = selectors.DefaultSelector()
+                    sel.register(f, selectors.EVENT_WRITE)
+                    n = sel.select(0)
+                    return True
+                except OSError as e:
+                    BayLog.debug_e(e, "select() failed")
+                    return False
+                finally:
+                    if sel is not None:
+                        sel.close()
+
+    @classmethod
     def support_nonblock_file_read(cls):
         with open(bs.BayServer.bserv_plan) as f:
             try:

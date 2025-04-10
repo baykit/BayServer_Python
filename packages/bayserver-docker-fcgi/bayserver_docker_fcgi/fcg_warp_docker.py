@@ -1,17 +1,20 @@
+from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
 from bayserver_core.bay_log import BayLog
 
-from bayserver_core.agent.transporter.plain_transporter import PlainTransporter
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
+from bayserver_core.rudder.socket_rudder import SocketRudder
+from bayserver_core.ship.ship import Ship
 from bayserver_core.util.io_util import IOUtil
 
-from bayserver_core.docker.warp.warp_docker import WarpDocker
+from bayserver_core.docker.base.warp_base import WarpBase
 
 from bayserver_docker_fcgi.fcg_docker import FcgDocker
 from bayserver_docker_fcgi.fcg_packet_factory import FcgPacketFactory
 from bayserver_docker_fcgi.fcg_warp_handler import FcgWarpHandler
 
-class FcgWarpDocker(WarpDocker, FcgDocker):
+class FcgWarpDocker(WarpBase, FcgDocker):
 
     def __init__(self):
         super().__init__()
@@ -34,7 +37,7 @@ class FcgWarpDocker(WarpDocker, FcgDocker):
 
     def init_key_val(self, kv):
         key = kv.key.lower()
-        if key == "scritbase":
+        if key == "scriptbase":
             self.script_base = kv.value
         elif key == "docroot":
             self.doc_root = kv.value
@@ -55,8 +58,13 @@ class FcgWarpDocker(WarpDocker, FcgDocker):
     def protocol(self):
         return FcgDocker.PROTO_NAME
 
-    def new_transporter(self, agt, skt):
-        return PlainTransporter(False, IOUtil.get_sock_recv_buf_size(skt))
+    def new_transporter(self, agt: GrandAgent, rd: SocketRudder, sip: Ship):
+        return PlainTransporter(
+            agt.net_multiplexer,
+            sip,
+            False,
+            IOUtil.get_sock_recv_buf_size(rd.key()),
+            False)
 
     ######################################################
     # Class initializer

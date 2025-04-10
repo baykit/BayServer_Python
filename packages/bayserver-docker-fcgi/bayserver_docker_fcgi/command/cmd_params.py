@@ -1,3 +1,5 @@
+from typing import List
+
 from bayserver_core.bay_log import BayLog
 from bayserver_core.util.string_util import StringUtil
 
@@ -59,6 +61,8 @@ from bayserver_docker_fcgi.fcg_type import FcgType
 
 class CmdParams(FcgCommand):
 
+    params: List[List[str]]
+
     def __init__(self, req_id):
         super().__init__(FcgType.PARAMS, req_id)
         self.params = []
@@ -72,6 +76,7 @@ class CmdParams(FcgCommand):
         while acc.pos < pkt.data_len():
             name_len = self.read_length(acc)
             value_len = self.read_length(acc)
+            BayLog.info("name_len=%d value_len=%d", name_len, value_len)
 
             name = bytearray(name_len)
             acc.get_bytes(name, 0, name_len)
@@ -87,16 +92,16 @@ class CmdParams(FcgCommand):
     def pack(self, pkt):
         acc = pkt.new_data_accessor()
         for nv in self.params:
-            name = nv[0]
-            value = nv[1]
-            name_len = len(name)
-            value_len = len(value)
+            name_bytes = StringUtil.to_bytes(nv[0])
+            value_bytes = StringUtil.to_bytes(nv[1])
+            name_len = len(name_bytes)
+            value_len = len(value_bytes)
 
             self.write_length(name_len, acc)
             self.write_length(value_len, acc)
 
-            acc.put_string(name)
-            acc.put_string(value)
+            acc.put_bytes(name_bytes)
+            acc.put_bytes(value_bytes)
 
         # must be called from last line
         super().pack(pkt)
@@ -129,7 +134,7 @@ class CmdParams(FcgCommand):
             buf[3] = length & 0xFF
             acc.put_bytes(buf)
 
-    def add_param(self, name, value):
+    def add_param(self, name: str, value: str):
         if name is None:
             raise RuntimeError("nil argument")
 

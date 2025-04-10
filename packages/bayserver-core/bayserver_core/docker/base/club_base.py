@@ -6,12 +6,17 @@ from bayserver_core.util.string_util import StringUtil
 
 class ClubBase(DockerBase, Club):
 
+    _file_name: str
+    _extension: str
+    _charset: str
+    _decode_path_info: bool
+
     def __init__(self):
-        self.file_name = None
-        self.extension = None
-        self.charset = None
-        self.locale = None
-        self.decode_path_info = True
+        self._file_name = None
+        self._extension = None
+        self._charset = None
+        self._locale = None
+        self._decode_path_info = True
 
     ######################################################
     # Implements Docker
@@ -22,11 +27,11 @@ class ClubBase(DockerBase, Club):
 
         p = elm.arg.rfind('.')
         if p == -1:
-            self.file_name = elm.arg
-            self.extension = None
+            self._file_name = elm.arg
+            self._extension = None
         else:
-            self.file_name = elm.arg[:p]
-            self.extension = elm.arg[p+1:]
+            self._file_name = elm.arg[:p]
+            self._extension = elm.arg[p+1:]
 
     ######################################################
     # Implements DockerBase
@@ -35,9 +40,9 @@ class ClubBase(DockerBase, Club):
     def init_key_val(self, kv):
         key = kv.key.lower()
         if key == "decodepathinfo":
-            self.decode_path_info = StringUtil.parse_bool(kv.value)
+            self._decode_path_info = StringUtil.parse_bool(kv.value)
         elif key == "charset":
-            self.charset = kv.value
+            self._charset = kv.value
         else:
             return super().init_key_val(kv)
 
@@ -47,34 +52,46 @@ class ClubBase(DockerBase, Club):
     # Implements Club
     ######################################################
 
+    def file_name(self) -> str:
+        return self._file_name
+
+    def extension(self) -> str:
+        return self._extension
+
+    def charset(self) -> str:
+        return self._charset
+
+    def decode_path_info(self) -> bool:
+        return self._decode_path_info
+
     def matches(self, fname):
         # check club
         pos = fname.find(".")
         if pos == -1:
             # fname has no extension
-            if self.extension is not None:
+            if self._extension is not None:
                 return False
 
-            if self.file_name == "*":
+            if self._file_name == "*":
                 return True
 
-            return fname == self.file_name
+            return fname == self._file_name
         else:
             # fname has extension
-            if self.extension is None:
+            if self._extension is None:
                 return False
 
 
             nm = fname[:pos]
             ext = fname[pos+1:]
 
-            if self.extension != "*" and ext != self.extension:
+            if self._extension != "*" and ext != self._extension:
                 return False
 
-            if self.file_name == "*":
+            if self._file_name == "*":
                 return True
             else:
-                return nm == self.file_name
+                return nm == self._file_name
 
 
     def __str__(self):

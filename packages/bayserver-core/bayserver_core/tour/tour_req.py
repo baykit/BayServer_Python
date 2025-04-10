@@ -2,16 +2,54 @@ from bayserver_core import bayserver as bs
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
+from bayserver_core.http_exception import HttpException
 from bayserver_core.symbol import Symbol
 from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.sink import Sink
 from bayserver_core.tour import tour
 from bayserver_core.tour.content_consume_listener import ContentConsumeListener
+from bayserver_core.tour.req_content_handler import ReqContentHandler
 from bayserver_core.util.headers import Headers
+from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.reusable import Reusable
+from bayserver_core.util.data_consume_listener import DataConsumeListener
 
 
 class TourReq(Reusable):
+
+    tour: "Tour"
+    key: int
+    url: str
+    protocol: str
+    method: str
+
+    headers: Headers
+
+    rewritten_uri: str
+    query_string: str
+    path_info: str
+    script_name: str
+    req_host: str
+    req_port: int
+
+    remote_user: str
+    remote_pass: str
+
+    remote_address: str
+    remote_port: int
+    remote_host_func: DataConsumeListener
+
+    server_address: str
+    server_port: int
+    server_name: str
+    charset: str
+
+    bytes_posted: int
+    bytes_consumed: int
+    bytes_limit: int
+    content_handler: ReqContentHandler
+    available: bool
+    ended: bool
 
     def __init__(self, tur):
         self.tour = tur
@@ -95,42 +133,40 @@ class TourReq(Reusable):
     def remote_host(self):
         return self.remote_host_func()
 
-    def set_consume_listener(self, limit, listener):
+    def set_limit(self, limit: int):
         if limit < 0:
             raise Sink("invalid limit")
 
         self.bytes_limit = limit
-        self.consume_listener = listener
         self.bytes_posted = 0
         self.bytes_consumed = 0
         self.available = True
 
-    def post_content(self, check_id, data, start, length):
+    def post_req_content(self, check_id: int, data: bytearray, start: int, length: int, lis: ContentConsumeListener):
         self.tour.check_tour_id(check_id)
 
         data_passed = False
-        if not self.tour.is_running():
-            BayLog.debug("%s tour is not running.", self.tour);
+
+        # If has error, only read content. (Do not call content handler)
+        if self.tour.error is not None:
+            BayLog.debug("%s tour has error.", self.tour)
+
+        elif not self.tour.is_reading():
+            raise HttpException(HttpStatus.BAD_REQUEST, "%s tour is not reading.", self.tour)
 
         elif self.content_handler is None:
             BayLog.warn("%s content read, but no content handler", self.tour)
 
-        elif self.consume_listener is None:
-            raise Sink("Request consume listener is null")
-
         elif self.bytes_posted + length > self.bytes_limit:
-            raise ProtocolException(
+            raise HttpException(
+                HttpStatus.BAD_REQUEST,
                 BayMessage.get(
                     Symbol.HTP_READ_DATA_EXCEEDED,
                     self.bytes_posted + length,
                     self.bytes_limit))
 
-        # If has error, only read content. (Do not call content handler)
-        elif self.tour.error is not None:
-            BayLog.debug("%s tour has error.", self.tour)
-
         else:
-            self.content_handler.on_read_content(self.tour, data, start, length)
+            self.content_handler.on_read_req_content(self.tour, data, start, length, lis)
             data_passed = True
 
         self.bytes_posted += length
@@ -160,17 +196,14 @@ class TourReq(Reusable):
             raise ProtocolException(f"Invalid request data length: {self.bytes_posted}/{self.bytes_limit}")
 
         if self.content_handler is not None:
-            self.content_handler.on_end_content(self.tour)
+            self.content_handler.on_end_req_content(self.tour)
 
         self.ended = True
 
-    def consumed(self, chk_id, length):
+    def consumed(self, chk_id: int, length: int, lis: ContentConsumeListener):
         self.tour.check_tour_id(chk_id)
 
         BayLog.debug("%s content_consumed: len=%d posted=%d", self.tour, length, self.bytes_posted)
-
-        if self.consume_listener is None:
-            raise Sink("Request consume listener is null")
 
         self.bytes_consumed += length
         BayLog.debug("%s reqConsumed: len=%d posted=%d limit=%d consumed=%d",
@@ -186,7 +219,7 @@ class TourReq(Reusable):
                          self.bytes_consumed);
             resume = True
 
-        ContentConsumeListener.call(self.consume_listener, length, resume)
+        lis(length, resume)
 
     def abort(self):
         BayLog.debug("%s abort tour", self.tour)
@@ -197,7 +230,7 @@ class TourReq(Reusable):
         elif self.tour.is_running():
             aborted = True
             if self.content_handler is not None:
-                aborted = self.content_handler.on_abort(self.tour)
+                aborted = self.content_handler.on_abort_req(self.tour)
             if aborted:
                 self.tour.change_state(self.tour.tour_id, tour.Tour.TourState.ABORTED)
             return aborted
@@ -218,5 +251,5 @@ class TourReq(Reusable):
 
 
     def buffer_available(self):
-          return self.bytes_posted - self.bytes_consumed < bs.BayServer.harbor.tour_buffer_size
+          return self.bytes_posted - self.bytes_consumed < bs.BayServer.harbor.tour_buffer_size()
 

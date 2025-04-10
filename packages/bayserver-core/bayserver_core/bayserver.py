@@ -1,14 +1,14 @@
-import glob
 import os
 import pathlib
 import selectors
 import signal
 import socket
 import sys
-import threading
 import traceback
 import shutil
+from typing import Dict, List, ClassVar
 
+from bayserver_core.rudder.socket_rudder import SocketRudder
 from bayserver_core.version import Version
 from bayserver_core.bay_log import BayLog
 from bayserver_core.mem_usage import MemUsage
@@ -18,7 +18,7 @@ from bayserver_core.bay_message import BayMessage
 from bayserver_core.symbol import Symbol
 
 from bayserver_core.agent.grand_agent import GrandAgent
-from bayserver_core.agent.grand_agent_monitor import GrandAgentMonitor
+from bayserver_core.agent.monitor.grand_agent_monitor import GrandAgentMonitor
 from bayserver_core.agent.signal.signal_agent import SignalAgent
 from bayserver_core.agent.signal.signal_sender import SignalSender
 
@@ -26,7 +26,7 @@ from bayserver_core.bcf.bcf_element import BcfElement
 from bayserver_core.bcf.bcf_parser import BcfParser
 from bayserver_core.docker.city import City
 from bayserver_core.docker.harbor import Harbor
-from bayserver_core.docker.base.inbound_ship_store import InboundShipStore
+from bayserver_core.common.inbound_ship_store import InboundShipStore
 from bayserver_core.docker.port import Port
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
@@ -54,48 +54,48 @@ class BayServer:
     ENV_BAYSERVER_PLAN = "BSERV_PLAN"
 
     # Host name
-    my_host_name = None
+    my_host_name: ClassVar[str] = None
 
     # Host address
-    my_host_address = None
+    my_host_address: ClassVar[str] = None
 
     # BSERV_HOME directory
-    bserv_home = None
+    bserv_home: ClassVar[str] = None
 
     # BSERV_LIB directory
-    bserv_lib = None
+    bserv_lib: ClassVar[str] = None
 
     # Configuration file name (full path)
-    bserv_plan = None
-
-    # Agent list
-    agent_list = []
-    agent_list_lock = threading.Lock()
+    bserv_plan: ClassVar[str] = None
 
     # Dockers
-    dockers = None
+    dockers: ClassVar[BayDockers] = None
 
-    # Port docker
-    port_docker_list = []
+    # Anchorable Port docker
+    anchorable_port_map: ClassVar[Dict[SocketRudder, Port]] = {}
+    unanchorable_port_map: ClassVar[Dict[SocketRudder, Port]] = {}
 
     # Harbor docker
-    harbor = None
+    harbor: ClassVar[Harbor] = None
 
     # BayAgent
-    bay_agent = None
+    bay_agent: ClassVar[SignalAgent] = None
 
     # City dockers
-    cities = Cities()
+    cities: ClassVar[Cities] = Cities()
+
+    # Port docker list
+    port_docker_list: ClassVar[List[Port]] = []
 
     # Software name
-    software_name = None
+    software_name: ClassVar[str] = None
 
     # Command line arguments
-    commandline_args = None
+    commandline_args: ClassVar[List[str]] = None
 
     # for child process mode
-    channels = None
-    communication_channel = None
+    channels: ClassVar[List[socket.socket]] = None
+    communication_channel: ClassVar[socket.socket] = None
 
 
     def __init__(self):
@@ -103,17 +103,21 @@ class BayServer:
         pass
 
     @classmethod
-    def init_child(cls, chs, com_ch):
+    def init_child(cls, chs, com_ch: socket.socket) -> None:
         cls.channels = chs
         cls.communication_channel = com_ch
 
     @classmethod
-    def get_version(cls):
+    def get_version(cls) -> str:
         return Version.VERSION
 
     @classmethod
-    def main(cls, args):
+    def main(cls, args) -> None:
         cls.commandline_args = args
+
+        # Clear contents from parent process
+        cls.anchorable_port_map = {}
+        cls.unanchorable_port_map = {}
 
         cmd = None
         home = os.environ.get(cls.ENV_BAYSERVER_HOME)
@@ -166,7 +170,7 @@ class BayServer:
                 SignalSender().send_command(cmd)
 
     @classmethod
-    def get_home(cls, home):
+    def get_home(cls, home) -> None:
         if home is not None:
             cls.bserv_home = home
         elif os.getenv(cls.ENV_BAYSERVER_HOME) is not None:
@@ -177,7 +181,7 @@ class BayServer:
         BayLog.debug("BayServer Home: %s", cls.bserv_home)
 
     @classmethod
-    def get_plan(cls, plan):
+    def get_plan(cls, plan) -> None:
         if plan is not None:
             cls.bserv_plan = plan
         elif os.getenv(cls.ENV_BAYSERVER_PLAN) is not None:
@@ -189,14 +193,14 @@ class BayServer:
         BayLog.debug("BayServer Plan: " + cls.bserv_plan)
 
     @classmethod
-    def get_lib(cls):
+    def get_lib(cls) -> None:
         cls.bserv_lib = os.getenv(cls.ENV_BAYSERVER_LIB)
         if cls.bserv_lib is None or not os.path.isdir(cls.bserv_lib):
             raise BayException("Library directory is not a directory: %s", cls.bserv_lib)
 
 
     @classmethod
-    def init(cls):
+    def init(cls) -> None:
         init_dir = os.path.join(cls.bserv_lib, "init")
         BayLog.debug("init directory: %s", init_dir)
         file_list = os.listdir(init_dir)
@@ -204,50 +208,49 @@ class BayServer:
             shutil.copytree(os.path.join(init_dir, file), os.path.join(cls.bserv_home, file))
 
     @classmethod
-    def start(cls, agt_id):
+    def start(cls, agt_id) -> None:
         try:
-            if SysUtil.run_on_windows() or agt_id == -1:
+            BayMessage.init(cls.bserv_lib + "/conf/messages", Locale.default())
 
-                BayMessage.init(cls.bserv_lib + "/conf/messages", Locale('ja', 'JP'))
+            cls.dockers = BayDockers()
 
-                cls.dockers = BayDockers()
+            cls.dockers.init(cls.bserv_lib + "/conf/dockers.bcf")
 
-                cls.dockers.init(cls.bserv_lib + "/conf/dockers.bcf")
+            Mimes.init(cls.bserv_lib + "/conf/mimes.bcf")
+            HttpStatus.init(cls.bserv_lib + "/conf/httpstatus.bcf")
 
-                Mimes.init(cls.bserv_lib + "/conf/mimes.bcf")
-                HttpStatus.init(cls.bserv_lib + "/conf/httpstatus.bcf");
+            # Init stores, memory usage managers
+            PacketStore.init()
+            ProtocolHandlerStore.init()
+            InboundShipStore.init()
+            TourStore.init(TourStore.MAX_TOURS)
 
-                if cls.bserv_plan is not None:
-                    cls.load_plan(cls.bserv_plan)
+            if cls.bserv_plan is not None:
+                cls.load_plan(cls.bserv_plan)
 
-                if len(cls.port_docker_list) == 0:
-                    raise BayException(BayMessage.get(Symbol.CFG_NO_PORT_DOCKER))
+            if len(cls.port_docker_list) == 0:
+                raise BayException(BayMessage.get(Symbol.CFG_NO_PORT_DOCKER))
 
-                redirect_file = cls.harbor.redirect_file
+            redirect_file = cls.harbor.redirect_file()
 
-                if redirect_file is not None:
-                    if not pathlib.Path(redirect_file).is_absolute():
-                        redirect_file = cls.bserv_home + "/" + redirect_file
-                    f = open(redirect_file, "a")
-                    sys.stdout = f
-                    sys.stderr = f
+            if redirect_file is not None:
+                if not pathlib.Path(redirect_file).is_absolute():
+                    redirect_file = cls.bserv_home + "/" + redirect_file
+                f = open(redirect_file, "a")
+                sys.stdout = f
+                sys.stderr = f
 
-                # Init stores, memory usage managers
-                PacketStore.init()
-                InboundShipStore.init()
-                ProtocolHandlerStore.init()
-                TourStore.init(TourStore.MAX_TOURS)
-                MemUsage.init()
+            MemUsage.init()
 
 
-                if SysUtil.run_on_pycharm():
-                    def int_handler(sig, stk):
-                        print("Trap! Interrupted")
-                        GrandAgent.abort_all()
+            if SysUtil.run_on_pycharm():
+                def int_handler(sig, stk):
+                    print("Trap! Interrupted")
+                    GrandAgent.abort_all()
 
-                    signal.signal(signal.SIGINT, int_handler)
+                signal.signal(signal.SIGINT, int_handler)
 
-                BayLog.debug("Command line: %s", cls.commandline_args)
+            BayLog.debug("Command line: %s", cls.commandline_args)
 
             if agt_id == -1:
 
@@ -258,6 +261,8 @@ class BayServer:
 
             else:
                 cls.child_start(agt_id)
+
+            return
 
             while len(GrandAgentMonitor.monitors) > 0:
                 sel = selectors.DefaultSelector()
@@ -289,14 +294,14 @@ class BayServer:
         exit(1)
 
     @classmethod
-    def open_ports(cls, anchored_port_map, unanchored_port_map):
+    def open_ports(cls,):
         for dkr in cls.port_docker_list:
             # open port
             adr = dkr.address()
 
-            if dkr.anchored:
+            if dkr.anchored():
                 # Open TCP port
-                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_TCP_PORT, dkr.host, dkr.port, dkr.protocol()))
+                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_TCP_PORT, dkr.host(), dkr.port(), dkr.protocol()))
 
                 if isinstance(adr, str):
                     try:
@@ -313,14 +318,14 @@ class BayServer:
                 try:
                     skt.bind(adr)
                 except OSError as e:
-                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host, dkr.port,
+                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
                                                      ExceptionUtil.message(e)))
-                    return
+                    raise e
                 skt.listen(0)
-                anchored_port_map[skt] = dkr
+                cls.anchorable_port_map[SocketRudder(skt)] = dkr
             else:
                 # Open UDP port
-                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_UDP_PORT, dkr.host, dkr.port, dkr.protocol()))
+                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_UDP_PORT, dkr.host(), dkr.port(), dkr.protocol()))
                 skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 if not SysUtil.run_on_windows():
                     skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -328,33 +333,28 @@ class BayServer:
                 try:
                     skt.bind(adr)
                 except OSError as e:
-                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host, dkr.port,
+                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
                                                      ExceptionUtil.message(e)))
                     return
 
-                unanchored_port_map[skt] = dkr
+                cls.unanchorable_port_map[SocketRudder(skt)] = dkr
 
     @classmethod
     def parent_start(cls):
-        anchored_port_map = {}
-        unanchored_port_map = {}
         BayLog.debug("parent_start")
-        cls.open_ports(anchored_port_map, unanchored_port_map)
+        cls.open_ports()
 
         if not cls.harbor.multi_core:
             # Thread mode
 
             GrandAgent.init(
-                list(range(1, cls.harbor.grand_agents + 1)),
-                anchored_port_map,
-                unanchored_port_map,
-                cls.harbor.max_ships,
-                cls.harbor.multi_core)
+                list(range(1, cls.harbor.grand_agents() + 1)),
+                        cls.harbor.max_ships())
 
             cls.invoke_runners()
 
-        GrandAgentMonitor.init(cls.harbor.grand_agents, anchored_port_map, unanchored_port_map)
-        SignalAgent.init(cls.harbor.control_port)
+        GrandAgentMonitor.init(cls.harbor.grand_agents())
+        SignalAgent.init(cls.harbor.control_port())
         cls.create_pid_file(SysUtil.pid())
 
     @classmethod
@@ -362,11 +362,10 @@ class BayServer:
         BayLog.debug("Agt#%d child_start", agt_id)
         cls.invoke_runners()
 
-        anchored_port_map = {}
-        unanchored_port_map = {}
-
         for skt in cls.channels:
             server_addr = skt.getsockname()
+            port_no = -1
+            port_path = None
             if not SysUtil.run_on_windows() and skt.family == socket.AF_UNIX:
                 # Unix domain socker
                 unix_domain = True
@@ -387,11 +386,11 @@ class BayServer:
 
             for p in cls.port_docker_list:
                 if unix_domain:
-                    if p.socket_path == port_path:
+                    if p.socket_path() == port_path:
                         port_dkr = p
                         break
                 else:
-                    if p.anchored == anchorable and p.port == port_no:
+                    if p.anchored() == anchorable and p.port() == port_no:
                         port_dkr = p
                         break
 
@@ -400,20 +399,15 @@ class BayServer:
                 sys.exit(1)
 
             if port_dkr.anchored:
-                anchored_port_map[skt] = port_dkr
+                cls.anchorable_port_map[SocketRudder(skt)] = port_dkr
             else:
-                unanchored_port_map[skt] = port_dkr
+                cls.unanchorable_port_map[SocketRudder(skt)] = port_dkr
 
 
-        GrandAgent.init(
-            [agt_id],
-            anchored_port_map,
-            unanchored_port_map,
-            cls.harbor.max_ships,
-            cls.harbor.multi_core
-        )
+        GrandAgent.init([agt_id], cls.harbor.max_ships())
         agt = GrandAgent.get(agt_id)
-        agt.run_command_receiver(cls.communication_channel)
+
+        agt.add_command_receiver(SocketRudder(cls.communication_channel))
         agt.run()
 
     @classmethod
@@ -483,7 +477,7 @@ class BayServer:
 
     @classmethod
     def create_pid_file(cls, pid):
-        with open(cls.harbor.pid_file, "w") as f:
+        with open(cls.harbor.pid_file(), "w") as f:
             f.write(str(pid))
 
     #
@@ -492,8 +486,8 @@ class BayServer:
     #
     @classmethod
     def invoke_runners(cls):
-        TrainRunner.init(cls.harbor.train_runners)
-        TaxiRunner.init(cls.harbor.taxi_runners)
+        TrainRunner.init(cls.harbor.train_runners())
+        TaxiRunner.init(cls.harbor.taxi_runners())
 
 
 if __name__ == "__main__":

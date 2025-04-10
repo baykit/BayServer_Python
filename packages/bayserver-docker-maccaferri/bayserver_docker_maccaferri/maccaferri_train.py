@@ -144,7 +144,7 @@ class MaccaferriTrain(Train):
             raise HttpException.new(HttpStatus.SERVICE_UNAVAILABLE, "TrainRunner is busy")
 
 
-    def on_abort(self, tur):
+    def on_abort_req(self, tur):
         BayLog.trace("%s Banjo:abort", tur)
 
         if self.tmpfile is not None:

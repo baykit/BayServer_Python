@@ -1,27 +1,34 @@
 import copy
+from typing import List
+
+from bayserver_core.docker.city import City
 
 
 class Cities:
+
+    _any_city: City
+    _cities: List[City]
+
     def __init__(self):
-        self.any_city = None
-        self.cities = []
+        self._any_city = None
+        self._cities = []
 
     def add(self, c):
         if c.name == "*":
-            self.any_city = c
+            self._any_city = c
         else:
-            self.cities.append(c)
+            self._cities.append(c)
 
     def find_city(self, name):
         # Check exact match
-        for c in self.cities:
+        for c in self._cities:
             if c.name == name:
                 return c
 
-        return self.any_city
+        return self._any_city
 
-    def cities(self):
-        ret = copy.copy(self.cities())
-        if self.any_city:
-            ret += self.any_city
+    def cities(self) -> List[City]:
+        ret = copy.copy(self._cities)
+        if self._any_city:
+            ret.append(self._any_city)
         return ret

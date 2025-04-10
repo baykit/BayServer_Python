@@ -2,7 +2,6 @@ import ssl
 import threading
 from abc import ABCMeta, abstractmethod
 
-from bayserver_core.agent.channel_listener import ChannelListener
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.agent.upgrade_exception import UpgradeException
 from bayserver_core.bay_log import BayLog
@@ -14,7 +13,7 @@ from bayserver_core.util.valve import Valve
 from bayserver_core.util.postman import Postman
 
 
-class Transporter(ChannelListener, Reusable, Valve, Postman, metaclass=ABCMeta):
+class Transporter(Reusable, Valve, Postman, metaclass=ABCMeta):
 
     class WriteUnit:
 

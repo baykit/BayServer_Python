@@ -72,12 +72,12 @@ class H3PortDocker(PortBase, H3Docker):
             secrets_log_file = secrets_log,
         )
 
-        if not self.secure_docker.cert_file:
+        if not self._secure_docker.cert_file:
             raise ConfigException(elm.file_name, elm.line_no, BayMessage.get(Symbol.CFG_SSL_CERT_FILE_NOT_SPECIFIED))
-        if not self.secure_docker.key_file:
+        if not self._secure_docker.key_file:
             raise ConfigException(elm.file_name, elm.line_no, BayMessage.get(Symbol.CFG_SSL_KEY_FILE_NOT_SPECIFIED));
 
-        self.config.load_cert_chain(self.secure_docker.cert_file, self.secure_docker.key_file)
+        self.config.load_cert_chain(self._secure_docker.cert_file, self._secure_docker.key_file)
 
         ticket_store = H3PortDocker.SessionTicketStore()
         self.session_ticket_fetcher = ticket_store.pop

@@ -1,33 +1,68 @@
 from abc import ABCMeta, abstractmethod
-from bayserver_core.docker.docker import Docker
+from typing import List
 
+from bayserver_core.common import inbound_ship as isip
+from bayserver_core.docker.city import City
+from bayserver_core.docker.docker import Docker
+from bayserver_core.protocol.protocol_handler import ProtocolHandler
+from bayserver_core.rudder.rudder import Rudder
+
+from bayserver_core.util.internet_address import InternetAddress
 
 class Port(Docker, metaclass=ABCMeta):
 
     @abstractmethod
-    def address(self):
+    def protocol(self) -> str:
         pass
 
     @abstractmethod
-    def check_admitted(self, skt):
+    def host(self) -> str:
         pass
 
     @abstractmethod
-    def find_city(self, name):
+    def port(self) -> int:
         pass
 
     @abstractmethod
-    def new_transporter(self, agt, skt):
+    def socket_path(self) -> str:
         pass
 
     @abstractmethod
-    def check_admitted(self, skt):
+    def address(self) -> InternetAddress:
         pass
 
     @abstractmethod
-    def return_protocol_handler(self, agt, proto_hnd):
+    def anchored(self) -> bool:
         pass
 
     @abstractmethod
-    def return_ship(self, sip):
+    def secure(self) -> bool:
+        pass
+
+    @abstractmethod
+    def timeout_sec(self) -> int:
+        pass
+
+    @abstractmethod
+    def additional_headers(self) -> List[List[str]]:
+        pass
+
+    @abstractmethod
+    def cities(self) -> List[City]:
+        pass
+
+    @abstractmethod
+    def find_city(self, name: str) -> City:
+        pass
+
+    @abstractmethod
+    def on_connected(self, agt_id: int, rd: Rudder):
+        pass
+
+    @abstractmethod
+    def return_protocol_handler(self, agt_id: int, proto_hnd: ProtocolHandler):
+        pass
+
+    @abstractmethod
+    def return_ship(self, sip: "isip.InboundShip"):
         pass

@@ -15,9 +15,9 @@ class Locale:
         lang = os.getenv('LANG')
         if StringUtil.is_set(lang):
             try:
-                language = lang[0, 2]
-                country = lang[4, 2]
-                return Locale.new(language, country)
+                language = lang[0:2]
+                country = lang[3:5]
+                return Locale(language, country)
 
             except BaseException as e:
                 BayLog.error_e(e)

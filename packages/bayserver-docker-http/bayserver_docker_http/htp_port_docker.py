@@ -27,8 +27,8 @@ class HtpPortDocker(PortBase, HtpDocker):
         super().init(elm, parent)
 
         if self.support_h2:
-            if(self.secure_docker is not None):
-                self.secure_docker.set_app_protocols(["h2", "http/1.1"])
+            if(self._secure_docker is not None):
+                self._secure_docker.set_app_protocols(["h2", "http/1.1"])
             H2ErrorCode.init_codes()
 
     ######################################################

@@ -1,24 +1,26 @@
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
-from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent import grand_agent as ga
+from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.agent.timer_handler import TimerHandler
 from bayserver_core.bay_log import BayLog
 
 class TaxiRunner(TimerHandler):
 
-    class AgentListener(GrandAgent.GrandAgentLifecycleListener):
-        def add(self, agt):
-            TaxiRunner.runners[agt.agent_id - 1] = TaxiRunner(agt)
+    class AgentListener(LifecycleListener):
+        def add(self, agt_id: int):
+            TaxiRunner.runners[agt_id - 1] = TaxiRunner(agt_id)
 
-        def remove(self, agt):
-            TaxiRunner.runners[agt.agent_id - 1].terminate()
-            del TaxiRunner.runners[agt.agent_id - 1]
+        def remove(self, agt_id: int):
+            TaxiRunner.runners[agt_id - 1].terminate()
+            del TaxiRunner.runners[agt_id - 1]
 
     max_taxis = None
     runners = None
 
-    def __init__(self, agt):
+    def __init__(self, agt_id: int):
+        agt = ga.GrandAgent.get(agt_id)
         self.agent = agt
         self.exe = ThreadPoolExecutor(TaxiRunner.max_taxis, f"TaxiRunner-{agt}-")
         self.agent.add_timer_handler(self)
@@ -51,11 +53,11 @@ class TaxiRunner(TimerHandler):
     def init(cls, max_taxis):
         cls.runners = {}
         cls.max_taxis = max_taxis
-        GrandAgent.add_lifecycle_listener(TaxiRunner.AgentListener())
+        ga.GrandAgent.add_lifecycle_listener(TaxiRunner.AgentListener())
 
     @classmethod
     def post(cls, agt_id, txi):
-        BayLog.debug("Agt#%d post taxi: thread=%s taxi=%s", agt_id, threading.current_thread().name, txi)
+        BayLog.debug("agt#%d post taxi: thread=%s taxi=%s", agt_id, threading.current_thread().name, txi)
         try:
             cls.runners[agt_id - 1].submit(txi)
             return True

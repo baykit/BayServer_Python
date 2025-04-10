@@ -53,14 +53,14 @@ class InboundDataListener(DataListener):
 
 
     def check_timeout(self, duration_sec):
-        if self.ship.socket_timeout_sec <= 0:
+        if self.ship._socket_timeout_sec <= 0:
             timeout = False
         elif self.ship.keeping:
             timeout = duration_sec >= bs.BayServer.harbor.keep_timeout_sec
         else:
-            timeout = duration_sec >= self.ship.socket_timeout_sec
+            timeout = duration_sec >= self.ship._socket_timeout_sec
 
         BayLog.debug("%s Check timeout: dur=%d timeout=%s, keeping=%s, limit=%d",
-                     self, duration_sec, timeout, self.ship.keeping, self.ship.socket_timeout_sec)
+                     self, duration_sec, timeout, self.ship.keeping, self.ship._socket_timeout_sec)
         return timeout
 

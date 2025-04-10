@@ -1,11 +1,13 @@
 import ssl
 
-
+from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent.multiplexer.secure_transporter import SecureTransporter
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_message import BayMessage
+from bayserver_core.common.transporter import Transporter
+from bayserver_core.ship.ship import Ship
 from bayserver_core.symbol import Symbol
-from bayserver_core.agent.transporter.secure_transporter import SecureTransporter
 from bayserver_core.docker.base.docker_base import DockerBase
 from bayserver_core.config_exception import ConfigException
 
@@ -89,8 +91,16 @@ class BuiltInSecureDocker(DockerBase, Secure):
 
         self.sslctx.set_alpn_protocols(protocols)
 
-    def create_transporter(self, bufsize):
-        return SecureTransporter(self.sslctx, True, bufsize, self.trace_ssl)
+    def new_transporter(self, agt_id: int, sip: Ship, buf_size: int) -> Transporter:
+        agt = GrandAgent.get(agt_id)
+        return SecureTransporter(
+                    agt.net_multiplexer,
+                    sip,
+                    True,
+                    buf_size,
+                    self.trace_ssl,
+                    self.sslctx,
+                    self.app_protocols)
 
     def reload_cert(self):
         self.init_ssl()

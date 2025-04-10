@@ -1,7 +1,3 @@
-from abc import ABCMeta, abstractmethod
+from typing import Callable
 
-class DataConsumeListener(metaclass=ABCMeta):
-
-    @abstractmethod
-    def done(self):
-        pass
+DataConsumeListener = Callable[[], None]
