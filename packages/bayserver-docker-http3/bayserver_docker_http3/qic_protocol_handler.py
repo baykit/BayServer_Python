@@ -107,7 +107,7 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
             for value in tur.res.headers.values(name):
                 h3_hdrs.append((name.encode(), value.encode()))
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             for hdr in h3_hdrs:
                 BayLog.info("%s header %s: %s", tur, hdr[0], hdr[1])
 

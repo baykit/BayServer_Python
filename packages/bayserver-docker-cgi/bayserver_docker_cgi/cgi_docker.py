@@ -85,7 +85,7 @@ class CgiDocker(ClubBase):
             raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "$s docRoot of cgi docker or location of town is not specified.", tur.town)
 
         env = CgiUtil.get_env_hash(tur.town.name, root, base, tur)
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             for name in env.keys():
                 value = env[name]
                 BayLog.info("%s cgi: env: %s=%s", tur, name, value)

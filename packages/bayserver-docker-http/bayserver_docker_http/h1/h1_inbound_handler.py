@@ -109,7 +109,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
 
         tur.res.headers.set(Headers.CONNECTION, res_con)
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             BayLog.info("%s resStatus:%d", tur, tur.res.headers.status)
             for name in tur.res.headers.names():
                 for value in tur.res.headers.values(name):
@@ -225,7 +225,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
         BayLog.debug("%s read header method=%s protocol=%s uri=%s contlen=%d",
                      self.ship, tur.req.method, tur.req.protocol, tur.req.uri, tur.req.headers.content_length())
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             for item in cmd.headers:
                 BayLog.info("%s h1: reqHeader: %s=%s", tur, item[0], item[1])
 

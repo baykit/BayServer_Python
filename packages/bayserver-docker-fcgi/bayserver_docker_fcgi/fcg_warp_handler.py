@@ -220,7 +220,7 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
                         raise ProtocolException("fcgi: Header line of server is invalid: %s", line)
 
                     headers.add(name, value)
-                    if BayServer.harbor.trace_header:
+                    if BayServer.harbor.trace_header():
                         BayLog.info("%s fcgi_warp: resHeader: %s=%s", self.ship, name, value)
 
                 self.line_buf.clear()
@@ -288,7 +288,7 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
         # cmd.add_param(FcgParams.X_FORWARDED_PROTO, tur.is_secure ? "https" : "http")
         # cmd.add_param(FcgParams.X_FORWARDED_PORT, tur.req.req_port.to_s)
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             for kv in cmd.params:
                 BayLog.info("%s fcgi_warp: env: %s=%s", self.ship, kv[0], kv[1])
 

@@ -101,7 +101,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
         cmd.header_blocks.append(blk)
 
         # headers
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             BayLog.info("%s res status: %d", tur, tur.res.headers.status)
 
         for name in tur.res.headers.names():
@@ -109,7 +109,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
                 BayLog.trace("%s Connection header is discarded", tur)
             else:
                 for value in tur.res.headers.values(name):
-                    if BayServer.harbor.trace_header:
+                    if BayServer.harbor.trace_header():
                         BayLog.info("%s H2 res header: %s=%s", tur, name, value)
 
                     blk = bld.build_header_block(name, value, self.res_header_tbl)
@@ -183,7 +183,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
                 continue
 
             self.analyzer.analyze_header_block(blk, self.req_header_tbl)
-            if BayServer.harbor.trace_header:
+            if BayServer.harbor.trace_header():
                 BayLog.info("%s req header: %s=%s :%s", tur, self.analyzer.name, self.analyzer.value, blk);
 
             if self.analyzer.name is None:

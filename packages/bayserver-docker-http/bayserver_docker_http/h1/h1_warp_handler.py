@@ -116,7 +116,7 @@ class H1WarpHandler(H1Handler, WarpHandler):
         cmd.set_header(Headers.HOST, f"{sip.docker._host}:{sip.docker._port}")
         cmd.set_header(Headers.CONNECTION, "Keep-Alive")
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             for kv in cmd.headers:
                 BayLog.info("%s warp_http reqHdr: %s=%s", tur, kv[0], kv[1])
 
@@ -152,12 +152,12 @@ class H1WarpHandler(H1Handler, WarpHandler):
         if self.state != H1WarpHandler.STATE_READ_HEADER:
             raise ProtocolException("Header command not expected: state=%d", self.state)
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             BayLog.info("%s warp_http: resStatus: %d", wdat, cmd.status)
 
         for nv in cmd.headers:
             tur.res.headers.add(nv[0], nv[1])
-            if BayServer.harbor.trace_header:
+            if BayServer.harbor.trace_header():
                 BayLog.info("%s warp_http: resHeader: %s=%s", wdat, nv[0], nv[1]);
 
         tur.res.headers.status = cmd.status

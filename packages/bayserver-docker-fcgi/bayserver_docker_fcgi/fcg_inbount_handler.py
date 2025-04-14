@@ -93,7 +93,7 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
         status = f"{scode} {HttpStatus.description(scode)}"
         tur.res.headers.set(Headers.STATUS, status)
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             BayLog.info("%s resStatus:%d", tur, tur.res.headers.status)
             for name in tur.res.headers.names():
                 for value in tur.res.headers.values(name):
@@ -197,7 +197,7 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
             BayLog.debug("%s read header method=%s protocol=%s uri=%s contlen=%d",
                          self.ship(), tur.req.method, tur.req.protocol, tur.req.uri, self.cont_len)
 
-            if BayServer.harbor.trace_header:
+            if BayServer.harbor.trace_header():
                 for nv in cmd.params:
                     BayLog.info("%s  reqHeader: %s=%s", tur, nv[0], nv[1])
 
@@ -223,13 +223,13 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
                     return NextSocketAction.CONTINUE
 
         else:
-            if BayServer.harbor.trace_header:
+            if BayServer.harbor.trace_header():
                 BayLog.info("%s Read FcgiParam", tur)
 
             for nv in cmd.params:
                 name = nv[0]
                 value = nv[1]
-                if BayServer.harbor.trace_header:
+                if BayServer.harbor.trace_header():
                     BayLog.info("%s  param: %s=%s", tur, name, value);
                 self.env[name] = value
 

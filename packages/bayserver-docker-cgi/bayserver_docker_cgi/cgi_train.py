@@ -66,7 +66,7 @@ class CgiTrain(Train, ReqContentHandler):
             # Handle StdOut
             HttpUtil.parse_message_headers(self.std_out, self.tour.res.headers)
 
-            if BayServer.harbor.trace_header:
+            if BayServer.harbor.trace_header():
                 for name in self.tour.res.headers.names():
                     for value in self.tour.res.headers.values(name):
                         BayLog.info("%s CGI: resHeader: %s=%s", self.tour, name, value)

@@ -154,7 +154,7 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
         BayLog.debug("%s read header method=%s protocol=%s uri=%s contlen=%d",
                      tur, tur.req.method, tur.req.protocol, tur.req.uri, tur.req.headers.content_length())
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             for name in cmd.headers.names():
                 for value in cmd.headers.values(name):
                     BayLog.info("%s header: %s=%s", tur, name, value)

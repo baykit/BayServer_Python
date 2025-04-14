@@ -62,7 +62,7 @@ class MaccaferriTrain(Train):
             if StringUtil.eq_ignorecase(self.tour.req.method, "post"):
                 BayLog.debug("%s Banjo: posted: content-length: %s", self.tour, self.env["CONTENT_LENGTH"])
 
-            if BayServer.harbor.trace_header:
+            if BayServer.harbor.trace_header():
                 for key in self.env.keys():
                     value = self.env[key]
                     BayLog.info("%s Banjo: env:%s=%s", self.tour, key, value)

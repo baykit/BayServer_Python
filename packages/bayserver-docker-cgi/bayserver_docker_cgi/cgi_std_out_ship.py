@@ -94,7 +94,7 @@ class CgiStdOutShip(ReadOnlyShip):
                     break
 
                 else:
-                    if BayServer.harbor.trace_header:
+                    if BayServer.harbor.trace_header():
                         BayLog.info("%s CGI: res header line: %s", self.tour, line)
 
                     sep_pos = line.index(CharUtil.COLON_BYTE)

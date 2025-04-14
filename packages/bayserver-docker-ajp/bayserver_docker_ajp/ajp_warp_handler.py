@@ -142,13 +142,13 @@ class AjpWarpHandler(AjpHandler, WarpHandler):
 
         wdat = WarpData.get(tur)
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             BayLog.info("%s recv res status: %d", wdat, cmd.status)
 
         wdat.res_headers.status = cmd.status
         for name in cmd.headers.keys():
             for value in cmd.headers[name]:
-                if BayServer.harbor.trace_header:
+                if BayServer.harbor.trace_header():
                     BayLog.info("%s recv res header: %s=%s", wdat, name, value)
 
                 wdat.res_headers.add(name, value)
@@ -221,7 +221,7 @@ class AjpWarpHandler(AjpHandler, WarpHandler):
         cmd.is_ssl = tur.is_secure
         cmd.headers = tur.req.headers
 
-        if BayServer.harbor.trace_header:
+        if BayServer.harbor.trace_header():
             for name in cmd.headers.names():
                 for value in cmd.headers.values(name):
                     BayLog.info("%s sendWarpHeader: %s=%s", WarpData.get(tur), name, value)
