@@ -76,7 +76,6 @@ class CmdParams(FcgCommand):
         while acc.pos < pkt.data_len():
             name_len = self.read_length(acc)
             value_len = self.read_length(acc)
-            BayLog.info("name_len=%d value_len=%d", name_len, value_len)
 
             name = bytearray(name_len)
             acc.get_bytes(name, 0, name_len)

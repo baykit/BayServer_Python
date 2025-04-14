@@ -236,7 +236,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                 self._handle_channel(key, events)
 
     def wakeup(self) -> None:
-        BayLog.debug("%s WakeUp", self)
+        BayLog.trace("%s WakeUp", self)
         try:
             IOUtil.send_int32(self.select_wakeup_pipe[1], 0)
         except BlockingIOError as e:
@@ -320,7 +320,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                 BayLog.debug("%s Unregister error (Ignore): %s", self, e)
             return
 
-        BayLog.debug("%s chState=%s Handle channel: readable=%s writable=%s connecting=%s",
+        BayLog.debug("%s Handle channel: chState=%s readable=%s writable=%s connecting=%s",
                      self.agent, st, events & selectors.EVENT_READ, events & selectors.EVENT_WRITE,
                      st.connecting)
 
@@ -473,7 +473,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
             self.agent.send_error_letter(st, e, False)
 
     def _on_waked_up(self) -> None:
-        BayLog.debug("%s On Waked Up", self)
+        BayLog.trace("%s On Waked Up", self)
         try:
             while True:
                 IOUtil.recv_int32(self.select_wakeup_pipe[0])
