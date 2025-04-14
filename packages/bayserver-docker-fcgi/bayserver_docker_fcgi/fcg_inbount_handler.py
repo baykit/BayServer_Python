@@ -284,7 +284,7 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
                 if resume:
                     self.ship().resume_read(sid)
 
-            success = tur.req.post_content(Tour.TOUR_ID_NOCHECK, cmd.data, cmd.start, cmd.length, callback)
+            success = tur.req.post_req_content(Tour.TOUR_ID_NOCHECK, cmd.data, cmd.start, cmd.length, callback)
 
             if not success:
                 return NextSocketAction.SUSPEND

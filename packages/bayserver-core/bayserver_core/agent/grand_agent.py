@@ -140,14 +140,11 @@ class GrandAgent:
 
         # Set up unanchorable channel
         if not self.anchorable:
-            for ch in bs.BayServer.unanchorable_port_map.keys():
-                port_dkr = bs.BayServer.unanchorable_port_map[ch]
-                tp = port_dkr.new_transporter(self, ch)
-                self.unanchorable_transporters[ch] = tp
-                self.non_blocking_handler.add_channel_listener(ch, tp)
-                self.non_blocking_handler.ask_to_start(ch)
-                if not self.anchorable:
-                    self.non_blocking_handler.ask_to_read(ch)
+            for rd in bs.BayServer.unanchorable_port_map.keys():
+                if self.net_multiplexer.is_non_blocking():
+                    rd.set_non_blocking()
+                port_dkr = bs.BayServer.unanchorable_port_map[rd]
+                port_dkr.on_connected(self.agent_id, rd)
 
         busy = True
         try:
@@ -497,7 +494,7 @@ class GrandAgent:
         return GrandAgent.agents[id]
 
     @classmethod
-    def add(cls, agt_id, anchorable):
+    def add(cls, agt_id: int, anchorable: bool) -> "GrandAgent":
         if agt_id == -1:
             agt_id = GrandAgent.max_agent_id + 1
 
@@ -511,6 +508,8 @@ class GrandAgent:
 
         for lis in GrandAgent.listeners:
             lis.add(agt_id)
+
+        return agt
 
 
     @classmethod

@@ -190,7 +190,7 @@ class PortBase(DockerBase, Port, metaclass=ABCMeta):
         sip = PortBase.get_ship_store(agt_id).rent()
         agt = GrandAgent.get(agt_id)
 
-        if self.secure():
+        if self.anchored() and self.secure():
             tp = (
                 self._secure_docker.new_transporter(
                     agt_id,

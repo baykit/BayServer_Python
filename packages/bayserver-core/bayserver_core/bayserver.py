@@ -398,7 +398,7 @@ class BayServer:
                 BayLog.fatal("Cannot find port docker: %d", port_no)
                 sys.exit(1)
 
-            if port_dkr.anchored:
+            if port_dkr.anchored():
                 cls.anchorable_port_map[SocketRudder(skt)] = port_dkr
             else:
                 cls.unanchorable_port_map[SocketRudder(skt)] = port_dkr

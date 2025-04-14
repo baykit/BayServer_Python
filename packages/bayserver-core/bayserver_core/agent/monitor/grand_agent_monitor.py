@@ -54,10 +54,8 @@ class GrandAgentMonitor:
                 else:
                     BayLog.debug("%s read OK: %d", self, res);
 
-        except IOError as e:
-            BayLog.fatal("%s Agent terminated", self)
-
         except Exception as e:
+            BayLog.fatal("%s Agent terminated", self)
             BayLog.fatal_e(e)
 
         self.agent_aborted()
@@ -150,9 +148,9 @@ class GrandAgentMonitor:
             # Thread mode
             ga.GrandAgent.add(agt_id, anchorable)
             agt = ga.GrandAgent.get(agt_id)
-            agt.run_command_receiver(com_ch[1])
 
             def run():
+                agt.add_command_receiver(SocketRudder(com_ch[1]))
                 agt.run()
 
             agent_thread = threading.Thread(target=run)
