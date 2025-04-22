@@ -279,7 +279,7 @@ class GrandAgent:
 
 
     def reload_cert(self):
-        for port in GrandAgent.anchorable_port_map.values():
+        for port in bs.BayServer.anchorable_port_map.values():
             if port.secure():
                 try:
                     port._secure_docker.reload_cert()

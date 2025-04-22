@@ -4,7 +4,7 @@ from bayserver_core import bayserver as bs
 from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.bay_log import BayLog
 
-from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent import grand_agent as ga
 
 from bayserver_core.common.inbound_ship_store import InboundShipStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
@@ -69,7 +69,7 @@ class MemUsage:
     def init(cls):
         if cls.mem_usages is None:
             cls.mem_usages = {}
-            GrandAgent.add_lifecycle_listener(MemUsage.AgentListener())
+            ga.GrandAgent.add_lifecycle_listener(MemUsage.AgentListener())
 
 
     @classmethod
