@@ -177,6 +177,7 @@ class TaxiMultiplexer(MultiplexerBase):
                 n = st.rudder.write(u.buf)
                 u.buf = u.buf[n:]
 
+            BayLog.debug("%s Wrote %d bytes", self, n)
             self.agent.send_wrote_letter(st, n, True)
         except Exception as e:
             self.agent.send_error_letter(st, e, True)
