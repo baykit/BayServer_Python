@@ -2,19 +2,19 @@ from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.read_only_ship import ReadOnlyShip
 from bayserver_core.rudder.rudder import Rudder
-from bayserver_docker_cgi.cgi_req_content_handler import CgiReqContentHandler
+from bayserver_docker_cgi import cgi_req_content_handler as ch
 
 
 class CgiStdErrShip(ReadOnlyShip):
 
-    handler: CgiReqContentHandler
+    handler: "ch.CgiReqContentHandler"
 
     def __init__(self):
         super().__init__()
         self.handler = None
 
 
-    def init_std_err(self, rd: Rudder, agt_id: int, handler: CgiReqContentHandler):
+    def init_std_err(self, rd: Rudder, agt_id: int, handler: "ch.CgiReqContentHandler"):
         self.init(agt_id, rd, None)
         self.handler = handler
 

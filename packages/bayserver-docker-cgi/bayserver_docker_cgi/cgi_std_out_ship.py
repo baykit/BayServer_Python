@@ -10,7 +10,7 @@ from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.tour.tour import Tour
 from bayserver_core.util.char_util import CharUtil
 from bayserver_core.util.string_util import StringUtil
-from bayserver_docker_cgi.cgi_req_content_handler import CgiReqContentHandler
+from bayserver_docker_cgi import cgi_req_content_handler as ch
 
 
 class CgiStdOutShip(ReadOnlyShip):
@@ -21,7 +21,7 @@ class CgiStdOutShip(ReadOnlyShip):
 
     remain: bytes
     header_reading: bool
-    handler: CgiReqContentHandler
+    handler: "ch.CgiReqContentHandler"
 
 
     def __init__(self):
@@ -34,7 +34,7 @@ class CgiStdOutShip(ReadOnlyShip):
         self.handler = None
         self.reset()
 
-    def init_std_out(self, rd: Rudder, agt_id: int, tur: Tour, tp: Transporter, handler: CgiReqContentHandler) -> None:
+    def init_std_out(self, rd: Rudder, agt_id: int, tur: Tour, tp: Transporter, handler: "ch.CgiReqContentHandler") -> None:
         self.init(agt_id, rd, tp)
         self.handler = handler
         self.tour = tur

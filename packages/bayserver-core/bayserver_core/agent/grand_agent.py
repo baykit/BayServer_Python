@@ -26,6 +26,7 @@ from bayserver_core.agent.timer_handler import TimerHandler
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.common.multiplexer import Multiplexer
+from bayserver_core.common.postpone import Postpone
 from bayserver_core.common.recipient import Recipient
 from bayserver_core.common.rudder_state import RudderState
 from bayserver_core.docker.harbor import Harbor
@@ -68,6 +69,9 @@ class GrandAgent:
     last_timeout_check: float
     letter_queue: List[Letter]
     letter_queue_lock: threading.Lock
+    postpone_queue: List[Postpone]
+    postpone_queue_lock: threading.Lock
+
 
     #
     # class variables
@@ -89,6 +93,8 @@ class GrandAgent:
         self.aborted = False
         self.letter_queue = []
         self.letter_queue_lock = threading.Lock()
+        self.postpone_queue = []
+        self.postpone_queue_lock = threading.Lock()
 
         self.spider_multiplexer = SpiderMultiplexer(self, anchorable)
         self.spin_multiplexer = SpinMultiplexer(self)
@@ -285,6 +291,31 @@ class GrandAgent:
                     port._secure_docker.reload_cert()
                 except BaseException as e:
                     BayLog.error_e(e)
+
+    def add_postpone(self, p: Postpone) -> None:
+        with self.postpone_queue_lock:
+            self.postpone_queue.append(p)
+
+    def count_postpones(self) -> int:
+        return len(self.postpone_queue)
+
+    def req_catch_up(self) -> None:
+        BayLog.debug("%s Req catchUp", self)
+        if self.count_postpones() > 0:
+            self.catch_up()
+        else:
+            try:
+                self.command_receiver.send_command_to_monitor(self, GrandAgent.CMD_CATCHUP, False)
+            except IOError as e:
+                BayLog.error_e(e)
+                self.abort_agent()
+
+    def catch_up(self) -> None:
+        BayLog.debug("%s catchUp", self)
+        with self.postpone_queue_lock:
+            if len(self.postpone_queue) > 0:
+                r = self.postpone_queue.pop(0)
+                r.run()
 
 
     ######################################################

@@ -1,11 +1,18 @@
 import os, time
-from subprocess import Popen
+from subprocess import Popen, TimeoutExpired
 from typing import Dict
 
+from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
 from bayserver_core.bay_log import BayLog
+from bayserver_core.bayserver import BayServer
 from bayserver_core.common.multiplexer import Multiplexer
+from bayserver_core.common.postpone import Postpone
+from bayserver_core.common.rudder_state import RudderState
+from bayserver_core.docker.harbor import Harbor
 from bayserver_core.rudder.fd_rudder import FdRudder
 from bayserver_core.rudder.rudder import Rudder
+from bayserver_core.sink import Sink
 from bayserver_core.tour.req_content_handler import ReqContentHandler
 
 from bayserver_core.tour.tour import Tour
@@ -14,9 +21,11 @@ from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.class_util import ClassUtil
 from bayserver_core.tour.content_consume_listener import ContentConsumeListener
 from bayserver_docker_cgi import cgi_docker as cg
+from bayserver_docker_cgi.cgi_std_err_ship import CgiStdErrShip
+from bayserver_docker_cgi.cgi_std_out_ship import CgiStdOutShip
 
 
-class CgiReqContentHandler(ReqContentHandler):
+class CgiReqContentHandler(ReqContentHandler, Postpone):
     READ_CHUNK_SIZE = 8192
 
     cgi_docker: "cg.CgiDocker"
@@ -33,10 +42,11 @@ class CgiReqContentHandler(ReqContentHandler):
     multiplexer: Multiplexer
     env: Dict[str, str]
 
-    def __init__(self, dkr, tur):
+    def __init__(self, dkr: "cg.CgiDocker", tur: Tour, env: Dict[str, str]):
         self.cgi_docker = dkr
         self.tour = tur
         self.tour_id = tur.tour_id
+        self.env = env
         self.available = None
         self.process = None
         self.std_in_rd = None
@@ -48,6 +58,16 @@ class CgiReqContentHandler(ReqContentHandler):
 
     def __str__(self):
         return ClassUtil.get_local_name(self.__class__)
+
+
+    ######################################################
+    # Implements Postpone
+    ######################################################
+
+    def run(self) -> None:
+        self.cgi_docker.sub_wait_count()
+        BayLog.info("%s challenge postponed tour", self.tour, self.cgi_docker.get_wait_count())
+        self.req_start_tour()
 
     ######################################################
     # Implements ReqContentHandler
@@ -86,16 +106,27 @@ class CgiReqContentHandler(ReqContentHandler):
     # Other methods
     ######################################################
 
-    def start_tour(self, env):
+    def req_start_tour(self):
+        if self.cgi_docker.add_process_count():
+            BayLog.info("%s start tour: wait count=%d", self.tour, self.cgi_docker.get_wait_count())
+            self.start_tour()
+
+        else:
+            BayLog.warn("%s Cannot start tour: wait count=%d", self.tour, self.cgi_docker.get_wait_count())
+            agt = GrandAgent.get(self.tour.ship.agent_id)
+            agt.add_postpone(self)
+        self.access()
+
+    def start_tour(self):
         self.available = False
 
         fin = os.pipe()
         fout = os.pipe()
         ferr = os.pipe()
-        cmd_args = self.cgi_docker.create_command(env)
+        cmd_args = self.cgi_docker.create_command(self.env)
         BayLog.debug("%s Spawn: %s", self.tour, cmd_args)
 
-        self.process = Popen(cmd_args, env=env, stdin=fin[0], stdout=fout[1], stderr=ferr[1])
+        self.process = Popen(cmd_args, env=self.env, stdin=fin[0], stdout=fout[1], stderr=ferr[1])
         BayLog.debug("%s created process; %s", self.tour, self.process)
 
         os.close(fin[0])
@@ -109,6 +140,61 @@ class CgiReqContentHandler(ReqContentHandler):
 
         self.std_out_closed = False
         self.std_err_closed = False
+
+        agt = GrandAgent.get(self.tour.ship.agent_id)
+        #bufsize = tur.ship.protocol_handler.max_res_packet_data_size()
+        bufsize = 8192
+
+        if BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_SPIDER:
+            mpx = agt.spider_multiplexer
+            self.std_out_rd.set_non_blocking()
+            self.std_err_rd.set_non_blocking()
+
+        elif BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_SPIN:
+            def eof_checker():
+                try:
+                    self.process.wait(0)
+                    return True
+                except TimeoutExpired as e:
+                    return False
+
+            mpx = agt.spin_multiplexer
+            self.std_out_rd.set_non_blocking()
+            self.std_err_rd.set_non_blocking()
+
+        elif BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_TAXI:
+            mpx = agt.taxi_multiplexer
+
+        elif BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_JOB:
+            mpx = agt.job_multiplexer
+
+        else:
+            raise Sink()
+
+        self.multiplexer = mpx
+        out_ship = CgiStdOutShip()
+        out_tp = PlainTransporter(agt.net_multiplexer, out_ship, False, bufsize, False)
+        out_ship.init_std_out(self.std_out_rd, self.tour.ship.agent_id, self.tour, out_tp, self)
+
+        mpx.add_rudder_state(self.std_out_rd, RudderState(self.std_out_rd, out_tp))
+
+        ship_id = out_ship.ship_id
+
+        def callback(length: int, resume: bool):
+            if resume:
+                out_ship.resume_read(ship_id)
+
+        self.tour.res.set_res_consume_listener(callback)
+
+        err_ship = CgiStdErrShip()
+        err_tp = PlainTransporter(agt.net_multiplexer, err_ship, False, bufsize, False)
+        err_ship.init_std_err(self.std_err_rd, self.tour.ship.agent_id, self)
+        mpx.add_rudder_state(self.std_err_rd, RudderState(self.std_err_rd, err_tp))
+
+        mpx.req_read(self.std_out_rd)
+        mpx.req_read(self.std_err_rd)
+
+
         self.access()
 
     def on_std_out_closed(self):
@@ -139,6 +225,8 @@ class CgiReqContentHandler(ReqContentHandler):
 
         BayLog.debug("%s CGI Process finished: pid=%d code=%d", self.tour, self.process.pid, self.process.returncode)
 
+        agt_id = self.tour.ship.agent_id
+
         try:
             if self.process.returncode != 0:
                 # Exec failed
@@ -149,3 +237,9 @@ class CgiReqContentHandler(ReqContentHandler):
                 self.tour.res.end_res_content(self.tour_id)
         except IOError as e:
             BayLog.error_e(e)
+
+        self.cgi_docker.sub_process_count()
+        if self.cgi_docker.get_wait_count() > 0:
+            BayLog.warn("agt#%d Catch up postponed process: process wait count=%d", agt_id, self.cgi_docker.get_wait_count())
+            agt = GrandAgent.get(agt_id)
+            agt.req_catch_up()

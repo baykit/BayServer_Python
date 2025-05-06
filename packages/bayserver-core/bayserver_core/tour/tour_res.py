@@ -49,7 +49,7 @@ class TourRes:
         self.bytes_posted = None
         self.bytes_consumed = None
         self.bytes_limit = None
-        self.buffer_size = bs.BayServer.harbor.tour_buffer_size
+        self.buffer_size = bs.BayServer.harbor.tour_buffer_size()
 
     def __str__(self):
         return str(self.tour)
@@ -275,7 +275,7 @@ class TourRes:
 
         if not old_available and self.available:
             BayLog.debug("%s response available (^o^): posted=%d consumed=%d", self, self.bytes_posted,
-                         self.bytes_consumed);
+                         self.bytes_consumed)
             resume = True
 
         if not self.tour.is_zombie():

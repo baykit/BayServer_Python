@@ -107,7 +107,7 @@ class Ship(Reusable, metaclass=ABCMeta):
         return self.ship_id
 
     def resume_read(self, check_id):
-        self.check_ship_id(check_id);
+        self.check_ship_id(check_id)
         self.transporter.req_read(self.rudder)
 
     def post_close(self):

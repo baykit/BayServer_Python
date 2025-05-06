@@ -1,26 +1,15 @@
 import os.path
-from subprocess import TimeoutExpired
 
-from bayserver_core.agent.grand_agent import GrandAgent
-from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bayserver import BayServer
-from bayserver_core.common.rudder_state import RudderState
 from bayserver_core.docker.base.club_base import ClubBase
-from bayserver_core.docker.harbor import Harbor
 from bayserver_core.http_exception import HttpException
-from bayserver_core.rudder.rudder import Rudder
-from bayserver_core.sink import Sink
-from bayserver_core.taxi.taxi_runner import TaxiRunner
-from bayserver_core.tour.read_file_taxi import ReadFileTaxi
 from bayserver_core.tour.tour import Tour
 from bayserver_core.util.cgi_util import CgiUtil
 from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.string_util import StringUtil
 from bayserver_core.util.sys_util import SysUtil
 from bayserver_docker_cgi.cgi_req_content_handler import CgiReqContentHandler
-from bayserver_docker_cgi.cgi_std_err_ship import CgiStdErrShip
-from bayserver_docker_cgi.cgi_std_out_ship import CgiStdOutShip
 
 
 class CgiDocker(ClubBase):
@@ -30,6 +19,9 @@ class CgiDocker(ClubBase):
     script_base: str
     doc_root: str
     timeout_sec: int
+    max_processes: int
+    process_count: int
+    wait_count: int
 
     def __init__(self):
         super().__init__()
@@ -37,6 +29,9 @@ class CgiDocker(ClubBase):
         self.script_base = None
         self.doc_root = None
         self.timeout_sec = CgiDocker.DEFAULT_TIMEOUT_SEC
+        self.max_processes = -1
+        self.process_count = 0
+        self.wait_count = 0
 
 
     ######################################################
@@ -60,6 +55,9 @@ class CgiDocker(ClubBase):
 
         elif key == "timeout":
             self.timeout_sec = int(kv.value)
+
+        elif key == "maxprocesses":
+            self.max_processes = int(kv.value)
 
         else:
             return super().init_key_val(kv)
@@ -94,64 +92,9 @@ class CgiDocker(ClubBase):
         if not os.path.isfile(file_name):
             raise HttpException(HttpStatus.NOT_FOUND, file_name)
 
-        #bufsize = tur.ship.protocol_handler.max_res_packet_data_size()
-        bufsize = 1024
-        handler = CgiReqContentHandler(self, tur)
+        handler = CgiReqContentHandler(self, tur, env)
         tur.req.set_content_handler(handler)
-        handler.start_tour(env)
-        fname = "cgi#"
-
-
-        agt = GrandAgent.get(tur.ship.agent_id)
-
-        if BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_SPIDER:
-            mpx = agt.spider_multiplexer
-            handler.std_out_rd.set_non_blocking()
-            handler.std_err_rd.set_non_blocking()
-
-        elif BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_SPIN:
-            def eof_checker():
-                try:
-                    handler.process.wait(0)
-                    return True
-                except TimeoutExpired as e:
-                    return False
-
-            mpx = agt.spin_multiplexer
-            handler.std_out_rd.set_non_blocking()
-            handler.std_err_rd.set_non_blocking()
-
-        elif BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_TAXI:
-            mpx = agt.taxi_multiplexer
-
-        elif BayServer.harbor.cgi_multiplexer() == Harbor.MULTIPLEXER_TYPE_JOB:
-            mpx = agt.job_multiplexer
-
-        else:
-            raise Sink()
-
-        handler.multiplexer = mpx
-        out_ship = CgiStdOutShip()
-        out_tp = PlainTransporter(agt.net_multiplexer, out_ship, False, bufsize, False)
-        out_ship.init_std_out(handler.std_out_rd, tur.ship.agent_id, tur, out_tp, handler)
-
-        mpx.add_rudder_state(handler.std_out_rd, RudderState(handler.std_out_rd, out_tp))
-
-        ship_id = out_ship.ship_id
-
-        def callback(length: int, resume: bool):
-            if resume:
-                out_ship.resume_read(ship_id)
-
-        tur.res.set_res_consume_listener(callback)
-
-        err_ship = CgiStdErrShip()
-        err_tp = PlainTransporter(agt.net_multiplexer, err_ship, False, bufsize, False)
-        err_ship.init_std_err(handler.std_err_rd, tur.ship.agent_id, handler)
-        mpx.add_rudder_state(handler.std_err_rd, RudderState(handler.std_err_rd, err_tp))
-
-        mpx.req_read(handler.std_out_rd)
-        mpx.req_read(handler.std_err_rd)
+        handler.req_start_tour()
 
 
     def create_command(self, env):
@@ -166,3 +109,25 @@ class CgiDocker(ClubBase):
                 command[i] = command[i].replace('/', '\\')
 
         return command
+
+    ######################################################
+    # Custom methods
+    ######################################################
+
+    def get_wait_count(self) -> int:
+        return self.wait_count
+
+    def add_process_count(self) -> bool:
+        if self.max_processes <= 0 or self.process_count < self.max_processes:
+            self.process_count += 1
+            BayLog.debug("%s Process count: %d", self, self.process_count)
+            return True
+
+        self.wait_count += 1
+        return False
+
+    def sub_process_count(self) -> None:
+        self.process_count -= 1
+
+    def sub_wait_count(self) -> None:
+        self.wait_count -= 1
