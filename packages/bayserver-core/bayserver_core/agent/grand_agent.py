@@ -364,10 +364,9 @@ class GrandAgent:
             next_act = st.transporter.on_connected(st.rudder)
             BayLog.debug("%s nextAct=%s", self, next_act)
 
-        except IOError as e:
+        except IOError or SSLError as e:
             st.transporter.on_error(st.rudder, e)
             next_act = NextSocketAction.CLOSE
-
 
         if next_act == NextSocketAction.READ:
             # Read more
@@ -413,7 +412,7 @@ class GrandAgent:
 
         unit = st.write_queue[0]
         if len(unit.buf) > 0:
-            BayLog.debug("Could not write enough data buf_len=%d", unit.buf.length)
+            BayLog.debug("Could not write enough data buf_len=%d", len(unit.buf))
         else:
             st.multiplexer.consume_oldest_unit(st)
 
