@@ -44,8 +44,10 @@ class GrandAgentMonitor:
         try:
             while True:
                 buf = self.rudder.read(4)
-                if len(buf) < 4:
-                    raise IOError("Cannot read int: nbytes=#{n}")
+                if len(buf) == 0:
+                    raise EOFError()
+                elif len(buf) < 4:
+                    raise IOError(f"Cannot read int: nbytes={len(buf)}")
 
                 res = self.buffer_to_int(buf)
                 if res == ga.GrandAgent.CMD_CLOSE:
