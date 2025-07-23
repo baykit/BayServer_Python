@@ -1,3 +1,5 @@
+from typing import Any
+
 from bayserver_core.bay_log import BayLog
 from bayserver_core.protocol.command import Command
 from bayserver_core.protocol.packet_packer import PacketPacker
@@ -28,7 +30,7 @@ class CommandPacker(Reusable):
     # Other methods
     ######################################################
 
-    def post(self, sip: Ship, cmd: Command, lis: DataConsumeListener=None):
+    def post(self, sip: Ship, cmd: Command, lis: DataConsumeListener=None, adr: Any=None):
         pkt = self.pkt_store.rent(cmd.type)
 
         try:
@@ -39,7 +41,8 @@ class CommandPacker(Reusable):
                 if lis is not None:
                     lis()
 
-            self.pkt_packer.post(sip, pkt, done)
+            self.pkt_packer.post(sip, adr, pkt, done)
         except IOError as e:
             self.pkt_store.Return(pkt)
             raise e
+00

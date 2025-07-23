@@ -102,7 +102,7 @@ class MultiplexerBase(Multiplexer):
             if st.transporter is not None:
                 try:
                     duration = int(now - st.last_access_time)
-                    if st.transporter.check_timeout(st.rudder, duration):
+                    if self.agent.anchorable and st.transporter.check_timeout(st.rudder, duration):
                         BayLog.debug("%s timeout: rd=%s st=%s", self, st.rudder, st)
                         close_list.append(st)
 

@@ -21,7 +21,6 @@ from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.http_util import HttpUtil
 from bayserver_core.util.url_encoder import URLEncoder
 from bayserver_core.util.headers import Headers
-from bayserver_core.util.data_consume_listener import DataConsumeListener
 from bayserver_core.util.exception_util import ExceptionUtil
 from bayserver_docker_http.h1.h1_command_unpacker import H1CommandUnPacker
 from bayserver_docker_http.h1.h1_handler import H1Handler

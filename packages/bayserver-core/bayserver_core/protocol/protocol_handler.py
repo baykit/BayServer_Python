@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Callable
+from typing import Callable, Any
 
 from bayserver_core.protocol.command import Command
 from bayserver_core.protocol.command_handler import CommandHandler
@@ -47,10 +47,14 @@ class ProtocolHandler(Reusable, metaclass=ABCMeta):
     # Implements Reusable
     ##################################################
     def reset(self):
-        self.command_unpacker.reset()
-        self.command_packer.reset()
-        self.packet_unpacker.reset()
-        self.packet_packer.reset()
+        if self.command_unpacker is not None:
+            self.command_unpacker.reset()
+        if self.command_packer is not None:
+            self.command_packer.reset()
+        if self.command_handler is not None:
+            self.packet_unpacker.reset()
+        if self.packet_packer is not None:
+            self.packet_packer.reset()
         self.command_handler.reset()
         self.server_mode = False
         self.ship = None
@@ -84,8 +88,8 @@ class ProtocolHandler(Reusable, metaclass=ABCMeta):
     ##################################################
     # Other methods
     ##################################################
-    def bytes_received(self, buf):
-        return self.packet_unpacker.bytes_received(buf)
+    def bytes_received(self, buf: bytes, adr: Any):
+        return self.packet_unpacker.bytes_received(buf, adr)
 
     def post(self, c: Command, lis: Callable[[], None] = None) -> None:
         self.command_packer.post(self.ship, c, lis)

@@ -1,3 +1,5 @@
+from typing import Any
+
 from bayserver_core.bay_log import BayLog
 from bayserver_core.protocol.packet_unpacker import PacketUnPacker
 
@@ -39,7 +41,7 @@ class AjpPacketUnPacker(PacketUnPacker):
         self.preamble_buf.reset()
         self.body_buf.reset()
 
-    def bytes_received(self, buf):
+    def bytes_received(self, buf: bytes, adr: Any):
         suspend = False
         pos = 0
 

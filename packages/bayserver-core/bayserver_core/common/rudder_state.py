@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import List
+from typing import List, Any
 
 from bayserver_core.agent.multiplexer.write_unit import WriteUnit
 from bayserver_core.common.multiplexer import Multiplexer
@@ -29,6 +29,7 @@ class RudderState:
     last_access_time: int
     finale: bool
     handshaking: bool
+    addr: Any
 
 
     def __init__(self, rd: Rudder, tp: Transporter=None, timeout_sec: int=0):
@@ -57,6 +58,7 @@ class RudderState:
         self.last_access_time = time.time()
         self.finale = False
         self.read_buf = None
+        self.addr = None
 
 
     def __str__(self):

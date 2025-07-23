@@ -187,7 +187,7 @@ class H1WarpHandler(H1Handler, WarpHandler):
         if self.state != H1WarpHandler.STATE_READ_CONTENT:
             raise ProtocolException("Content command not expected")
 
-        available = tur.res.send_res_content(Tour.TOUR_ID_NOCHECK, cmd.buf, cmd.start, cmd.length)
+        available = tur.res.send_res_content(tur.tour_id, cmd.buf, cmd.start, cmd.length)
         if tur.res.bytes_posted == tur.res.bytes_limit:
             self.end_res_content(tur)
             return NextSocketAction.CONTINUE
@@ -214,7 +214,7 @@ class H1WarpHandler(H1Handler, WarpHandler):
     def end_res_content(self, tur: Tour):
         BayLog.debug("%s endResContent tur=%s", self, tur)
         self.ship().end_warp_tour(tur)
-        tur.res.end_res_content(Tour.TOUR_ID_NOCHECK)
+        tur.res.end_res_content(tur.tour_id)
         self.reset()
         self.ship().keeping = True
 

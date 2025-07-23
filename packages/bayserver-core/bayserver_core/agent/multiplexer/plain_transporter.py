@@ -53,10 +53,10 @@ class PlainTransporter(Transporter):
 
         else:
             try:
-                return self.ship.notify_read(buf)
+                return self.ship.notify_read(buf, adr)
             except UpgradeException as e:
                 BayLog.debug("%s Protocol upgrade", self.ship)
-                return self.ship.notify_read(buf)
+                return self.ship.notify_read(buf, adr)
 
             except ProtocolException as e:
                 close = self.ship.notify_protocol_error(e)

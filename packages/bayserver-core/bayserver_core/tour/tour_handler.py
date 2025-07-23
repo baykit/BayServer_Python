@@ -14,12 +14,12 @@ class TourHandler(metaclass=abc.ABCMeta):
 
     # Send Contents to client
     @abstractmethod
-    def send_res_content(selftur: Tour, buf: bytearray, ofs: int, length: int, lis: DataConsumeListener) -> None:
+    def send_res_content(self, tur: Tour, buf: bytearray, ofs: int, length: int, lis: DataConsumeListener) -> None:
         pass
 
     # Send end of contents to client.
     @abstractmethod
-    def send_end_tour(selftur: Tour, keep_alive: bool, lis: DataConsumeListener) -> None:
+    def send_end_tour(self, tur: Tour, keep_alive: bool, lis: DataConsumeListener) -> None:
         pass
 
     # Send protocol error to client

@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import ClassVar, Optional
+from typing import ClassVar, Optional, Any
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.transporter import Transporter
@@ -76,7 +76,7 @@ class Ship(Reusable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def notify_read(self, buf: bytes) -> int:
+    def notify_read(self, buf: bytes, adr: Any) -> int:
         pass
 
     @abstractmethod
@@ -115,7 +115,7 @@ class Ship(Reusable, metaclass=ABCMeta):
 
     def check_ship_id(self, check_id):
         if not self.initialized:
-            raise Sink(f"{self} ships not initialized (might be returned ships): {check_id}")
+            raise Sink(f"{self} ship not initialized (might be returned ship): {check_id}")
 
         if check_id != Ship.SHIP_ID_NOCHECK and check_id != self.ship_id:
-            raise Sink(f"{self} Invalid ships id (might be returned ships): {check_id}")
+            raise Sink(f"{self} Invalid ship id (might be returned ship): {check_id}")

@@ -153,7 +153,7 @@ class TourRes:
         if self.header_sent:
             BayLog.error("Try to redirect after response header is sent (Ignore)")
         else:
-            self.set_res_consume_listener(ContentConsumeListener.dev_null)
+            self.set_res_consume_listener(content_consume_listener_dev_null)
             try:
                 self.tour.ship.send_redirect(self.tour.ship_id, self.tour, status, location)
             except IOError as e:
@@ -263,6 +263,9 @@ class TourRes:
     def consumed(self, check_id, length):
         self.tour.check_tour_id(check_id)
 
+        if self.res_consume_listener is None:
+            raise Sink("%s Response consume listener is null", self)
+
         self.bytes_consumed += length
 
         BayLog.debug("%s resConsumed: len=%d posted=%d consumed=%d limit=%d",
@@ -278,11 +281,8 @@ class TourRes:
                          self.bytes_consumed)
             resume = True
 
-        if not self.tour.is_zombie():
-            if self.res_consume_listener is None:
-                BayLog.debug("Consume listener is null, so can not invoke callback")
-            else:
-                self.res_consume_listener(length, resume)
+        if not self.tour.is_running():
+            self.res_consume_listener(length, resume)
 
 
     def send_http_exception(self, chk_tour_id, http_ex):

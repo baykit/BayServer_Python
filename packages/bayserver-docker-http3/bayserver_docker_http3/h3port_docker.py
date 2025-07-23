@@ -10,13 +10,24 @@ from aioquic.tls import SessionTicket
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.config_exception import ConfigException
 from bayserver_core.docker.base.port_base import PortBase
-from bayserver_docker_http3.h3_docker import H3Docker
-from bayserver_docker_http3.udp_inbound_data_listener import UdpInboundDataListener
-from bayserver_docker_http3.udp_transporter import UdpTransporter
+from bayserver_core.protocol.packet_store import PacketStore
+from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
+from bayserver_core.sink import Sink
 from bayserver_core.symbol import Symbol
+
+from bayserver_docker_http3.h3_docker import H3Docker
+from bayserver_docker_http3.qic_inbound_handler import QicInboundHandler
+from bayserver_docker_http3.qic_packet_factory import QicPacketFactory
 
 
 class H3PortDocker(PortBase, H3Docker):
+
+    config: QuicConfiguration
+    session_ticket_fetcher: SessionTicket
+    session_ticket_handler: SessionTicket
+    retry: bool
+    quic_log_dir: str
+    secrets_log_file: str
 
     class SessionTicketStore:
         """
@@ -82,7 +93,18 @@ class H3PortDocker(PortBase, H3Docker):
         ticket_store = H3PortDocker.SessionTicketStore()
         self.session_ticket_fetcher = ticket_store.pop
         self.session_ticket_handler = ticket_store.add
-        #self.create_protocol = HttpServerProtocol
+
+    def init_key_val(self, kv):
+        key = kv.key.lower()
+        if key == "quic_log_dir":
+            self.quic_log_dir = kv.value
+
+        elif key == "secrets_log_file":
+            self.secrets_log_file = kv.value
+
+        else:
+            return super().init_key_val(kv)
+        return True
 
     ######################################################
     # Implements Port
@@ -102,12 +124,17 @@ class H3PortDocker(PortBase, H3Docker):
         return True
 
     def new_transporter(self, agt, skt):
-        lis = UdpInboundDataListener()
-        tp = UdpTransporter(True, 2048)
-        lis.init_udp(skt, agt, tp, self)
-        tp.init(agt.non_blocking_handler, skt, lis)
-        return tp
+        raise Sink()
 
     ######################################################
     # Class initializer
     ######################################################
+
+    PacketStore.register_protocol(
+        H3Docker.PROTO_NAME,
+        QicPacketFactory()
+    )
+    ProtocolHandlerStore.register_protocol(
+        H3Docker.PROTO_NAME,
+        True,
+        QicInboundHandler.InboundProtocolHandlerFactory())

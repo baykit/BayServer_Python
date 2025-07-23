@@ -1,5 +1,5 @@
 import threading
-from typing import List
+from typing import List, Any
 
 from bayserver_core import bayserver as bs
 from bayserver_core.agent.next_socket_action import NextSocketAction
@@ -88,8 +88,8 @@ class InboundShip(Ship):
     def notify_connect(self) -> int:
         raise Sink()
 
-    def notify_read(self, buf: bytes) -> int:
-        return self.protocol_handler.bytes_received(buf)
+    def notify_read(self, buf: bytes, adr: Any) -> int:
+        return self.protocol_handler.bytes_received(buf, adr)
 
     def notify_eof(self) -> int:
         BayLog.debug("%s EOF detected", self)

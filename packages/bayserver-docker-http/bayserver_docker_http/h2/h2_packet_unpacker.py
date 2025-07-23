@@ -1,3 +1,5 @@
+from typing import Any
+
 from bayserver_core.bay_log import BayLog
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.protocol.protocol_exception import ProtocolException
@@ -74,7 +76,7 @@ class H2PacketUnPacker(PacketUnPacker):
         self.stream_id = 0
         self.payload_len = 0
 
-    def bytes_received(self, buf):
+    def bytes_received(self, buf: bytes, adr: Any):
         suspend = False
 
         self.pos = 0

@@ -5,12 +5,18 @@ from bayserver_core.util.class_util import ClassUtil
 class Packet(Reusable):
     INITIAL_BUF_SIZE = 8192 * 4
 
-    def __init__(self, type, header_len, max_data_len):
+    type: int
+    header_len: int
+    max_data_len: int
+    buf: bytearray
+    buf_len: int
+
+    def __init__(self, type: int, header_len: int, max_data_len: int):
         self.type = type
         self.header_len = header_len
         self.max_data_len = max_data_len
         self.buf = bytearray(Packet.INITIAL_BUF_SIZE)
-        self.buf_len = None
+        self.buf_len = -1
         self.reset()
 
     def reset(self):

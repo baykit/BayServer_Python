@@ -9,11 +9,11 @@ class PacketPacker(Reusable):
     def reset(self):
         pass
 
-    def post(self, sip: Ship, pkt: Packet, lsnr: DataConsumeListener):
+    def post(self, sip: Ship, adr: str, pkt: Packet, lsnr: DataConsumeListener):
         if lsnr is None:
             raise Sink()
 
-        sip.transporter.req_write(sip.rudder, pkt.buf.copy(), None, pkt, lsnr)
+        sip.transporter.req_write(sip.rudder, pkt.buf.copy(), adr, pkt, lsnr)
 
 
     def flush(self, postman):

@@ -170,7 +170,7 @@ class BuiltInCityDocker(DockerBase, City):
         any_club = None
 
         for clb in club_list:
-            if clb.file_name == "*" and clb.extension is None:
+            if clb.file_name() == "*" and clb.extension() is None:
                 # Ignore any match club
                 any_club = clb
                 break

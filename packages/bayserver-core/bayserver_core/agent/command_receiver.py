@@ -1,3 +1,5 @@
+from typing import Any
+
 from bayserver_core.agent.monitor.grand_agent_monitor import GrandAgentMonitor
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
@@ -35,7 +37,7 @@ class CommandReceiver(Ship):
     def notify_connect(self):
         raise Sink()
 
-    def notify_read(self, buf: bytes):
+    def notify_read(self, buf: bytes, adr: Any):
         BayLog.debug("%s notify_read", self)
         cmd = GrandAgentMonitor.buffer_to_int(buf)
         self.on_read_command(cmd)

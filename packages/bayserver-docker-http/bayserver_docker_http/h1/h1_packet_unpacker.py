@@ -1,3 +1,5 @@
+from typing import Any
+
 from bayserver_core.bay_log import BayLog
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.protocol.packet_unpacker import PacketUnPacker
@@ -42,7 +44,7 @@ class H1PacketUnPacker(PacketUnPacker):
     ######################################################
     # Implements PacketUnPacker
     ######################################################
-    def bytes_received(self, buf):
+    def bytes_received(self, buf: bytes, adr: Any):
         if self.state == H1PacketUnPacker.STATE_END:
             self.reset()
             raise RuntimeError("IllegalState")

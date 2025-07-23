@@ -1,5 +1,3 @@
-from aioquic.quic import packet
-
 #
 # Quic packet type
 #
@@ -12,19 +10,25 @@ class QicType:
     SHORT = 4,
     VERSION_NEGOTIATION = 5
 
+    PACKET_TYPE_MASK = 0x30
+    PACKET_LONG_HEADER = 0x80
+    PACKET_TYPE_INITIAL = 0x00
+    PACKET_TYPE_ZERO_RTT = 0x10
+    PACKET_TYPE_HANDSHAKE = 0x20
+    PACKET_TYPE_RETRY = 0x30
 
     @classmethod
-    def packet_type_name(cls, type):
-        type = type & packet.PACKET_TYPE_MASK
-        if type & packet.PACKET_LONG_HEADER == 0:
+    def packet_type_name(cls, first_byte: int):
+        first_byte = (first_byte & cls.PACKET_TYPE_MASK)
+        if first_byte & cls.PACKET_LONG_HEADER == 0:
             return "Short"
-        elif type == packet.PACKET_TYPE_INITIAL:
+        elif first_byte == cls.PACKET_TYPE_INITIAL:
             return "Initial"
-        elif type == packet.PACKET_TYPE_ZERO_RTT:
+        elif first_byte == cls.PACKET_TYPE_ZERO_RTT:
             return "ZeroRTT"
-        elif type == packet.PACKET_TYPE_HANDSHAKE:
+        elif first_byte == cls.PACKET_TYPE_HANDSHAKE:
             return "Handshake"
-        elif type == packet.PACKET_TYPE_RETRY:
+        elif first_byte == cls.PACKET_TYPE_RETRY:
             return "Retry"
         else:
             return "Unkonwn"

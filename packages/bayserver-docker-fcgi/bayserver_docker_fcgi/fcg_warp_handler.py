@@ -73,12 +73,13 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
         return self.proto_handler.ship
 
     def reset(self):
-        super().reset()
         self.reset_state()
         self.line_buf.clear()
         self.pos = 0
         self.last = 0
         self.data = None
+        #self.proto_handler = None
+        self.cur_warp_id += 1
 
 
     ######################################################
@@ -131,7 +132,7 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
         raise ProtocolException("Invalid FCGI command: %d", cmd.type)
 
     def handle_stdout(self, cmd):
-        BayLog.debug("%s handle_stdout req_id=%d len=%d", self.ship, cmd.req_id, cmd.length)
+        BayLog.debug("%s handle_stdout req_id=%d len=%d", self.ship(), cmd.req_id, cmd.length)
 
         tur = self.ship().get_tour(cmd.req_id)
         if tur is None:
@@ -177,11 +178,12 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
 
 
             BayLog.debug("%s fcgi: read header status=%d contlen=%d", self.ship, tur.res.headers.status, wdat.res_headers.content_length())
-            sid = self.ship().ship_id
+            sip = self.ship()
+            sid = sip.id()
 
             def callback(length: int, resume: bool):
                 if resume:
-                    self.ship().resume_read(sid)
+                    sip.resume_read(sid)
 
             tur.res.set_res_consume_listener(callback)
 

@@ -1,6 +1,8 @@
 import os, time
 from subprocess import Popen, TimeoutExpired
-from typing import Dict
+from typing import Dict, List, Tuple
+
+from setuptools.command.egg_info import write_toplevel_names
 
 from bayserver_core.agent.grand_agent import GrandAgent
 from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
@@ -41,6 +43,7 @@ class CgiReqContentHandler(ReqContentHandler, Postpone):
     last_access: int
     multiplexer: Multiplexer
     env: Dict[str, str]
+    buffers: List[Tuple[bytearray, ContentConsumeListener]]
 
     def __init__(self, dkr: "cg.CgiDocker", tur: Tour, env: Dict[str, str]):
         self.cgi_docker = dkr
@@ -49,12 +52,14 @@ class CgiReqContentHandler(ReqContentHandler, Postpone):
         self.env = env
         self.available = None
         self.process = None
+        self.pid = 0
         self.std_in_rd = None
         self.std_out_rd = None
         self.std_err_rd = None
         self.std_out_closed = True
         self.std_err_closed = True
         self.last_access = None
+        self.buffers = []
 
     def __str__(self):
         return ClassUtil.get_local_name(self.__class__)
@@ -76,10 +81,11 @@ class CgiReqContentHandler(ReqContentHandler, Postpone):
     def on_read_req_content(self, tur: Tour, buf: bytearray, start: int, length: int, lis: ContentConsumeListener):
         BayLog.debug("%s CGI:onReadReqContent: start=%d len=%d", tur, start, length)
 
-        wrote_len = os.write(self.std_in_rd.key(), buf[start:start + length])
-
-        #BayLog.debug("%s CGI:onReadReqContent: wrote=%d", tur, wrote_len)
-        tur.req.consumed(Tour.TOUR_ID_NOCHECK, length, lis)
+        if self.pid != 0:
+            self.write_to_std_in(tur, buf, start, length, lis)
+        else:
+            # postponed
+            self.buffers.append((buf[start:start + length], lis))
         self.access()
 
     def on_end_req_content(self, tur):
@@ -137,6 +143,10 @@ class CgiReqContentHandler(ReqContentHandler, Postpone):
         self.std_out_rd = FdRudder(fout[0])
         self.std_err_rd = FdRudder(ferr[0])
         BayLog.debug("%s PID: %d", self.tour, self.process.pid)
+
+        for pair in self.buffers:
+            BayLog.debug("%s write postponed data: len=%d", self.tour, len(pair[0]))
+            self.write_to_std_in(self.tour, pair[0], 0, len(pair[0]), pair[1])
 
         self.std_out_closed = False
         self.std_err_closed = False
@@ -217,6 +227,11 @@ class CgiReqContentHandler(ReqContentHandler, Postpone):
         duration_sec = int(time.time()) - self.last_access
         BayLog.debug("%s Check CGI timeout: dur=%d, timeout=%d", self.tour, duration_sec, self.cgi_docker.timeout_sec)
         return duration_sec > self.cgi_docker.timeout_sec
+
+    def write_to_std_in(self, tur: Tour, buf: bytearray, start: int, length: int,  lis: ContentConsumeListener):
+        wrote_len = os.write(self.std_in_rd.key(), buf[start:start + length])
+        BayLog.debug("%s CGI:write_to_std_in: wrote=%d", tur, wrote_len)
+        tur.req.consumed(Tour.TOUR_ID_NOCHECK, length, lis)
 
     def process_finished(self):
         BayLog.debug("%s process_finished()", self.tour)

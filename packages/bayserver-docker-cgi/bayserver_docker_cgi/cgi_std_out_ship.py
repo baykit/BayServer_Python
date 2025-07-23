@@ -1,4 +1,5 @@
 import subprocess
+from typing import Any
 
 from bayserver_core.bay_log import BayLog
 
@@ -61,7 +62,7 @@ class CgiStdOutShip(ReadOnlyShip):
     # implements Yacht
     ######################################################
 
-    def notify_read(self, buf: bytes):
+    def notify_read(self, buf: bytes, adr: Any):
 
         self.file_wrote_len += len(buf)
         BayLog.trace("%s notify_read %d bytes: total=%d", self, len(buf), self.file_wrote_len)

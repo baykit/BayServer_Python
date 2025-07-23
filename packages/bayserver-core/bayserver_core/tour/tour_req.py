@@ -227,7 +227,7 @@ class TourReq(Reusable):
             self.tour.change_state(self.tour.tour_id, tour.Tour.TourState.ABORTED)
             return True
 
-        elif self.tour.is_running():
+        elif self.tour.is_reading():
             aborted = True
             if self.content_handler is not None:
                 aborted = self.content_handler.on_abort_req(self.tour)

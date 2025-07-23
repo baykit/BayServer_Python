@@ -477,7 +477,7 @@ class GrandAgent:
 
 
         elif act == NextSocketAction.WRITE:
-            if reading:
+            if reading and self.anchorable:
                 cancel = True
 
         elif act == NextSocketAction.CLOSE:

@@ -170,5 +170,5 @@ class Tour(Reusable):
             raise Sink("%s Tour not initialized", self)
 
         if chk_id != self.tour_id:
-            raise Sink("%s Invalid tours id: %s", self, "" if chk_id is None else str(chk_id))
+            raise Sink("%s Invalid tour id: %s", self, "" if chk_id is None else str(chk_id))
 

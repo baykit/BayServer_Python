@@ -9,6 +9,7 @@ import shutil
 from typing import Dict, List, ClassVar
 
 from bayserver_core.rudder.socket_rudder import SocketRudder
+from bayserver_core.rudder.udp_socket_rudder import UdpSocketRudder
 from bayserver_core.version import Version
 from bayserver_core.bay_log import BayLog
 from bayserver_core.mem_usage import MemUsage
@@ -337,7 +338,7 @@ class BayServer:
                                                      ExceptionUtil.message(e)))
                     return
 
-                cls.unanchorable_port_map[SocketRudder(skt)] = dkr
+                cls.unanchorable_port_map[UdpSocketRudder(skt)] = dkr
 
     @classmethod
     def parent_start(cls):
@@ -401,7 +402,7 @@ class BayServer:
             if port_dkr.anchored():
                 cls.anchorable_port_map[SocketRudder(skt)] = port_dkr
             else:
-                cls.unanchorable_port_map[SocketRudder(skt)] = port_dkr
+                cls.unanchorable_port_map[UdpSocketRudder(skt)] = port_dkr
 
 
         GrandAgent.init([agt_id], cls.harbor.max_ships())

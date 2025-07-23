@@ -1,3 +1,5 @@
+from typing import Any
+
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.read_only_ship import ReadOnlyShip
@@ -41,7 +43,7 @@ class SendFileShip(ReadOnlyShip):
     # Implements ReqContentHandler
     ######################################################
 
-    def notify_read(self, buf: bytes) -> int:
+    def notify_read(self, buf: bytes, adr: Any) -> int:
         self.file_wrote_len += len(buf)
         BayLog.debug("%s read file %d bytes: total=%d", self, len(buf), self.file_wrote_len)
 

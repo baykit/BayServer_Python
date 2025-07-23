@@ -18,6 +18,7 @@ from bayserver_core.common.recipient import Recipient
 from bayserver_core.common.rudder_state import RudderState
 from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.rudder.socket_rudder import SocketRudder
+from bayserver_core.rudder.udp_socket_rudder import UdpSocketRudder
 from bayserver_core.sink import Sink
 from bayserver_core.util.exception_util import ExceptionUtil
 from bayserver_core.util.internet_address import InternetAddress
@@ -414,7 +415,12 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
 
             try:
-                st.read_buf = bytearray(st.rudder.read(st.buf_size))
+                if isinstance(st.rudder, UdpSocketRudder):
+                    # UDP
+                    st.read_buf, st.addr = st.rudder.skt.recvfrom(65536)
+                else:
+                    # TCP
+                    st.read_buf = bytearray(st.rudder.read(st.buf_size))
             except EOFError as e:
                 BayLog.debug("%s EOF", self)
                 st.read_buf = bytearray(b"")
@@ -427,7 +433,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
 
             BayLog.debug("%s read %d bytes", self, len(st.read_buf))
-            self.agent.send_read_letter(st, len(st.read_buf), None, False)
+            self.agent.send_read_letter(st, len(st.read_buf), st.addr, False)
 
         except Exception as e:
             BayLog.debug_e(e, "%s Unhandled error", self)
@@ -459,7 +465,11 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                     if len(wunit.buf) == 0:
                         length = 0
                     else:
-                        length = st.rudder.write(wunit.buf)
+                        if isinstance(st.rudder, UdpSocketRudder):
+                            # UDP
+                            length = st.rudder.skt.sendto(wunit.buf, wunit.adr)
+                        else:
+                            length = st.rudder.write(wunit.buf)
                     BayLog.debug("%s write %d bytes", self, length)
                     wunit.buf = wunit.buf[length::]
                     self.agent.send_wrote_letter(st, length, False)
