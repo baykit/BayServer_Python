@@ -42,8 +42,6 @@ class QicProtocolHandler(ProtocolHandler, InboundHandler):
             svr_mode
         )
 
-        packet_unpacker.set_protocol_handler(self)
-
 
     def __str__(self):
         return f"{self.ship}"

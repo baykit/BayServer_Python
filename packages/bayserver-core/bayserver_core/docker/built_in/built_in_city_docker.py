@@ -179,7 +179,7 @@ class BuiltInCityDocker(DockerBase, City):
         rel_script_name = ""
         for fname in rel_uri.split("/"):
             if rel_script_name != "":
-                rel_script_name += "/";
+                rel_script_name += "/"
             rel_script_name += fname
 
             for clb in club_list:

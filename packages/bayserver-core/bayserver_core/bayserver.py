@@ -109,6 +109,10 @@ class BayServer:
         cls.communication_channel = com_ch
 
     @classmethod
+    def is_child(cls):
+        return cls.channels is not None
+
+    @classmethod
     def get_version(cls) -> str:
         return Version.VERSION
 
@@ -327,18 +331,18 @@ class BayServer:
             else:
                 # Open UDP port
                 BayLog.info(BayMessage.get(Symbol.MSG_OPENING_UDP_PORT, dkr.host(), dkr.port(), dkr.protocol()))
-                skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                if not SysUtil.run_on_windows():
-                    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                skt.setblocking(False)
-                try:
-                    skt.bind(adr)
-                except OSError as e:
-                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
-                                                     ExceptionUtil.message(e)))
-                    return
+                #skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                #if not SysUtil.run_on_windows():
+                #    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                #skt.setblocking(False)
+                #try:
+                #    skt.bind(adr)
+                #except OSError as e:
+                #    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
+                #                                     ExceptionUtil.message(e)))
+                #    return
 
-                cls.unanchorable_port_map[UdpSocketRudder(skt)] = dkr
+                #cls.unanchorable_port_map[UdpSocketRudder(skt)] = dkr
 
     @classmethod
     def parent_start(cls):

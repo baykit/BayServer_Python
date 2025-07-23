@@ -1,11 +1,8 @@
 from bayserver_core.common.inbound_handler import InboundHandler
-from bayserver_core.protocol.command_packer import CommandPacker
-from bayserver_core.protocol.packet_packer import PacketPacker
 from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.protocol.protocol_handler_factory import ProtocolHandlerFactory
 from bayserver_core.sink import Sink
 from bayserver_docker_http3.qic_handler import QicHandler
-from bayserver_docker_http3.qic_packet_unpacker import QicPacketUnPacker
 from bayserver_docker_http3.qic_protocol_handler import QicProtocolHandler
 
 
@@ -15,9 +12,9 @@ class QicInboundHandler(QicHandler, InboundHandler):
 
         def create_protocol_handler(self, pkt_store):
             ib_handler = QicInboundHandler()
-            pkt_unpacker = QicPacketUnPacker(pkt_store)
-            pkt_packer = PacketPacker()
-            cmd_packer = CommandPacker(pkt_packer, pkt_store)
+            pkt_unpacker = None
+            pkt_packer = None
+            cmd_packer = None
 
             proto_handler = QicProtocolHandler(ib_handler, pkt_unpacker, pkt_packer, None, cmd_packer, True)
             ib_handler.init(proto_handler)
