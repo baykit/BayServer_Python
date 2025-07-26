@@ -99,7 +99,7 @@ class AjpWarpHandler(AjpHandler, WarpHandler):
         if self.state == AjpWarpHandler.STATE_READ_HEADER:
             self.end_res_header(tur)
 
-        self.end_res_content(tur)
+        self.end_res_content(tur, cmd.reuse)
         if cmd.reuse:
             return NextSocketAction.CONTINUE
         else:
@@ -178,8 +178,8 @@ class AjpWarpHandler(AjpHandler, WarpHandler):
         tur.res.send_res_headers(Tour.TOUR_ID_NOCHECK)
         self.change_state(AjpWarpHandler.STATE_READ_CONTENT)
 
-    def end_res_content(self, tur: Tour):
-        self.ship().end_warp_tour(tur)
+    def end_res_content(self, tur: Tour, keep: bool):
+        self.ship().end_warp_tour(tur, keep)
         tur.res.end_res_content(Tour.TOUR_ID_NOCHECK)
         self.reset_state()
 

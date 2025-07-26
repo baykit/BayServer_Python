@@ -17,6 +17,7 @@ from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
 from bayserver_core.common.inbound_handler import InboundHandler
 
 from bayserver_core.tour.tour import Tour
+from bayserver_core.util.class_util import ClassUtil
 from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.http_util import HttpUtil
 from bayserver_core.util.url_encoder import URLEncoder
@@ -65,6 +66,9 @@ class H1InboundHandler(H1Handler, InboundHandler):
 
     def __init__(self):
         self.reset()
+
+    def __str__(self):
+        return ClassUtil.get_local_name(self.__class__)
 
     def init(self, protocol_handler: H1ProtocolHandler) -> None:
         self.protocol_handler = protocol_handler

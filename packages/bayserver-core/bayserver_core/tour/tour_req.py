@@ -152,7 +152,7 @@ class TourReq(Reusable):
             BayLog.debug("%s tour has error.", self.tour)
 
         elif not self.tour.is_reading():
-            raise HttpException(HttpStatus.BAD_REQUEST, "%s tour is not reading.", self.tour)
+            raise HttpException(HttpStatus.BAD_REQUEST, "%s tour is not reading (state=%d).", self.tour, self.tour.state)
 
         elif self.content_handler is None:
             BayLog.warn("%s content read, but no content handler", self.tour)

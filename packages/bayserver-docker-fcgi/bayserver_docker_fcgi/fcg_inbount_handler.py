@@ -122,8 +122,10 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
         cmd = CmdEndRequest(tur.req.key)
 
         def ensure_func():
-            if not keep_alive:
-                self.ship().post_close()
+            # DO NOT close socket by FCGI server
+            #if not keep_alive:
+            #    self.ship().post_close()
+            pass
 
         def callback_func():
             BayLog.debug("%s call back in sendEndTour: tur=%s keep=%s", self, tur, keep_alive)

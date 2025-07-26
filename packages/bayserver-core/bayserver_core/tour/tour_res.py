@@ -169,7 +169,7 @@ class TourRes:
         self.bytes_posted = 0
         self.available = True
 
-    def send_res_content(self, chk_tour_id, buf, ofs, length):
+    def send_res_content(self, chk_tour_id, buf, ofs, length) -> bool:
         self.tour.check_tour_id(chk_tour_id)
         BayLog.debug("%s send content: len=%d", self, length)
 

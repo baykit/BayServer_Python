@@ -115,18 +115,18 @@ class Tour(Reusable):
         BayLog.debug("%s initialized", self)
 
     def go(self):
-        self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.RUNNING)
-
         city = self.ship.port_docker.find_city(self.req.req_host)
         if city is None:
             city = bs.BayServer.find_city(self.req.req_host)
 
         if self.req.headers.content_length() > 0:
+            BayLog.info("Set state reading")
             self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.READING)
         else:
+            BayLog.info("Set state running")
             self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.RUNNING)
 
-        BayLog.debug("%s GO TOUR! ...( ^_^)/: city=%s url=%s", self, self.req.req_host, self.req.uri);
+        BayLog.debug("%s GO TOUR! ...( ^_^)/: city=%s url=%s", self, self.req.req_host, self.req.uri)
 
         if city is None:
             raise HttpException(HttpStatus.NOT_FOUND, self.req.uri)

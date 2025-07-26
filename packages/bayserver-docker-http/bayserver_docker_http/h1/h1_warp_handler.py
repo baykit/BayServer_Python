@@ -213,7 +213,7 @@ class H1WarpHandler(H1Handler, WarpHandler):
     #
     def end_res_content(self, tur: Tour):
         BayLog.debug("%s endResContent tur=%s", self, tur)
-        self.ship().end_warp_tour(tur)
+        self.ship().end_warp_tour(tur, True)
         tur.res.end_res_content(tur.tour_id)
         self.reset()
         self.ship().keeping = True

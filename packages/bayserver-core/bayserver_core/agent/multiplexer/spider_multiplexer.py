@@ -455,28 +455,34 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
             if len(st.write_queue) == 0:
                 raise EOFError(f"{self.agent} No data to write: {st.rudder}")
 
-            wunit = st.write_queue[0]
+            for i in range(0, len(st.write_queue)):
+                wunit = st.write_queue[i]
 
-            BayLog.debug("%s Try to write: pkt=%s buflen=%d rd=%s closed=%s adr=%s", self, wunit.tag,
-                         len(wunit.buf), st.rudder, st.closed, wunit.adr)
+                BayLog.debug("%s Try to write q[%d]: pkt=%s buflen=%d rd=%s closed=%s adr=%s", self, i, wunit.tag,
+                             len(wunit.buf), st.rudder, st.closed, wunit.adr)
 
-            if not st.closed:
-                try:
+                if not st.closed:
                     if len(wunit.buf) == 0:
                         length = 0
                     else:
-                        if isinstance(st.rudder, UdpSocketRudder):
-                            # UDP
-                            length = st.rudder.skt.sendto(wunit.buf, wunit.adr)
-                        else:
-                            length = st.rudder.write(wunit.buf)
-                    BayLog.debug("%s write %d bytes", self, length)
+                        try:
+                            if isinstance(st.rudder, UdpSocketRudder):
+                                # UDP
+                                length = st.rudder.skt.sendto(wunit.buf, wunit.adr)
+                            else:
+                                length = st.rudder.write(wunit.buf)
+                        except (BlockingIOError, ssl.SSLWantWriteError) as e:
+                            BayLog.debug("%s Write will be pended", self)
+                            break
+                            # self.agent.send_error_letter(st, e, False)
+
+                    BayLog.debug("%s wrote %d bytes", self, length)
                     wunit.buf = wunit.buf[length::]
                     self.agent.send_wrote_letter(st, length, False)
 
-                except (BlockingIOError, ssl.SSLWantWriteError) as e:
-                    BayLog.debug("%s Write will be pended", self)
-                    self.agent.send_error_letter(st, e, False)
+                    if length < len(wunit.buf):
+                        BayLog.debug("%s Data remains", self)
+                        break
 
         except Exception as e:
             BayLog.debug_e(e, "%s Unhandled error", self)

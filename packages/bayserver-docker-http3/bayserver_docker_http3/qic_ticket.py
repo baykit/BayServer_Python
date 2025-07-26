@@ -49,6 +49,9 @@ class QicTicket:
         self.last_accessed = 0
         self.stop_sending = False
 
+    def __str__(self):
+        return f"QicTicket[{self.con.host_cid}]"
+
 
     ##################################################
     # Implements TourHandler
@@ -86,15 +89,15 @@ class QicTicket:
 
         try:
             self.hcon.send_data(stream_id=stm_id, data=bytes(buf[ofs:ofs+length]), end_stream=False)
-            self.post_packets(lis)
+            self.post_packets()
 
         except Exception as e:
             BayLog.error_e(e, "%s Error on sending data: %s", tur, ExceptionUtil.message(e))
             raise IOError("Error on sending data: %s", ExceptionUtil.message(e))
 
-#        finally:
-#            if lis:
-#                lis()
+        finally:
+            if lis:
+                lis()
 
         self.access()
 
@@ -105,14 +108,13 @@ class QicTicket:
 
         try:
             self.hcon.send_data(stream_id=stm_id, data=b"", end_stream=True)
+            self.post_packets()
         except Exception as e:
             # There are some clients that close stream before end_stream received
             BayLog.error_e(e, "%s stm#%d Error on making packet to send (Ignore): %s", self, stm_id, e)
-
-        self.post_packets(lis)
-
-#        if lis:
-#            lis()
+        finally:
+            if lis:
+                lis()
 
         self.access()
 
@@ -169,7 +171,7 @@ class QicTicket:
 
 
     def on_stream_data_received(self, qev: StreamDataReceived, adr: Any):
-        BayLog.trace("%s stm#%d stream data received: len=%d", self, qev.stream_id, len(qev.data))
+        BayLog.debug("%s stm#%d stream data received: len=%d", self, qev.stream_id, len(qev.data))
         if qev.data == b"quack":
             self.con.send_datagram_frame(b"quack-ack")
 
@@ -239,7 +241,7 @@ class QicTicket:
                 if resume:
                     self.h3_ship.resume_read(Ship.SHIP_ID_NOCHECK)
 
-            tur.req.set_consume_listener(req_cont_len, callback)
+            tur.req.set_limit(req_cont_len)
 
         try:
             self.start_tour(tur)
@@ -270,7 +272,13 @@ class QicTicket:
             BayLog.debug("%s stm#%d Tour is already ended (Ignore)", self, hev.stream_id)
             return
 
-        tur.req.post_content(Tour.TOUR_ID_NOCHECK, hev.data, 0, len(hev.data))
+
+        sid = self.h3_ship.ship_id
+        def callback(length: int, resume: bool):
+            if resume:
+                self.h3_ship.resume_read(sid)
+
+        tur.req.post_req_content(Tour.TOUR_ID_NOCHECK, hev.data, 0, len(hev.data), callback)
 
         if hev.stream_ended:
             if tur.error is not None:
@@ -312,7 +320,7 @@ class QicTicket:
     def access(self):
         self.last_accessed = int(time.time())
 
-    def post_packets(self, lis: DataConsumeListener):
+    def post_packets(self):
         posted = False
         if not self.stop_sending:
             for buf, adr in self.con.datagrams_to_send(now=time.time()):
@@ -321,7 +329,7 @@ class QicTicket:
                 # For performance reasons, we update the attribute 'buf' directly.
                 pkt.buf = bytearray(buf)
                 pkt.bufLen = len(pkt.buf)
-                self.qic_protocol_handler.packet_packer.post(self.qic_protocol_handler.ship, adr, pkt, lis)
+                self.qic_protocol_handler.packet_packer.post(self.qic_protocol_handler.ship, adr, pkt, None)
                 posted = True
         return posted
 

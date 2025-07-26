@@ -15,6 +15,7 @@ from bayserver_core.tour.tour import Tour
 from bayserver_core.common.warp_data import WarpData
 
 from bayserver_core.util.char_util import CharUtil
+from bayserver_core.util.class_util import ClassUtil
 from bayserver_core.util.headers import Headers
 from bayserver_core.util.string_util import StringUtil
 from bayserver_core.util.cgi_util import CgiUtil
@@ -65,6 +66,9 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
         self.last = None
         self.data = None
         self.reset()
+
+    def __str__(self):
+        return ClassUtil.get_local_name(self.__class__)
 
     def init(self, ph: FcgProtocolHandler):
         self.proto_handler = ph
@@ -117,7 +121,7 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
 
     def handle_end_request(self, cmd):
         tur = self.ship().get_tour(cmd.req_id)
-        self.end_req_content(tur)
+        self.end_res_content(tur)
         return NextSocketAction.CONTINUE
 
     def handle_params(self, cmd):
@@ -232,8 +236,8 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
 
         return False
 
-    def end_req_content(self, tur: Tour):
-        self.ship().end_warp_tour(tur)
+    def end_res_content(self, tur: Tour):
+        self.ship().end_warp_tour(tur, True)
         tur.res.end_res_content(Tour.TOUR_ID_NOCHECK)
         self.reset_state()
 

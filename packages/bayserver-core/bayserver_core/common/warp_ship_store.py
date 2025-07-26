@@ -1,4 +1,5 @@
 import threading
+from typing import List, AnyStr, Optional
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.sink import Sink
@@ -8,6 +9,12 @@ from bayserver_core.util.object_store import ObjectStore
 from bayserver_core.util.string_util import StringUtil
 
 class WarpShipStore(ObjectStore):
+
+    keep_list: List[WarpShip]
+    busy_list: List[WarpShip]
+    lock: threading.RLock
+    max_ships: int
+    factory: any
 
     def __init__(self, max_ships):
         super().__init__()
@@ -21,25 +28,25 @@ class WarpShipStore(ObjectStore):
         return "warp_ship_store"
 
 
-    def rent(self) -> WarpShip:
+    def rent(self) -> Optional[WarpShip]:
 
         with self.lock:
-            if self.max_ships > 0 and self.count() >= self.max_ships:
+            if 0 < self.max_ships <= self.count():
                 return None
 
-            if len(self.keep_list) == 0:
-                BayLog.debug("rent from Object Store")
+            wsip = None
+            if len(self.keep_list) > 0:
+                for i in reversed(range(len(self.keep_list))):
+                    if not self.keep_list[i].rudder.closed():
+                        wsip = self.keep_list[i]
+                        self.keep_list.pop(i)
+                        break
 
+            if wsip is None:
+                BayLog.debug("rent from Object Store")
                 wsip = super().rent()
                 if wsip is None:
                     return None
-
-            else:
-                BayLog.trace("rent from keep list: %s", self.keep_list)
-                wsip = self.keep_list.pop(len(self.keep_list) - 1)
-
-            if wsip is None:
-                raise Sink("Ships is null")
 
             self.busy_list.append(wsip)
 

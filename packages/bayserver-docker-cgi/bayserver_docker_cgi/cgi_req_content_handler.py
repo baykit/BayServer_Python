@@ -133,7 +133,8 @@ class CgiReqContentHandler(ReqContentHandler, Postpone):
         BayLog.debug("%s Spawn: %s", self.tour, cmd_args)
 
         self.process = Popen(cmd_args, env=self.env, stdin=fin[0], stdout=fout[1], stderr=ferr[1])
-        BayLog.debug("%s created process; %s", self.tour, self.process)
+        self.pid = self.process.pid
+        BayLog.debug("%s created process: pid=%d", self.tour, self.pid)
 
         os.close(fin[0])
         os.close(fout[1])

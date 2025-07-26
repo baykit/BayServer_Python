@@ -342,7 +342,7 @@ class GrandAgent:
         try:
             p = bs.BayServer.anchorable_port_map[st.rudder]
             p.on_connected(self.agent_id, let.client_rudder)
-        except HttpException as e:
+        except (HttpException, IOError) as e:
             if st.transporter is not None:
                 st.transporter.on_error(st.rudder, e)
             else:
@@ -364,7 +364,7 @@ class GrandAgent:
             next_act = st.transporter.on_connected(st.rudder)
             BayLog.debug("%s nextAct=%s", self, next_act)
 
-        except IOError or SSLError as e:
+        except IOError as e:
             st.transporter.on_error(st.rudder, e)
             next_act = NextSocketAction.CLOSE
 
@@ -457,7 +457,7 @@ class GrandAgent:
     def _on_error(self, let: ErrorLetter) -> None:
         try:
             raise let.err
-        except (IOError, SSLError, HttpException) as e:
+        except (IOError, HttpException) as e:
             BayLog.error_e(e)
             self._next_action(let.state, NextSocketAction.CLOSE, False)
         except Exception as e:

@@ -7,7 +7,7 @@ from bayserver_core.common.transporter import Transporter
 from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.tour.tour import Tour
 from bayserver_core.util.http_status import HttpStatus
-
+from bayserver_core.util.internet_address import InternetAddress
 
 class SendFileShip(ReadOnlyShip):
 
@@ -43,7 +43,7 @@ class SendFileShip(ReadOnlyShip):
     # Implements ReqContentHandler
     ######################################################
 
-    def notify_read(self, buf: bytes, adr: Any) -> int:
+    def notify_read(self, buf: bytes, adr: InternetAddress) -> int:
         self.file_wrote_len += len(buf)
         BayLog.debug("%s read file %d bytes: total=%d", self, len(buf), self.file_wrote_len)
 

@@ -3,7 +3,7 @@ from bayserver_core.bay_log import BayLog
 from bayserver_core.common.read_only_ship import ReadOnlyShip
 from bayserver_core.rudder.rudder import Rudder
 from bayserver_docker_cgi import cgi_req_content_handler as ch
-
+from bayserver_core.util.internet_address import InternetAddress
 
 class CgiStdErrShip(ReadOnlyShip):
 
@@ -36,7 +36,7 @@ class CgiStdErrShip(ReadOnlyShip):
     # implements Yacht
     ######################################################
 
-    def notify_read(self, buf: bytes):
+    def notify_read(self, buf: bytes, adr: InternetAddress):
 
         BayLog.debug("%s CGI StdErr %d bytesd", self, len(buf))
         if len(buf) > 0:

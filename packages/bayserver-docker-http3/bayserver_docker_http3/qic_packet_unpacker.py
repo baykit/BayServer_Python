@@ -189,21 +189,17 @@ class QicPacketUnPacker(PacketUnPacker):
 
     def post_packets(self):
 
-        def done() -> None:
-#            self.next_read()
-            pass
-
         posted = False
 
         if self.tmp_post_packet:
-            self.protocol_handler.packet_packer.post(self.protocol_handler.ship, self.tmp_post_address, self.tmp_post_packet, done)
+            self.protocol_handler.packet_packer.post(self.protocol_handler.ship, self.tmp_post_address, self.tmp_post_packet, None)
             self.tmp_post_packet = None
             self.tmp_post_address = None
             posted = True
 
         # Check packets held in protocol handlers
         for qsip in self.ticket_map.values():
-            posted |= qsip.post_packets(done)
+            posted |= qsip.post_packets()
 
         return posted
 

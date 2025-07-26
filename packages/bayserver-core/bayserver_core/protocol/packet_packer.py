@@ -10,8 +10,8 @@ class PacketPacker(Reusable):
         pass
 
     def post(self, sip: Ship, adr: str, pkt: Packet, lsnr: DataConsumeListener):
-        if lsnr is None:
-            raise Sink()
+        #if lsnr is None:
+        #    raise Sink()
 
         sip.transporter.req_write(sip.rudder, pkt.buf.copy(), adr, pkt, lsnr)
 

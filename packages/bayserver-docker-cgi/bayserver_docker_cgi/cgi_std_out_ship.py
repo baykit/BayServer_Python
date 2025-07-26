@@ -12,7 +12,7 @@ from bayserver_core.tour.tour import Tour
 from bayserver_core.util.char_util import CharUtil
 from bayserver_core.util.string_util import StringUtil
 from bayserver_docker_cgi import cgi_req_content_handler as ch
-
+from bayserver_core.util.internet_address import InternetAddress
 
 class CgiStdOutShip(ReadOnlyShip):
 
@@ -62,7 +62,7 @@ class CgiStdOutShip(ReadOnlyShip):
     # implements Yacht
     ######################################################
 
-    def notify_read(self, buf: bytes, adr: Any):
+    def notify_read(self, buf: bytes, adr: InternetAddress):
 
         self.file_wrote_len += len(buf)
         BayLog.trace("%s notify_read %d bytes: total=%d", self, len(buf), self.file_wrote_len)
