@@ -30,24 +30,18 @@ from bayserver_core.util.headers import Headers
 from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.http_util import HttpUtil
 from bayserver_docker_http3.h3_protocol_handler import H3ProtocolHandler
-from bayserver_docker_http3 import qic_inbound_handler as ib
 from bayserver_docker_http3 import h3port_docker as h3
-from bayserver_docker_http3.qic_command_handler import QicCommandHandler
-from bayserver_docker_http3.qic_packet import QicPacket
-from bayserver_docker_http3.qic_packet_factory import QicPacketFactory
-from bayserver_docker_http3.qic_protocol_handler import QicProtocolHandler
 from bayserver_docker_http3 import quic_connection_protocol_ex as proto
 
 HttpConnection = Union[H0Connection, H3Connection]
 Address = Tuple[str, int]
 
-class QicTicket(QicCommandHandler):
+class QicTicket():
 
     PROTOCOL = "HTTP/3"
 
     agent_id: int
     protocol: "proto.QuicConnectionProtocolEx"
-    protocol_handler: QicProtocolHandler
     port_docker: "h3.H3PortDocker"
     hcon: HttpConnection
     h3_ship: InboundShip
@@ -65,15 +59,6 @@ class QicTicket(QicCommandHandler):
         self.h3_ship = None
         self.sender = None
         self.stop_sending = {}
-
-        pkt_store = PacketStore("h3", QicPacketFactory())
-        ib_handler = ib.QicInboundHandler()
-        pkt_unpacker = None
-        pkt_packer = PacketPacker()
-        cmd_packer = CommandPacker(pkt_packer, pkt_store)
-
-        self.protocol_handler = QicProtocolHandler(ib_handler, pkt_unpacker, pkt_packer, None, cmd_packer, True)
-        ib_handler.init(self.protocol_handler)
 
     def reset(self):
         pass
@@ -385,18 +370,6 @@ class QicTicket(QicCommandHandler):
 
     def access(self):
         self.last_accessed = int(time.time())
-
-    def post_packets(self):
-        posted = False
-        for buf, adr in self.con.datagrams_to_send(now=time.time()):
-            BayLog.debug("%s POST packet: len=%d", self, len(buf))
-            pkt = QicPacket()
-            # For performance reasons, we update the attribute 'buf' directly.
-            pkt.buf = bytearray(buf)
-            pkt.bufLen = len(pkt.buf)
-            self.qic_protocol_handler.packet_packer.post(self.qic_protocol_handler.ship, adr, pkt, None)
-            posted = True
-        return posted
 
     def start_tour(self, tur):
         HttpUtil.parse_host_port(tur, 443)

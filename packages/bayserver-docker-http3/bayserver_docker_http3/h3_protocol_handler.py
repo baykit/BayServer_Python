@@ -1,23 +1,22 @@
 from bayserver_core.protocol.command_handler import CommandHandler
 from bayserver_core.protocol.protocol_handler import ProtocolHandler
-from bayserver_docker_http3.qic_protocol_handler import QicProtocolHandler
 
 
 class H3ProtocolHandler(ProtocolHandler):
 
     command_handler: CommandHandler
+    MAX_H3_PACKET_SIZE = 1024
 
-    def __init__(self, th: CommandHandler):
-        super().__init__(None, None, None, None, th, True)
-        self.command_handler = th
+    def __init__(self, h: CommandHandler):
+        super().__init__(None, None, None, None, h, True)
+        self.command_handler = h
 
 
     def protocol(self):
         return "h3"
 
     def max_req_packet_data_size(self):
-        return QicProtocolHandler.MAX_H3_PACKET_SIZE
+        return self.MAX_H3_PACKET_SIZE
 
     def max_res_packet_data_size(self):
-        #return QicProtocolHandler.MAX_H3_PACKET_SIZE
-        return 16000
+        return self.MAX_H3_PACKET_SIZE
