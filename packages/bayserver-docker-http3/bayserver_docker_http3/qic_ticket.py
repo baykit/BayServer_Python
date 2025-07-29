@@ -1,8 +1,6 @@
 import time
 import traceback
 from asyncio import run_coroutine_threadsafe
-from operator import contains
-from time import sleep
 from typing import Union, Tuple, Dict
 
 from aioquic.h0.connection import H0_ALPN, H0Connection
@@ -16,9 +14,6 @@ from bayserver_core.bay_log import BayLog
 from bayserver_core.bayserver import BayServer
 from bayserver_core.common.inbound_ship import InboundShip
 from bayserver_core.http_exception import HttpException
-from bayserver_core.protocol.command_packer import CommandPacker
-from bayserver_core.protocol.packet_packer import PacketPacker
-from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.ship.ship import Ship
 from bayserver_core.sink import Sink
@@ -29,9 +24,9 @@ from bayserver_core.util.exception_util import ExceptionUtil
 from bayserver_core.util.headers import Headers
 from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.http_util import HttpUtil
-from bayserver_docker_http3.h3_protocol_handler import H3ProtocolHandler
 from bayserver_docker_http3 import h3port_docker as h3
 from bayserver_docker_http3 import quic_connection_protocol_ex as proto
+from bayserver_docker_http3.h3_protocol_handler import H3ProtocolHandler
 
 HttpConnection = Union[H0Connection, H3Connection]
 Address = Tuple[str, int]
