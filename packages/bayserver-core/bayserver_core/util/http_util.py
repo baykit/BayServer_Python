@@ -140,5 +140,5 @@ class HttpUtil:
         try:
             return socket.gethostbyaddr(adr)[0]
         except OSError as e:
-            BayLog.warn_e(e, traceback.format_stack(), "Cannot get remote host name: %s", e)
+            BayLog.warn("Cannot get remote host name: %s", e)
             return None

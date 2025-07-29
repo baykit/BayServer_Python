@@ -10,7 +10,7 @@ from bayserver_core.bay_log import BayLog
 from bayserver_core.sink import Sink
 from bayserver_core.tour import tour
 
-from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent import grand_agent as ga
 from bayserver_core.util.string_util import StringUtil
 
 class TourStore:
@@ -88,7 +88,7 @@ class TourStore:
         if cls.max_count is None:
             cls.max_count = max_tours
             cls.stores = {}
-            GrandAgent.add_lifecycle_listener(TourStore.AgentListener())
+            ga.GrandAgent.add_lifecycle_listener(TourStore.AgentListener())
 
     @classmethod
     def get_store(cls, agent_id: int):

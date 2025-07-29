@@ -1,5 +1,6 @@
 import time
 import traceback
+from asyncio import run_coroutine_threadsafe
 from operator import contains
 from time import sleep
 from typing import Union, Tuple, Dict
@@ -26,9 +27,10 @@ from bayserver_core.tour.tour import Tour
 from bayserver_core.util.data_consume_listener import DataConsumeListener
 from bayserver_core.util.exception_util import ExceptionUtil
 from bayserver_core.util.headers import Headers
+from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.http_util import HttpUtil
-from bayserver_docker_http3 import qic_inbound_handler as ib
 from bayserver_docker_http3.h3_protocol_handler import H3ProtocolHandler
+from bayserver_docker_http3 import qic_inbound_handler as ib
 from bayserver_docker_http3 import h3port_docker as h3
 from bayserver_docker_http3.qic_command_handler import QicCommandHandler
 from bayserver_docker_http3.qic_packet import QicPacket
@@ -99,51 +101,71 @@ class QicTicket(QicCommandHandler):
                 BayLog.info("%s header %s: %s", tur, hdr[0], hdr[1])
 
         stm_id = tur.req.key
-        try:
-            self.hcon.send_headers(stream_id = stm_id, headers = h3_hdrs)
-            self.protocol.transmit()
-        except Exception as e:
-            BayLog.error_e(e, traceback.format_stack(), "%s Error on sending headers: %s", tur, ExceptionUtil.message(e))
-            raise IOError("Error on sending headers: %s", ExceptionUtil.message(e))
 
-        self.access()
+        async def postpone():
+
+            #BayLog.info("%s stm#%d sendResHeader(postpone)", tur, tur.req.key)
+            if not stm_id in self.stop_sending:
+                try:
+                    self.hcon.send_headers(stream_id = stm_id, headers = h3_hdrs)
+                    self.protocol.transmit()
+                except Exception as e:
+                    BayLog.error_e(e, traceback.format_stack(), "%s Error on sending headers: %s", tur, ExceptionUtil.message(e))
+                    raise IOError("Error on sending headers: %s", ExceptionUtil.message(e))
+
+            self.access()
+
+        run_coroutine_threadsafe(postpone(), self.port_docker.loop)
 
     def send_res_content(self, tur: Tour, buf: bytearray, ofs: int, length: int, lis: DataConsumeListener) -> None:
 
         stm_id = tur.req.key
         BayLog.info("%s %s stm#%d sendResContent len=%d posted=%d/%d stop_sending=%s",
                      self, tur, stm_id, length, tur.res.bytes_posted, tur.res.headers.content_length(), False)
+        data=bytes(buf[ofs:ofs+length])
 
-        try:
-            self.hcon.send_data(stream_id=stm_id, data=bytes(buf[ofs:ofs+length]), end_stream=False)
-            self.protocol.transmit()
-        except Exception as e:
-            BayLog.error_e(e, traceback.format_stack(), "%s Error on sending data: %s", tur, ExceptionUtil.message(e))
-            raise IOError("Error on sending data: %s", ExceptionUtil.message(e))
+        async def postpone():
 
-        finally:
-            if lis:
-                lis()
+            #BayLog.info("%s %s stm#%d sendResContent(postpone)", self, tur, stm_id)
+            if not stm_id in self.stop_sending:
+                try:
+                    self.hcon.send_data(stream_id=stm_id, data=data, end_stream=False)
+                    self.protocol.transmit()
+                except Exception as e:
+                    BayLog.error_e(e, traceback.format_stack(), "%s Error on sending data: %s", tur, ExceptionUtil.message(e))
+                    raise IOError("Error on sending data: %s", ExceptionUtil.message(e))
+
+                finally:
+                    if lis:
+                        lis()
 
         self.access()
+
+        run_coroutine_threadsafe(postpone(), self.port_docker.loop)
+
 
     def send_end_tour(self, tur: Tour, keep_alive: bool, lis: DataConsumeListener) -> None:
 
         stm_id = tur.req.key
         BayLog.info("%s stm#%d sendEndTour", tur, stm_id)
 
-        try:
-            self.hcon.send_data(stream_id=stm_id, data=b"", end_stream=True)
-            self.protocol.transmit()
-        except Exception as e:
-            # There are some clients that close stream before end_stream received
-            BayLog.error_e(e, traceback.format_stack(), "%s stm#%d Error on making packet to send (Ignore): %s", self, stm_id, e)
-        finally:
-            if lis:
-                lis()
+        async def postpone():
 
-        self.access()
+            #BayLog.info("%s stm#%d sendEndTour(postpone)", tur, stm_id)
+            if not stm_id in self.stop_sending:
+                try:
+                    self.hcon.send_data(stream_id=stm_id, data=b"", end_stream=True)
+                    self.protocol.transmit()
+                except Exception as e:
+                    # There are some clients that close stream before end_stream received
+                    BayLog.error_e(e, traceback.format_stack(), "%s stm#%d Error on making packet to send (Ignore): %s", self, stm_id, e)
+                finally:
+                    if lis:
+                        lis()
 
+            self.access()
+
+        run_coroutine_threadsafe(postpone(), self.port_docker.loop)
 
     def on_protocol_error(self, e: ProtocolException) -> bool:
         raise Sink()
@@ -366,15 +388,14 @@ class QicTicket(QicCommandHandler):
 
     def post_packets(self):
         posted = False
-        if not self.stop_sending:
-            for buf, adr in self.con.datagrams_to_send(now=time.time()):
-                BayLog.debug("%s POST packet: len=%d", self, len(buf))
-                pkt = QicPacket()
-                # For performance reasons, we update the attribute 'buf' directly.
-                pkt.buf = bytearray(buf)
-                pkt.bufLen = len(pkt.buf)
-                self.qic_protocol_handler.packet_packer.post(self.qic_protocol_handler.ship, adr, pkt, None)
-                posted = True
+        for buf, adr in self.con.datagrams_to_send(now=time.time()):
+            BayLog.debug("%s POST packet: len=%d", self, len(buf))
+            pkt = QicPacket()
+            # For performance reasons, we update the attribute 'buf' directly.
+            pkt.buf = bytearray(buf)
+            pkt.bufLen = len(pkt.buf)
+            self.qic_protocol_handler.packet_packer.post(self.qic_protocol_handler.ship, adr, pkt, None)
+            posted = True
         return posted
 
     def start_tour(self, tur):
@@ -394,7 +415,11 @@ class QicTicket(QicCommandHandler):
         tur.is_secure = True
         tur.res.buffer_size = 8192
 
-        tur.go()
+        try:
+            tur.go()
+        except BaseException as e:
+            BayLog.error_e(e, traceback.format_stack())
+            raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "Start tour error: %s", ExceptionUtil.message(e))
         self.access()
 
 

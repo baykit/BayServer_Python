@@ -51,6 +51,11 @@ class HtpPortDocker(PortBase, HtpDocker):
     def protocol(self):
         return HtpDocker.H1_PROTO_NAME
 
+    def self_listen(self) -> bool:
+        return False
+
+    def listen(self) -> None:
+        pass
 
     ######################################################
     # Implements PortBase

@@ -1,7 +1,7 @@
 import asyncio
 import os
 import threading
-from typing import Dict, Optional
+from typing import Dict, Optional, ClassVar
 
 from aioquic.asyncio import serve
 from aioquic.h3.connection import H3_ALPN
@@ -11,7 +11,6 @@ from aioquic.tls import SessionTicket
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
-from bayserver_core.bayserver import BayServer
 from bayserver_core.config_exception import ConfigException
 from bayserver_core.docker.base.port_base import PortBase
 from bayserver_core.sink import Sink
@@ -19,7 +18,7 @@ from bayserver_core.symbol import Symbol
 from bayserver_docker_http3.h3_docker import H3Docker
 from bayserver_docker_http3.quic_connection_protocol_ex import QuicConnectionProtocolEx
 
-h3_docker = None
+h3_docker: Optional["H3PortDocker"] = None
 
 try:
     import uvloop
@@ -27,30 +26,34 @@ except ImportError:
     uvloop = None
 
 
-def start_h3_server(h3Port: "H3PortDocker") -> None:
-    loop = asyncio.new_event_loop()
-    store = h3Port.SessionTicketStore()
+def start_h3_server() -> None:
+    global h3_docker
+
+    h3_docker.loop = asyncio.new_event_loop()
+    store = h3_docker.SessionTicketStore()
     try:
-        BayLog.info("Starting H3 server port=%d", h3Port.port())
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(
+        BayLog.info("Starting H3 server port=%d", h3_docker.port())
+        asyncio.set_event_loop(h3_docker.loop)
+        h3_docker.loop.run_until_complete(
             serve(
                 "::",
-                h3Port.port(),
-                configuration=h3Port.config,
+                h3_docker.port(),
+                configuration=h3_docker.config,
                 create_protocol=QuicConnectionProtocolEx,
                 session_ticket_fetcher=store.pop,
                 session_ticket_handler=store.add,
                 retry=True,
             )
         )
-        loop.run_forever()  # 必要に応じて永続化（例：serve()が持続しない場合）
+        h3_docker.loop.run_forever()  # 必要に応じて永続化（例：serve()が持続しない場合）
     except KeyboardInterrupt:
         pass
     finally:
-        loop.close()
+        h3_docker.loop.close()
 
 class H3PortDocker(PortBase, H3Docker):
+
+    loop: asyncio.AbstractEventLoop
 
     config: QuicConfiguration
     session_ticket_fetcher: SessionTicket
@@ -91,9 +94,6 @@ class H3PortDocker(PortBase, H3Docker):
     def init(self, elm, parent):
         super().init(elm, parent)
 
-        global h3_docker
-        h3_docker = self
-
         self.quic_log_dir = "log"
         self.secrets_log_file = "log/quic_secrets.log"
 
@@ -126,10 +126,6 @@ class H3PortDocker(PortBase, H3Docker):
 
         self.config.load_cert_chain(self._secure_docker.cert_file, self._secure_docker.key_file)
 
-        if BayServer.is_child():
-            thread = threading.Thread(target=start_h3_server, args=(self,))
-            thread.start()
-
     def init_key_val(self, kv):
         key = kv.key.lower()
         if key == "quic_log_dir":
@@ -149,6 +145,16 @@ class H3PortDocker(PortBase, H3Docker):
     def protocol(self):
         return H3Docker.PROTO_NAME
 
+    def self_listen(self) -> bool:
+        return True
+
+    def listen(self) -> None:
+        global h3_docker
+        h3_docker = self
+
+        thread = threading.Thread(target=start_h3_server)
+        thread.start()
+        pass
 
     ######################################################
     # Implements PortBase

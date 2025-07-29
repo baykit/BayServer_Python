@@ -6,7 +6,7 @@ import socket
 import sys
 import traceback
 import shutil
-from typing import Dict, List, ClassVar
+from typing import Dict, List, ClassVar, Optional
 
 from bayserver_core.rudder.socket_rudder import SocketRudder
 from bayserver_core.rudder.udp_socket_rudder import UdpSocketRudder
@@ -97,6 +97,7 @@ class BayServer:
     # for child process mode
     channels: ClassVar[List[socket.socket]] = None
     communication_channel: ClassVar[socket.socket] = None
+    self_listen_port_idx: ClassVar[int] = None
 
 
     def __init__(self):
@@ -104,9 +105,10 @@ class BayServer:
         pass
 
     @classmethod
-    def init_child(cls, chs, com_ch: socket.socket) -> None:
+    def init_child(cls, chs, com_ch: socket.socket, self_listen_port_idx: Optional[int]) -> None:
         cls.channels = chs
         cls.communication_channel = com_ch
+        cls.self_listen_port_idx = self_listen_port_idx
 
     @classmethod
     def is_child(cls):
@@ -304,45 +306,46 @@ class BayServer:
             # open port
             adr = dkr.address()
 
-            if dkr.anchored():
-                # Open TCP port
-                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_TCP_PORT, dkr.host(), dkr.port(), dkr.protocol()))
+            if not dkr.self_listen():
+                if dkr.anchored():
+                    # Open TCP port
+                    BayLog.info(BayMessage.get(Symbol.MSG_OPENING_TCP_PORT, dkr.host(), dkr.port(), dkr.protocol()))
 
-                if isinstance(adr, str):
+                    if isinstance(adr, str):
+                        try:
+                            os.unlink(adr)
+                        except IOError:
+                            pass
+                        skt = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    else:
+                        skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+                    #if not SysUtil.run_on_windows():
+                    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    skt.setblocking(False)
                     try:
-                        os.unlink(adr)
-                    except IOError:
-                        pass
-                    skt = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                        skt.bind(adr)
+                    except OSError as e:
+                        BayLog.error_e(e, traceback.format_stack(), BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
+                                                         ExceptionUtil.message(e)))
+                        raise e
+                    skt.listen(0)
+                    cls.anchorable_port_map[SocketRudder(skt)] = dkr
                 else:
-                    skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    # Open UDP port
+                    BayLog.info(BayMessage.get(Symbol.MSG_OPENING_UDP_PORT, dkr.host(), dkr.port(), dkr.protocol()))
+                    skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    if not SysUtil.run_on_windows():
+                       skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    skt.setblocking(False)
+                    try:
+                       skt.bind(adr)
+                    except OSError as e:
+                       BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
+                                                        ExceptionUtil.message(e)))
+                       return
 
-                #if not SysUtil.run_on_windows():
-                skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                skt.setblocking(False)
-                try:
-                    skt.bind(adr)
-                except OSError as e:
-                    BayLog.error_e(e, traceback.format_stack(), BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
-                                                     ExceptionUtil.message(e)))
-                    raise e
-                skt.listen(0)
-                cls.anchorable_port_map[SocketRudder(skt)] = dkr
-            else:
-                # Open UDP port
-                BayLog.info(BayMessage.get(Symbol.MSG_OPENING_UDP_PORT, dkr.host(), dkr.port(), dkr.protocol()))
-                #skt = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                #if not SysUtil.run_on_windows():
-                #    skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                #skt.setblocking(False)
-                #try:
-                #    skt.bind(adr)
-                #except OSError as e:
-                #    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
-                #                                     ExceptionUtil.message(e)))
-                #    return
-
-                #cls.unanchorable_port_map[UdpSocketRudder(skt)] = dkr
+                    cls.unanchorable_port_map[UdpSocketRudder(skt)] = dkr
 
     @classmethod
     def parent_start(cls):
@@ -351,14 +354,18 @@ class BayServer:
 
         if not cls.harbor.multi_core:
             # Thread mode
-
-            GrandAgent.init(
-                list(range(1, cls.harbor.grand_agents() + 1)),
-                        cls.harbor.max_ships())
-
+            GrandAgent.init(cls.harbor.max_ships())
             cls.invoke_runners()
 
-        GrandAgentMonitor.init(cls.harbor.grand_agents())
+        for i, dkr in enumerate(cls.port_docker_list):
+            if dkr.self_listen():
+                GrandAgentMonitor.add(dkr.anchored(), True, i)
+            elif not dkr.anchored():
+                GrandAgentMonitor.add(False)
+
+        for i in range(0, cls.harbor.grand_agents()):
+            GrandAgentMonitor.add(True)
+
         SignalAgent.init(cls.harbor.control_port())
         cls.create_pid_file(SysUtil.pid())
 
@@ -367,51 +374,57 @@ class BayServer:
         BayLog.debug("Agt#%d child_start", agt_id)
         cls.invoke_runners()
 
-        for skt in cls.channels:
-            server_addr = skt.getsockname()
-            port_no = -1
-            port_path = None
-            if not SysUtil.run_on_windows() and skt.family == socket.AF_UNIX:
-                # Unix domain socker
-                unix_domain = True
-                anchorable = True
-                port_path = server_addr
-            elif skt.type == socket.SOCK_DGRAM:
-                # UDP Port
-                unix_domain = False
-                anchorable = False
-                port_no = server_addr[1]
-            else:
-                # TCP port
-                unix_domain = False
-                anchorable = True
-                port_no = server_addr[1]
+        GrandAgent.init(cls.harbor.max_ships())
 
-            port_dkr = None
+        if cls.self_listen_port_idx >= 0:
+            port_dkr = cls.port_docker_list[cls.self_listen_port_idx]
+            GrandAgent.add(agt_id, port_dkr.anchored(), True, cls.self_listen_port_idx)
 
-            for p in cls.port_docker_list:
-                if unix_domain:
-                    if p.socket_path() == port_path:
-                        port_dkr = p
-                        break
+        else:
+            for skt in cls.channels:
+                server_addr = skt.getsockname()
+                port_no = -1
+                port_path = None
+                if not SysUtil.run_on_windows() and skt.family == socket.AF_UNIX:
+                    # Unix domain socker
+                    unix_domain = True
+                    anchorable = True
+                    port_path = server_addr
+                elif skt.type == socket.SOCK_DGRAM:
+                    # UDP Port
+                    unix_domain = False
+                    anchorable = False
+                    port_no = server_addr[1]
                 else:
-                    if p.anchored() == anchorable and p.port() == port_no:
-                        port_dkr = p
-                        break
+                    # TCP port
+                    unix_domain = False
+                    anchorable = True
+                    port_no = server_addr[1]
 
-            if port_dkr is None:
-                BayLog.fatal("Cannot find port docker: %d", port_no)
-                sys.exit(1)
+                port_dkr = None
 
-            if port_dkr.anchored():
-                cls.anchorable_port_map[SocketRudder(skt)] = port_dkr
-            else:
-                cls.unanchorable_port_map[UdpSocketRudder(skt)] = port_dkr
+                for p in cls.port_docker_list:
+                    if unix_domain:
+                        if p.socket_path() == port_path:
+                            port_dkr = p
+                            break
+                    else:
+                        if p.anchored() == anchorable and p.port() == port_no:
+                            port_dkr = p
+                            break
 
+                if port_dkr is None:
+                    BayLog.fatal("Cannot find port docker: %d", port_no)
+                    sys.exit(1)
 
-        GrandAgent.init([agt_id], cls.harbor.max_ships())
+                if port_dkr.anchored():
+                    cls.anchorable_port_map[SocketRudder(skt)] = port_dkr
+                else:
+                    cls.unanchorable_port_map[UdpSocketRudder(skt)] = port_dkr
+
+            GrandAgent.add(agt_id, anchorable, False, None)
+
         agt = GrandAgent.get(agt_id)
-
         agt.add_command_receiver(SocketRudder(cls.communication_channel))
         agt.run()
 

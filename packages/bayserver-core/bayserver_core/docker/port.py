@@ -66,3 +66,13 @@ class Port(Docker, metaclass=ABCMeta):
     @abstractmethod
     def return_ship(self, sip: "isip.InboundShip"):
         pass
+
+    @abstractmethod
+    def self_listen(self) -> bool:
+        pass
+
+    @abstractmethod
+    def listen(self) -> None:
+        pass
+
+

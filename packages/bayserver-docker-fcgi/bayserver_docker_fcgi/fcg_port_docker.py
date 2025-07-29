@@ -16,6 +16,12 @@ class FcgPortDocker(PortBase, FcgDocker):
     def protocol(self):
         return super().PROTO_NAME
 
+    def self_listen(self) -> bool:
+        return False
+
+    def listen(self) -> None:
+        pass
+
     ######################################################
     # Implements PortBase
     ######################################################

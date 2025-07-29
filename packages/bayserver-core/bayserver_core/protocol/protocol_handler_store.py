@@ -76,7 +76,7 @@ class ProtocolHandlerStore(ObjectStore):
 
     @classmethod
     def register_protocol(cls, protocol, svr_mode, proto_hnd_factory):
-        BayLog.info("register protocol: %s %s", protocol, svr_mode)
+        #BayLog.debug("register protocol: proto=%s server_mode=%s", protocol, svr_mode)
         if ProtocolHandlerStore.construct_protocol(protocol, svr_mode) not in ProtocolHandlerStore.proto_map.keys():
             ProtocolHandlerStore.proto_map[ProtocolHandlerStore.construct_protocol(protocol, svr_mode)] = \
                 ProtocolHandlerStore.ProtocolInfo(protocol, svr_mode, proto_hnd_factory)

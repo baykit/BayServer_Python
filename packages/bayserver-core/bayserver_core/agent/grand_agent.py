@@ -4,7 +4,7 @@ import threading
 import time
 import traceback
 from argparse import ArgumentError
-from typing import ClassVar, List, Dict
+from typing import ClassVar, List, Dict, Optional
 
 from bayserver_core import bayserver as bs
 from bayserver_core import mem_usage as mem
@@ -54,6 +54,9 @@ class GrandAgent:
 
     agent_id: int
     anchorable: bool
+    self_listen: bool
+    self_listen_port_idx: Optional[int]
+
     net_multiplexer: Multiplexer
     job_multiplexer: Multiplexer
     taxi_multiplexer: Multiplexer
@@ -76,7 +79,6 @@ class GrandAgent:
     #
     # class variables
     #
-    agent_count: ClassVar[int] = 0
     max_agent_id: ClassVar[int] = 0
     max_ships: ClassVar[int] = 0
 
@@ -85,10 +87,12 @@ class GrandAgent:
 
     finale: ClassVar[bool] = False
 
-    def __init__(self, agent_id, max_ships, anchorable):
+    def __init__(self, agent_id: int, max_ships: int, anchorable: bool, self_listen: bool, self_listen_port_idx: Optional[int] = None, ):
         self.agent_id = agent_id
         self.max_inbound_ships = max_ships
         self.anchorable = anchorable
+        self.self_listen = self_listen
+        self.self_listen_port_idx = self_listen_port_idx
         self.timer_handlers = []
         self.aborted = False
         self.letter_queue = []
@@ -137,20 +141,24 @@ class GrandAgent:
 
         self.net_multiplexer.req_read(self.command_receiver.rudder)
 
-        if self.anchorable:
-            # Adds server socket channel of anchorable ports
-            for rd in bs.BayServer.anchorable_port_map.keys():
-                if self.net_multiplexer.is_non_blocking():
-                    rd.set_non_blocking()
-                self.net_multiplexer.add_rudder_state(rd, RudderState(rd))
+        if self.self_listen:
+            dkr = bs.BayServer.port_docker_list[self.self_listen_port_idx]
+            dkr.listen()
+        else:
+            if self.anchorable:
+                # Adds server socket channel of anchorable ports
+                for rd in bs.BayServer.anchorable_port_map.keys():
+                    if self.net_multiplexer.is_non_blocking():
+                        rd.set_non_blocking()
+                    self.net_multiplexer.add_rudder_state(rd, RudderState(rd))
 
-        # Set up unanchorable channel
-        if not self.anchorable:
-            for rd in bs.BayServer.unanchorable_port_map.keys():
-                if self.net_multiplexer.is_non_blocking():
-                    rd.set_non_blocking()
-                port_dkr = bs.BayServer.unanchorable_port_map[rd]
-                port_dkr.on_connected(self.agent_id, rd)
+            # Set up unanchorable channel
+            if not self.anchorable:
+                for rd in bs.BayServer.unanchorable_port_map.keys():
+                    if self.net_multiplexer.is_non_blocking():
+                        rd.set_non_blocking()
+                    port_dkr = bs.BayServer.unanchorable_port_map[rd]
+                    port_dkr.on_connected(self.agent_id, rd)
 
         busy = True
         try:
@@ -504,18 +512,8 @@ class GrandAgent:
     # class methods
     ######################################################
     @classmethod
-    def init(cls, agt_ids, max_ships):
-        GrandAgent.agent_count = len(agt_ids)
+    def init(cls, max_ships: int) -> None:
         GrandAgent.max_ships = max_ships
-
-        if bs.BayServer.harbor.multi_core:
-            if len(bs.BayServer.unanchorable_port_map) > 0:
-                GrandAgent.add(agt_ids[0], False)
-                agt_ids.pop(0)
-
-            for agt_id in agt_ids:
-                GrandAgent.add(agt_id, True)
-
 
 
     @classmethod
@@ -523,7 +521,7 @@ class GrandAgent:
         return GrandAgent.agents[id]
 
     @classmethod
-    def add(cls, agt_id: int, anchorable: bool) -> "GrandAgent":
+    def add(cls, agt_id: int, anchorable: bool, self_listen: bool, self_listen_port_idx: Optional[int]) -> "GrandAgent":
         if agt_id == -1:
             agt_id = GrandAgent.max_agent_id + 1
 
@@ -532,7 +530,7 @@ class GrandAgent:
         if agt_id > GrandAgent.max_agent_id:
             GrandAgent.max_agent_id = agt_id
 
-        agt = GrandAgent(agt_id, bs.BayServer.harbor.max_ships(), anchorable)
+        agt = GrandAgent(agt_id, bs.BayServer.harbor.max_ships(), anchorable, self_listen, self_listen_port_idx)
         cls.agents[agt_id] = agt
 
         for lis in GrandAgent.listeners:

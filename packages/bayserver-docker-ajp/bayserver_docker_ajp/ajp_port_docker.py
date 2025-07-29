@@ -15,6 +15,11 @@ class AjpPortDocker(PortBase, AjpDocker):
     def protocol(self):
         return AjpDocker.PROTO_NAME
 
+    def self_listen(self) -> bool:
+        return False
+
+    def listen(self) -> None:
+        pass
 
     ######################################################
     # Implements PortBase

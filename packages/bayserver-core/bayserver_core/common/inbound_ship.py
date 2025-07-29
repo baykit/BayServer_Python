@@ -5,8 +5,7 @@ from bayserver_core import bayserver as bs
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.transporter import Transporter
-from bayserver_core.docker.port import Port
-from bayserver_core.docker.trouble import Trouble
+from bayserver_core.docker import port as pt
 from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.protocol.protocol_handler import ProtocolHandler
 from bayserver_core.rudder.rudder import Rudder
@@ -29,7 +28,7 @@ class InboundShip(Ship):
 
     MAX_TOURS = 128
 
-    port_docker: Port
+    port_docker: "pt.Port"
 
     protocol_handler: ProtocolHandler
     need_end: bool
@@ -56,7 +55,7 @@ class InboundShip(Ship):
 
         return f"agt#{self.agent_id} ship#{self.ship_id}/{self.object_id}{proto}"
 
-    def init_inbound(self, rd: Rudder, agt_id: int, tp: Transporter, port_dkr: Port, proto_hnd: ProtocolHandler):
+    def init_inbound(self, rd: Rudder, agt_id: int, tp: Transporter, port_dkr: "pt.Port", proto_hnd: ProtocolHandler):
         self.init(agt_id, rd, tp)
         self.port_docker = port_dkr
         self.socket_timeout_sec = self.port_docker.timeout_sec() if self.port_docker.timeout_sec() >= 0 else bs.BayServer.harbor.socket_timeout_sec()
@@ -137,7 +136,7 @@ class InboundShip(Ship):
     # Other methods
     ######################################################
 
-    def get_port_docker(self) -> Port:
+    def get_port_docker(self) -> "pt.Port":
         return self.port_docker
 
     def set_protocol_handler(self, proto_hnd):

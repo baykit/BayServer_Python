@@ -454,12 +454,14 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                     BayLog.debug("%s Handshake: Need to write more st=%s", self, st)
 
             if len(st.write_queue) == 0:
-                raise IOError(f"{self.agent} No data to write: {st.rudder}")
+                BayLog.warn("%s No data to write: %s", self, st.rudder)
+                self.cancel_write(st)
+                return
 
             for i in range(0, len(st.write_queue)):
                 wunit = st.write_queue[i]
 
-                BayLog.debug("%s Try to write q[%d]: pkt=%s buflen=%d rd=%s closed=%s adr=%s", self, i, wunit.tag,
+                BayLog.debug("%s Try to write q[%d/%d]: pkt=%s buflen=%d rd=%s closed=%s adr=%s", self, i, len(st.write_queue), wunit.tag,
                              len(wunit.buf), st.rudder, st.closed, wunit.adr)
 
                 if not st.closed:

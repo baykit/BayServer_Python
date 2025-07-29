@@ -1,6 +1,6 @@
 from typing import Dict
 
-from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.agent import grand_agent as ga
 from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.bay_log import BayLog
 from bayserver_core.protocol.packet_factory import PacketFactory
@@ -94,7 +94,7 @@ class PacketStore(Reusable):
     def init(cls):
         if cls.proto_map is None:
             cls.proto_map = {}
-            GrandAgent.add_lifecycle_listener(PacketStore.AgentListener())
+            ga.GrandAgent.add_lifecycle_listener(PacketStore.AgentListener())
 
 
     @classmethod

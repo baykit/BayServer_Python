@@ -6,12 +6,13 @@ import threading
 import time
 import traceback
 from multiprocessing import Process
-from typing import ClassVar, Dict
+from typing import ClassVar, Dict, Optional, List
 
 from bayserver_core import bayserver as bs
 from bayserver_core.agent import grand_agent as ga
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
+from bayserver_core.docker.port import Port
 from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.rudder.socket_rudder import SocketRudder
 from bayserver_core.symbol import Symbol
@@ -25,13 +26,13 @@ class GrandAgentMonitor:
     finale: ClassVar[bool] = False
 
     agent_id: int
-    anchorable: bool
+    self_listen: bool
     rudder: Rudder
     process: Process
 
-    def __init__(self, agt_id: int, anchorable: bool, com_channel: Rudder, process: Process) -> None:
+    def __init__(self, agt_id: int, self_listen: bool, com_channel: Rudder, process: Process) -> None:
         self.agent_id = agt_id
-        self.anchorable = anchorable
+        self.self_listen = self_listen
         self.rudder = com_channel
         self.process = process
 
@@ -105,8 +106,8 @@ class GrandAgentMonitor:
             if len(GrandAgentMonitor.monitors) < GrandAgentMonitor.num_agents:
                 try:
                     if not bs.BayServer.harbor.multi_core:
-                        ga.GrandAgent.add(-1, self.anchorable)
-                    GrandAgentMonitor.add(self.anchorable)
+                        ga.GrandAgent.add(-1, self.self_listen)
+                    GrandAgentMonitor.add(self.self_listen)
                 except BaseException as e:
                     BayLog.error_e(e, traceback.format_stack())
 
@@ -114,18 +115,7 @@ class GrandAgentMonitor:
     # Class methods
     ########################################
     @classmethod
-    def init(cls, num_agents):
-        cls.num_agents = num_agents
-
-        if len(bs.BayServer.unanchorable_port_map) > 0:
-            cls.add(False)
-            cls.num_agents += 1
-
-        for i in range(0, num_agents):
-            cls.add(True)
-
-    @classmethod
-    def add(cls, anchorable):
+    def add(cls, anchorable: bool, self_listen: Optional[bool] = False, self_listen_port_idx: Optional[int] = -1) -> None:
         cls.cur_id = cls.cur_id + 1
         agt_id = cls.cur_id
         if agt_id > 100:
@@ -138,18 +128,15 @@ class GrandAgentMonitor:
             new_argv.append("-agentid=" + str(agt_id))
 
             chs = []
-            if anchorable:
+            if not self_listen:
                 for rd in bs.BayServer.anchorable_port_map.keys():
                     chs.append(rd.key())
-            else:
-                for rd in bs.BayServer.unanchorable_port_map.keys():
-                    chs.append(rd.key())
 
-            p = Process(target=run_child, args=(new_argv, chs, com_ch[1],))
+            p = Process(target=run_child, args=(new_argv, chs, com_ch[1], self_listen_port_idx, ))
             p.start()
         else:
             # Thread mode
-            ga.GrandAgent.add(agt_id, anchorable)
+            ga.GrandAgent.add(agt_id, anchorable, self_listen, self_listen_port_idx)
             agt = ga.GrandAgent.get(agt_id)
 
             def run():
@@ -160,7 +147,7 @@ class GrandAgentMonitor:
             agent_thread.start()
             p = None
 
-        cls.monitors[agt_id] = GrandAgentMonitor(agt_id, anchorable, SocketRudder(com_ch[0]), p)
+        cls.monitors[agt_id] = GrandAgentMonitor(agt_id, self_listen, SocketRudder(com_ch[0]), p)
         cls.monitors[agt_id].start()
 
     @classmethod
@@ -201,6 +188,6 @@ class GrandAgentMonitor:
     def int_to_buffer(cls, val: int) -> bytes:
         return val.to_bytes(4, byteorder='big')
 
-def run_child(argv, chs, com_ch):
-    bs.BayServer.init_child(chs, com_ch)
+def run_child(argv: List[str], chs: List[int], com_ch: socket.socket, self_listen_port_idx: Optional[int]) -> None:
+    bs.BayServer.init_child(chs, com_ch, self_listen_port_idx)
     bs.BayServer.main(argv)
