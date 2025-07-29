@@ -95,7 +95,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
         if SysUtil.run_on_windows():
             ok = err == 10035
         else:
-            ok = err == errno.EINPROGRESS
+            ok = err == errno.EAGAIN or err == errno.EINPROGRESS
         ok |= (err == 0)
 
         if not ok:
