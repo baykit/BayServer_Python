@@ -2,6 +2,7 @@ import io
 import os
 import threading
 import time
+import traceback
 
 from bayserver_core.bay_log import BayLog
 
@@ -74,11 +75,11 @@ class ReadFileTaxi(Taxi, Valve):
                 self.next_run()
 
         except IOError as e:
-            BayLog.debug_e(e)
+            BayLog.debug_e(e, traceback.format_stack())
             self.close()
 
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             self.close()
             raise e
 

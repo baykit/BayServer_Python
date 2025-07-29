@@ -1,4 +1,5 @@
 import time
+import traceback
 from operator import contains
 from time import sleep
 from typing import Union, Tuple, Dict
@@ -102,7 +103,7 @@ class QicTicket(QicCommandHandler):
             self.hcon.send_headers(stream_id = stm_id, headers = h3_hdrs)
             self.protocol.transmit()
         except Exception as e:
-            BayLog.error_e(e, "%s Error on sending headers: %s", tur, ExceptionUtil.message(e))
+            BayLog.error_e(e, traceback.format_stack(), "%s Error on sending headers: %s", tur, ExceptionUtil.message(e))
             raise IOError("Error on sending headers: %s", ExceptionUtil.message(e))
 
         self.access()
@@ -117,7 +118,7 @@ class QicTicket(QicCommandHandler):
             self.hcon.send_data(stream_id=stm_id, data=bytes(buf[ofs:ofs+length]), end_stream=False)
             self.protocol.transmit()
         except Exception as e:
-            BayLog.error_e(e, "%s Error on sending data: %s", tur, ExceptionUtil.message(e))
+            BayLog.error_e(e, traceback.format_stack(), "%s Error on sending data: %s", tur, ExceptionUtil.message(e))
             raise IOError("Error on sending data: %s", ExceptionUtil.message(e))
 
         finally:
@@ -136,7 +137,7 @@ class QicTicket(QicCommandHandler):
             self.protocol.transmit()
         except Exception as e:
             # There are some clients that close stream before end_stream received
-            BayLog.error_e(e, "%s stm#%d Error on making packet to send (Ignore): %s", self, stm_id, e)
+            BayLog.error_e(e, traceback.format_stack(), "%s stm#%d Error on making packet to send (Ignore): %s", self, stm_id, e)
         finally:
             if lis:
                 lis()
@@ -288,11 +289,12 @@ class QicTicket(QicCommandHandler):
 
             if req_cont_len <= 0:
                 # no post data
-                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
                 return
             else:
                 # Delay send
                 tur.error = e
+                tur.stack = traceback.format_stack()
                 tur.req.set_content_handler(ReqContentHandler.dev_null)
                 return
 
@@ -319,12 +321,12 @@ class QicTicket(QicCommandHandler):
         if hev.stream_ended:
             if tur.error is not None:
                 # Error has occurred on header completed
-                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error)
+                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error, tur.stack)
             else:
                 try:
                     self.end_req_content(tur.id(), tur)
                 except HttpException as e:
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
 
 
 
@@ -354,7 +356,7 @@ class QicTicket(QicCommandHandler):
             try:
                 self.con.close()
             except BaseException as e:
-                BayLog.error_e(e, "%s Close Error", self)
+                BayLog.error_e(e, traceback.format_stack(), "%s Close Error", self)
             return True
         else:
             return False

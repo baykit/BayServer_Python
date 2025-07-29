@@ -1,5 +1,6 @@
 import os
 import socket
+import traceback
 
 from bayserver_core import bayserver as bs
 from bayserver_core.bay_log import BayLog
@@ -63,7 +64,7 @@ class SignalSender:
             line = f.readline()
 
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
 
         finally:
             skt.close()

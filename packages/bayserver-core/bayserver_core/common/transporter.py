@@ -1,5 +1,6 @@
 import abc
 from abc import abstractmethod
+from typing import List
 
 from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.util.data_consume_listener import DataConsumeListener
@@ -24,7 +25,7 @@ class Transporter(metaclass=abc.ABCMeta):
         pass
 
     @abstractmethod
-    def on_error(self, rd: Rudder, error: Exception) -> None:
+    def on_error(self, rd: Rudder, error: BaseException, stack: List[str]) -> None:
         pass
 
     @abstractmethod

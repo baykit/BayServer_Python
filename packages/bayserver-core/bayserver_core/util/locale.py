@@ -1,4 +1,5 @@
 import os
+import traceback
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.util.string_util import StringUtil
@@ -20,6 +21,6 @@ class Locale:
                 return Locale(language, country)
 
             except BaseException as e:
-                BayLog.error_e(e)
+                BayLog.error_e(e, traceback.format_stack())
 
         return Locale("en", "US")

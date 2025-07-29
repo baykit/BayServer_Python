@@ -1,3 +1,5 @@
+import traceback
+
 from abc import ABCMeta, abstractmethod
 
 from bayserver_core.bay_log import BayLog
@@ -32,7 +34,7 @@ class Train(Vehicle, metaclass=ABCMeta):
             self.depart()
 
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
 
         BayLog.debug("%s End train", self)
 

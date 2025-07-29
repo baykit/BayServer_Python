@@ -5,6 +5,7 @@ import threading
 import time
 import errno
 import selectors
+import traceback
 
 from bayserver_core import bayserver as bs
 from bayserver_core.agent.timer_handler import TimerHandler
@@ -156,11 +157,11 @@ class NonBlockingHandler(TimerHandler):
             elif isinstance(e, OSError):
                 BayLog.debug("%s O/S error: %s (skt=%s)", self, ExceptionUtil.message(e), ch)
             else:
-                BayLog.error_e(e, "%s Unhandled error: %s (skt=%s)", self, ExceptionUtil.message(e), ch)
+                BayLog.error_e(e, traceback.format_stack(), "%s Unhandled error: %s (skt=%s)", self, ExceptionUtil.message(e), ch)
                 raise e
 
             # Cannot handle Exception anymore
-            ch_state.listener.on_error(ch, e)
+            ch_state.listener.on_error(ch, e, traceback.format_stack())
             next_action = NextSocketAction.CLOSE
 
         cancel = False
@@ -185,7 +186,7 @@ class NonBlockingHandler(TimerHandler):
             try:
                 self.agent.selector.unregister(ch)
             except ValueError as e:
-                BayLog.warn_e(e)
+                BayLog.warn_e(e, traceback.format_stack())
 
 
     def register_channel_ops(self):
@@ -202,7 +203,7 @@ class NonBlockingHandler(TimerHandler):
                         BayLog.debug("%s Try to register closed socket (Ignore)", self)
                         continue
                 except BaseException as e:
-                    BayLog.error_e(e, "%s get fileno error %s", self, ch_op.ch)
+                    BayLog.error_e(e, traceback.format_stack(), "%s get fileno error %s", self, ch_op.ch)
                     continue
 
                 try:
@@ -232,7 +233,7 @@ class NonBlockingHandler(TimerHandler):
 
                 except BaseException as e:
                     cst = self.find_channel_state(ch_op.ch)
-                    BayLog.error_e(e, "%s Cannot register operation: %s", self, cst.listener if cst is not None else None)
+                    BayLog.error_e(e, traceback.format_stack(), "%s Cannot register operation: %s", self, cst.listener if cst is not None else None)
 
             self.operations.clear()
             return nch
@@ -254,7 +255,7 @@ class NonBlockingHandler(TimerHandler):
                         close_list.append(ch_state)
 
                 except IOError as e:
-                    BayLog.error_e(e)
+                    BayLog.error_e(e, traceback.format_stack())
                     close_list.append(ch_state)
 
         for ch_state in close_list:

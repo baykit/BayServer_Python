@@ -1,3 +1,6 @@
+from typing import Optional, List
+import traceback
+
 from bayserver_core import bayserver as bs
 from bayserver_core.bay_log import BayLog
 from bayserver_core.docker.trouble import Trouble
@@ -134,7 +137,7 @@ class TourRes:
                             err_tour.res.send_res_content(tour.Tour.TOUR_ID_NOCHECK, err_tour, data, 0, len(data))
                             err_tour.res.send_end_tour(tour.Tour.TOUR_ID_NOCHECK, err_tour)
                         elif cmd.method == Trouble.REROUTE:
-                            err_tour.res.send_http_exception(tour.Tour.TOUR_ID_NOCHECK, HttpException.moved_temp(cmd.target))
+                            err_tour.res.send_http_exception(tour.Tour.TOUR_ID_NOCHECK, HttpException.moved_temp(cmd.target), traceback.format_stack())
 
                         handled = True
 
@@ -285,15 +288,15 @@ class TourRes:
             self.res_consume_listener(length, resume)
 
 
-    def send_http_exception(self, chk_tour_id, http_ex):
+    def send_http_exception(self, chk_tour_id, http_ex: HttpException, stk: List[str]):
         if http_ex.status == HttpStatus.MOVED_TEMPORARILY or http_ex.status == HttpStatus.MOVED_PERMANENTLY:
             self.send_redirect(chk_tour_id, http_ex.status, http_ex.location)
         else:
-            self.send_error(chk_tour_id, http_ex.status, http_ex.args, http_ex)
+            self.send_error(chk_tour_id, http_ex.status, http_ex.args, http_ex, stk)
 
 
 
-    def send_error(self, chk_tour_id, status=HttpStatus.INTERNAL_SERVER_ERROR, msg="", err=None):
+    def send_error(self, chk_tour_id, status=HttpStatus.INTERNAL_SERVER_ERROR, msg="", err: Optional[Exception]=None, stk: Optional[List[str]]=None):
         self.tour.check_tour_id(chk_tour_id)
 
         if self.tour.is_zombie():
@@ -307,7 +310,7 @@ class TourRes:
             BayLog.debug("Try to send error after response header is sent (Ignore)");
             BayLog.debug("%s: status=%d, message=%s", self, status, msg);
             if err:
-                BayLog.error_e(err);
+                BayLog.error_e(err, stk)
         else:
             self.set_res_consume_listener(content_consume_listener_dev_null)
 
@@ -316,9 +319,9 @@ class TourRes:
                 BayLog.debug("%s Aborted or zombie tour. do nothing: %s state=%s", self, self.tour, self.tour.state)
             else:
                 try:
-                    self.tour.ship.send_error(self.tour.ship_id, self.tour, status, msg, err)
+                    self.tour.ship.send_error(self.tour.ship_id, self.tour, status, msg, err, stk)
                 except IOError as e:
-                    BayLog.debug_e(e, "%s Error in sending error", self)
+                    BayLog.debug_e(e, traceback.format_stack(),"%s Error in sending error", self)
                     self.tour.change_state(chk_tour_id, tour.Tour.TourState.ABORTED)
             self.header_sent = True
 

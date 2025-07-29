@@ -1,6 +1,8 @@
 import ssl
 import threading
+import traceback
 from abc import ABCMeta, abstractmethod
+from typing import List
 
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.agent.upgrade_exception import UpgradeException
@@ -204,7 +206,7 @@ class Transporter(Reusable, Valve, Postman, metaclass=ABCMeta):
         except IOError as e:
             # IOError which occur in notify_XXX must be distinguished from
             # it which occur in handshake or readNonBlock.
-            self.on_error(chk_ch, e)
+            self.on_error(chk_ch, e, traceback.format_stack())
             return NextSocketAction.CLOSE
 
     def on_writable(self, chk_ch):
@@ -296,7 +298,7 @@ class Transporter(Reusable, Valve, Postman, metaclass=ABCMeta):
             # Not handshaked (OK)
             pass
         except IOError as e:
-            BayLog.error_e(e, "Connect failed: %s", e)
+            BayLog.error_e(e, traceback.format_stack(), "Connect failed: %s", e)
             return NextSocketAction.CLOSE
 
         return self.data_listener.notify_connect()
@@ -306,25 +308,23 @@ class Transporter(Reusable, Valve, Postman, metaclass=ABCMeta):
 
         return self.data_listener.check_timeout(duration)
 
-    def on_error(self, chk_ch, e):
+    def on_error(self, chk_ch, e: BaseException, stk: List[str]):
         self.check_channel(chk_ch)
         BayLog.trace("%s onError: %s", self, e)
 
-        try:
-            raise e
-        except ssl.SSLError as e:
+        if isinstance(e, ssl.SSLError):
             if self.trace_ssl:
-                BayLog.error_e(e, "%s SSL Error: %s", self, e)
+                BayLog.error_e(e, stk, "%s SSL Error: %s", self, e)
             else:
-                BayLog.debug_e(e, "%s SSL Error: %s", self, e)
-        except BaseException as e:
-            BayLog.error_e(e)
+                BayLog.debug_e(e, stk, "%s SSL Error: %s", self, e)
+        else:
+            BayLog.error_e(e, stk)
 
     def on_closed(self, chk_ch):
         try:
             self.check_channel(chk_ch)
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             return
 
         self.set_valid(False)

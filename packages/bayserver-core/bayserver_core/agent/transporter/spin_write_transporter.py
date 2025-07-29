@@ -1,4 +1,5 @@
 import threading
+import traceback
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.agent.next_socket_action import NextSocketAction
@@ -64,7 +65,7 @@ class SpinWriteTransporter(SpinHandler.SpinListener, Valve, Postman):
                     return NextSocketAction.CONTINUE
 
         except Exception as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             self.close()
             return NextSocketAction.CLOSE
 

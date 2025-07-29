@@ -1,3 +1,6 @@
+import traceback
+from typing import List
+
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
@@ -129,8 +132,8 @@ class H2InboundHandler(H2Handler, InboundHandler):
         cmd.flags.set_end_stream(True)
         self.protocol_handler.post(cmd, callback)
 
-    def on_protocol_error(self, err: ProtocolException) -> None:
-        BayLog.error_e(err)
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]) -> None:
+        BayLog.error_e(err, stk)
 
         cmd = CmdGoAway(H2ProtocolHandler.CTL_STREAM_ID)
         cmd.stream_id = H2ProtocolHandler.CTL_STREAM_ID
@@ -141,7 +144,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
             self.protocol_handler.post(cmd)
             self.protocol_handler.ship.post_close()
         except IOError as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
         return False
 
     ######################################################
@@ -224,12 +227,13 @@ class H2InboundHandler(H2Handler, InboundHandler):
                 if req_cont_len <= 0:
                     # no post data
 
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
 
                     return NextSocketAction.CONTINUE
                 else:
                     # Delay send
                     tur.error = e
+                    tur.stack = traceback.format_stack()
                     return NextSocketAction.CONTINUE
 
         return NextSocketAction.CONTINUE
@@ -258,7 +262,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
                         self.protocol_handler.post(upd)
                         self.protocol_handler.post(upd2)
                     except IOError as ex:
-                        BayLog.error_e(ex)
+                        BayLog.error_e(ex, traceback.format_stack())
 
                 if resume:
                     tur.ship.resume(tur.ship.id)
@@ -275,13 +279,13 @@ class H2InboundHandler(H2Handler, InboundHandler):
                 if tur.error:
                     # Error has occurred on header completed
 
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error)
+                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error, tur.stack)
                     return NextSocketAction.CONTINUE
                 else:
                     try:
                         self.end_req_content(tur.id(), tur)
                     except BaseException as e:
-                        tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                        tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
                         return NextSocketAction.CONTINUE
 
         if not success:
@@ -397,7 +401,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
             tur.req.server_port = server_addr[1]
 
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             BayLog.debug("%s Caught error (Continue)", self.ship)
 
 

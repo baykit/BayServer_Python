@@ -1,5 +1,6 @@
 import errno
 import os, threading
+import traceback
 from typing import Tuple
 
 from bayserver_core.agent import grand_agent as gs
@@ -43,8 +44,8 @@ class JobMultiplexer(JobMultiplexerBase):
 
                 try:
                     client_skt = rd.key().accept()
-                except Exception as e:
-                    self.agent.send_error_letter(st, e, True)
+                except BaseException as e:
+                    self.agent.send_error_letter(st, e, traceback.format_stack(), True)
                     return
 
                 BayLog.debug("%s Accepted skt=%s", self.agent, client_skt)
@@ -79,8 +80,8 @@ class JobMultiplexer(JobMultiplexerBase):
 
                 st.is_connecting = True
                 self.agent.send_connected_letter(st, False)
-            except Exception as e:
-                self.agent.send_error_letter(st, e, False)
+            except BaseException as e:
+                self.agent.send_error_letter(st, e, traceback.format_stack(), False)
 
             agent_thread = threading.Thread(target=run)
             agent_thread.start()
@@ -181,8 +182,8 @@ class JobMultiplexer(JobMultiplexerBase):
                 self.agent.send_read_letter(st, len(st.read_buf), None, True)
 
 
-            except Exception as e:
-                self.agent.send_error_letter(st, e, True)
+            except BaseException as e:
+                self.agent.send_error_letter(st, e, traceback.format_stack(), True)
 
         agent_thread = threading.Thread(target=run)
         agent_thread.start()
@@ -204,8 +205,8 @@ class JobMultiplexer(JobMultiplexerBase):
                 if not st.closed and len(u.buf) > 0:
                     n = st.rudder.write(u.buf)
                     u.buf = u.buf[n:]
-            except Exception as e:
-                self.agent.send_error_letter(st, e, True)
+            except BaseException as e:
+                self.agent.send_error_letter(st, e, traceback.format_stack(), True)
                 return
 
             self.agent.send_wrote_letter(st, n, True)

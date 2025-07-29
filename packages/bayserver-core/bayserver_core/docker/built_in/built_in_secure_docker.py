@@ -1,4 +1,5 @@
 import ssl
+import traceback
 
 from bayserver_core.agent.grand_agent import GrandAgent
 from bayserver_core.agent.multiplexer.secure_transporter import SecureTransporter
@@ -49,7 +50,7 @@ class BuiltInSecureDocker(DockerBase, Secure):
         except ConfigException as e:
             raise e
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             raise ConfigException(elm.file_name, elm.line_no, BayMessage.get(Symbol.CFG_SSL_INIT_ERROR, ExceptionUtil.message(e)))
 
     ######################################################

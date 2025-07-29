@@ -2,6 +2,7 @@ import datetime
 import os.path
 import sys
 import traceback
+from typing import Optional, List
 
 from bayserver_core import bay_message
 from bayserver_core.symbol import Symbol
@@ -41,51 +42,51 @@ class BayLog:
         cls.full_path = full_path
 
     @classmethod
-    def info(cls, fmt, *args):
-        BayLog.log(BayLog.LOG_LEVEL_INFO, 3, None, fmt, args)
+    def info(cls, fmt: str, *args):
+        BayLog.log(BayLog.LOG_LEVEL_INFO, 3, None, None, fmt, args)
 
     @classmethod
-    def info_e(cls, err, fmt=None, *args):
-        BayLog.log(BayLog.LOG_LEVEL_INFO, 3, err, fmt, args)
+    def info_e(cls, err: BaseException,  stk: List[str], fmt=None, *args):
+        BayLog.log(BayLog.LOG_LEVEL_INFO, 3, err, stk, fmt, args)
 
     @classmethod
-    def trace(cls, fmt, *args):
-        BayLog.log(BayLog.LOG_LEVEL_TRACE, 3, None, fmt, args)
+    def trace(cls, fmt: str, *args):
+        BayLog.log(BayLog.LOG_LEVEL_TRACE, 3, None, None, fmt, args)
 
     @classmethod
-    def debug(cls, fmt, *args):
-        BayLog.log(BayLog.LOG_LEVEL_DEBUG, 3, None, fmt, args)
+    def debug(cls, fmt: str, *args):
+        BayLog.log(BayLog.LOG_LEVEL_DEBUG, 3, None,None, fmt, args)
 
     @classmethod
-    def debug_e(cls, err, fmt=None, *args):
-        BayLog.log(BayLog.LOG_LEVEL_DEBUG, 3, err, fmt, args)
+    def debug_e(cls, err: BaseException,  stk: List[str], fmt=None, *args):
+        BayLog.log(BayLog.LOG_LEVEL_DEBUG, 3, err, stk, fmt, args)
 
     @classmethod
-    def warn(cls, fmt, *args):
-        BayLog.log(BayLog.LOG_LEVEL_WARN, 3, None, fmt, args)
+    def warn(cls, fmt: str, *args):
+        BayLog.log(BayLog.LOG_LEVEL_WARN, 3, None, None, fmt, args)
 
     @classmethod
-    def warn_e(cls, err, fmt=None, *args):
-        BayLog.log(BayLog.LOG_LEVEL_WARN, 3, err, fmt, args)
+    def warn_e(cls, err: BaseException,  stk: List[str], fmt=None, *args):
+        BayLog.log(BayLog.LOG_LEVEL_WARN, 3, err, stk, fmt, args)
 
     @classmethod
     def error(cls, fmt, *args):
-        BayLog.log(BayLog.LOG_LEVEL_ERROR, 3, None, fmt, args)
+        BayLog.log(BayLog.LOG_LEVEL_ERROR, 3, None, None, fmt, args)
 
     @classmethod
-    def error_e(cls, err, fmt=None, *args):
-        BayLog.log(BayLog.LOG_LEVEL_ERROR, 3, err, fmt, args)
+    def error_e(cls, err: BaseException, stk: List[str], fmt=None, *args):
+        BayLog.log(BayLog.LOG_LEVEL_ERROR, 3, err, stk, fmt, args)
 
     @classmethod
     def fatal(cls, fmt, *args):
-        BayLog.log(BayLog.LOG_LEVEL_FATAL, 3, None, fmt, args)
+        BayLog.log(BayLog.LOG_LEVEL_FATAL, 3, None, None, fmt, args)
 
     @classmethod
-    def fatal_e(cls, err, fmt=None, *args):
-        BayLog.log(BayLog.LOG_LEVEL_FATAL, 3, err, fmt, args)
+    def fatal_e(cls, err: BaseException,  stk: List[str], fmt=None, *args):
+        BayLog.log(BayLog.LOG_LEVEL_FATAL, 3, err, stk, fmt, args)
 
     @classmethod
-    def log(cls, lvl, stack_idx, err, fmt, args):
+    def log(cls, lvl, stack_idx, err: Optional[BaseException],  stk: Optional[List[str]], fmt: str, args):
         if lvl < BayLog.log_level:
             return
 
@@ -112,7 +113,7 @@ class BayLog:
             if True or BayLog.debug_mode() or lvl == BayLog.LOG_LEVEL_FATAL:
                 print(type(err), file=sys.stdout)
                 print(msg + " " + pos, file=sys.stdout)
-                BayLog.print_exception(err)
+                BayLog.print_exception(err, stk)
             else:
                 BayLog.log(lvl, 4, None, "%s", msg)
 
@@ -125,12 +126,12 @@ class BayLog:
         return BayLog.log_level == BayLog.LOG_LEVEL_TRACE
 
     @classmethod
-    def print_exception(cls, err):
-#        traceback.print_exc()
-        try:
-            raise err
-        except:
-            traceback.print_exc(file=sys.stdout)
+    def print_exception(cls, err: BaseException, stk: List[str]):
+        for line in stk[:-1]:
+            print(line.strip(), file=sys.stdout)
+
+        for line in traceback.format_tb(err.__traceback__):
+            print(line.strip(), file=sys.stdout)
 
     @classmethod
     def get_caller(cls, depth):

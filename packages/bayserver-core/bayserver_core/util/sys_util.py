@@ -3,6 +3,7 @@ import os
 import platform
 import selectors
 import tempfile
+import traceback
 
 from bayserver_core import bayserver as bs
 from bayserver_core.bay_log import BayLog
@@ -32,7 +33,7 @@ class SysUtil:
                 n = sel.select(0)
                 return True
             except OSError as e:
-                BayLog.debug_e(e, "select() failed")
+                BayLog.debug_e(e, traceback.format_stack(),"select() failed")
                 return False
             finally:
                 if sel is not None:
@@ -48,7 +49,7 @@ class SysUtil:
                     n = sel.select(0)
                     return True
                 except OSError as e:
-                    BayLog.debug_e(e, "select() failed")
+                    BayLog.debug_e(e, traceback.format_stack(),"select() failed")
                     return False
                 finally:
                     if sel is not None:

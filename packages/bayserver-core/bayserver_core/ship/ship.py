@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import ClassVar, Optional, Any
+from typing import ClassVar, Optional, Any, List
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.transporter import Transporter
@@ -84,11 +84,11 @@ class Ship(Reusable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def notify_error(self, e: Exception) -> None:
+    def notify_error(self, e: BaseException, stk: List[str]) -> None:
         pass
 
     @abstractmethod
-    def notify_protocol_error(self, e: ProtocolException) -> bool:
+    def notify_protocol_error(self, e: ProtocolException, stk: List[str]) -> bool:
         pass
 
     @abstractmethod

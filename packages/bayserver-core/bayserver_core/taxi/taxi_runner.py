@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import traceback
 
 from bayserver_core.agent import grand_agent as ga
 from bayserver_core.agent.lifecycle_listener import LifecycleListener
@@ -62,7 +63,7 @@ class TaxiRunner(TimerHandler):
             cls.runners[agt_id - 1].submit(txi)
             return True
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             return False
 
     @classmethod

@@ -1,3 +1,4 @@
+import traceback
 from bayserver_core.bay_log import BayLog
 
 
@@ -12,7 +13,7 @@ class Sink(Exception):
             try:
                 msg = fmt % args
             except TypeError as e:
-                BayLog.error_e(e)
+                BayLog.error_e(e, traceback.format_stack())
                 msg = fmt
 
         super().__init__(msg + "(>_<)")

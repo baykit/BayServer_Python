@@ -1,3 +1,4 @@
+import traceback
 from typing import Dict
 
 from bayserver_core.bayserver import BayServer
@@ -214,13 +215,14 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
 
                 if req_cont_len <= 0:
                     # no post data
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
                     self.change_state(FcgInboundHandler.STATE_READ_STDIN)
                     return NextSocketAction.CONTINUE
                 else:
                     # Delay send
                     self.change_state(FcgInboundHandler.STATE_READ_STDIN)
                     tur.error = e
+                    tur.stack = traceback.format_stack()
                     tur.req.set_content_handler(ReqContentHandler.dev_null)
                     return NextSocketAction.CONTINUE
 
@@ -268,7 +270,7 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
             #  request content completed
             if tur.error:
                 # Error has occurred on header completed
-                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error)
+                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error, tur.stack)
                 self.reset_state()
                 return NextSocketAction.WRITE
             else:
@@ -276,7 +278,7 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
                     self.end_req_content(Tour.TOUR_ID_NOCHECK, tur)
                     return NextSocketAction.CONTINUE
                 except HttpException as e:
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
                     return NextSocketAction.WRITE
 
         else:

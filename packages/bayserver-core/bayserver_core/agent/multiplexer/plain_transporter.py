@@ -1,3 +1,6 @@
+import traceback
+from typing import List
+
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.agent.upgrade_exception import UpgradeException
 from bayserver_core.bay_log import BayLog
@@ -70,13 +73,13 @@ class PlainTransporter(Transporter):
             except IOError as e:
                 # IOError which occur in notifyRead must be distinguished from
                 # IOError which occur in handshake or readNonBlock.
-                self.on_error(rd, e)
+                self.on_error(rd, e, traceback.format_stack())
                 return NextSocketAction.CLOSE
 
 
-    def on_error(self, rd: Rudder, e: Exception) -> None:
+    def on_error(self, rd: Rudder, e: BaseException, stk: List[str]) -> None:
         self.check_rudder(rd)
-        self.ship.notify_error(e)
+        self.ship.notify_error(e, stk)
 
     def on_closed(self, rd: Rudder) -> None:
         BayLog.debug("%s onClosed", self)

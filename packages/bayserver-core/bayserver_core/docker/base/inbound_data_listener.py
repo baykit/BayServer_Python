@@ -1,3 +1,5 @@
+from typing import Optional, List
+
 from bayserver_core import bayserver as bs
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.agent.transporter.data_listener import DataListener
@@ -32,10 +34,10 @@ class InboundDataListener(DataListener):
         BayLog.debug("%s notify_eof", self)
         return NextSocketAction.CLOSE
 
-    def notify_protocol_error(self, err):
+    def notify_protocol_error(self, err, stk: List[str]):
         BayLog.trace("%s notify_protocol_error", self)
         if BayLog.debug_mode():
-            BayLog.error_e(err)
+            BayLog.error_e(err, stk)
 
         return self.ship.protocol_handler.send_req_protocol_error(err)
 

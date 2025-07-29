@@ -4,6 +4,7 @@ import selectors
 import socket
 import ssl
 import threading
+import traceback
 from selectors import SelectorKey
 from typing import List
 
@@ -56,7 +57,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
             try:
                 self.selector = selectors.PollSelector()
             except BaseException as e:
-                BayLog.warn_e(e, "Cannot create PollSelector")
+                BayLog.warn_e(e, traceback.format_stack(), "Cannot create PollSelector")
 
                 self.selector = selectors.SelectSelector()
 
@@ -300,7 +301,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
                 except BaseException as e:
                     cst = self.get_rudder_state(ch_op.rudder)
-                    BayLog.error_e(e, "%s Cannot register operation: %s", self, st.rudder)
+                    BayLog.error_e(e, traceback.format_stack(), "%s Cannot register operation: %s", self, st.rudder)
 
             self.operations.clear()
             return nch
@@ -364,8 +365,8 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                 raise e
 
             # Cannot handle Exception anymore
-            BayLog.error_e(e)
-            self.agent.send_error_letter(st, e, False)
+            BayLog.error_e(e, traceback.format_stack())
+            self.agent.send_error_letter(st, e, traceback.format_stack(), False)
 
         st.access()
 
@@ -394,8 +395,8 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
             # Not handshaked (OK)
             pass
         except IOError as e:
-            BayLog.error_e(e, "Connect failed: %s", e)
-            self.agent.send_error_letter(st, e, False)
+            BayLog.error_e(e, traceback.format_stack(), "Connect failed: %s", e)
+            self.agent.send_error_letter(st, e, traceback.format_stack(), False)
 
         return self.agent.send_connected_letter(st, False)
 
@@ -436,8 +437,8 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
             self.agent.send_read_letter(st, len(st.read_buf), st.addr, False)
 
         except Exception as e:
-            BayLog.debug_e(e, "%s Unhandled error", self)
-            self.agent.send_error_letter(st, e, False)
+            BayLog.debug_e(e, traceback.format_stack(),"%s Unhandled error", self)
+            self.agent.send_error_letter(st, e, traceback.format_stack(), False)
 
     def _on_writable(self, st: RudderState) -> None:
 
@@ -453,7 +454,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                     BayLog.debug("%s Handshake: Need to write more st=%s", self, st)
 
             if len(st.write_queue) == 0:
-                raise EOFError(f"{self.agent} No data to write: {st.rudder}")
+                raise IOError(f"{self.agent} No data to write: {st.rudder}")
 
             for i in range(0, len(st.write_queue)):
                 wunit = st.write_queue[i]
@@ -485,8 +486,8 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                         break
 
         except Exception as e:
-            BayLog.debug_e(e, "%s Unhandled error", self)
-            self.agent.send_error_letter(st, e, False)
+            BayLog.debug_e(e, traceback.format_stack(),"%s Unhandled error", self)
+            self.agent.send_error_letter(st, e, traceback.format_stack(), False)
 
     def _on_waked_up(self) -> None:
         BayLog.trace("%s On Waked Up", self)

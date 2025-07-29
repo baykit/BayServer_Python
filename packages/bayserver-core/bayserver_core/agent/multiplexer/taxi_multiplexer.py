@@ -1,3 +1,5 @@
+import traceback
+
 from bayserver_core.agent import grand_agent as gs
 from bayserver_core.agent.multiplexer.multiplexer_base import MultiplexerBase
 from bayserver_core.agent.multiplexer.write_unit import WriteUnit
@@ -158,7 +160,7 @@ class TaxiMultiplexer(MultiplexerBase):
             self.agent.send_read_letter(st, len(st.read_buf), None, True)
 
         except Exception as e:
-            self.agent.send_error_letter(st, e, True)
+            self.agent.send_error_letter(st, e, traceback.format_stack(), True)
 
 
     def do_next_write(self, st: RudderState) -> None:
@@ -180,6 +182,6 @@ class TaxiMultiplexer(MultiplexerBase):
             BayLog.debug("%s Wrote %d bytes", self, n)
             self.agent.send_wrote_letter(st, n, True)
         except Exception as e:
-            self.agent.send_error_letter(st, e, True)
+            self.agent.send_error_letter(st, e, traceback.format_stack(), True)
             return
 

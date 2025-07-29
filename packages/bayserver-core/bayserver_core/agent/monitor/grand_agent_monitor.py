@@ -4,6 +4,7 @@ import socket
 import sys
 import threading
 import time
+import traceback
 from multiprocessing import Process
 from typing import ClassVar, Dict
 
@@ -58,7 +59,7 @@ class GrandAgentMonitor:
 
         except Exception as e:
             BayLog.fatal("%s Agent terminated", self)
-            BayLog.fatal_e(e)
+            BayLog.fatal_e(e, traceback.format_stack())
 
         self.agent_aborted()
 
@@ -95,7 +96,7 @@ class GrandAgentMonitor:
             try:
                 os.kill(self.process.pid, signal.SIGTERM)
             except BaseException as e:
-                BayLog.debug_e(e, "Error on killing process")
+                BayLog.debug_e(e, traceback.format_stack(),"Error on killing process")
             self.process.join()
 
         del GrandAgentMonitor.monitors[self.agent_id]
@@ -107,7 +108,7 @@ class GrandAgentMonitor:
                         ga.GrandAgent.add(-1, self.anchorable)
                     GrandAgentMonitor.add(self.anchorable)
                 except BaseException as e:
-                    BayLog.error_e(e)
+                    BayLog.error_e(e, traceback.format_stack())
 
     ########################################
     # Class methods

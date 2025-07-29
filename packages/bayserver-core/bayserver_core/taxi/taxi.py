@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 import threading
+import traceback
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.vehicle import Vehicle
@@ -31,4 +32,4 @@ class Taxi(Vehicle, metaclass=ABCMeta):
             self.depart()
             BayLog.trace("%s End taxi on: %s", self, threading.currentThread().name)
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())

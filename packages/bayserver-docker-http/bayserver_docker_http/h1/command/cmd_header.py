@@ -1,3 +1,5 @@
+import traceback
+
 from bayserver_core.sink import Sink
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
@@ -188,7 +190,7 @@ class CmdHeader(H1Command):
         try:
             self.status = int(items[1])
         except ValueError as e:
-            BayLog.warn_e(e, "Invalid Status line")
+            BayLog.warn_e(e, traceback.format_stack(), "Invalid Status line")
             raise ProtocolException(BayMessage.get(Symbol.HTP_INVALID_FIRST_LINE, line))
 
     def  unpack_message_header(self, byte_array, start, length):

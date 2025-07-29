@@ -1,4 +1,5 @@
 import threading
+from typing import Optional, List
 
 from bayserver_core import bayserver as bs
 from bayserver_core.bay_log import BayLog
@@ -47,7 +48,8 @@ class Tour(Reusable):
     club: "Club"
     interval: int
     is_secure: bool
-    error: Exception
+    error: Optional[BaseException]
+    stack: Optional[List[str]]
     state: int
 
     def __init__(self):

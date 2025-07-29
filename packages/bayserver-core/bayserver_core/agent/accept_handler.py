@@ -1,4 +1,5 @@
 import selectors
+import traceback
 
 from bayserver_core.bay_log import BayLog
 
@@ -27,7 +28,7 @@ class AcceptHandler:
             client_skt.setblocking(False)
             tp = port_dkr.new_transporter(self.agent, client_skt)
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             client_skt.close()
             return
 
@@ -55,7 +56,7 @@ class AcceptHandler:
                 #BayLog.debug("%s Register server socket: %d", self.agent, ch.fileno())
                 self.agent.selector.register(ch, selectors.EVENT_READ)
             except BaseException as e:
-                BayLog.error_e(e);
+                BayLog.error_e(e, traceback.format_stack());
 
     def is_server_socket(self, ch):
         return ch in self.port_map.keys()

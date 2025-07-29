@@ -2,9 +2,9 @@ import os
 import sys
 import threading
 import time
+import traceback
 from argparse import ArgumentError
 from typing import ClassVar, List, Dict
-from ssl import SSLError
 
 from bayserver_core import bayserver as bs
 from bayserver_core import mem_usage as mem
@@ -200,7 +200,7 @@ class GrandAgent:
                         self._on_error(let)
 
         except BaseException as e:
-            BayLog.fatal_e(e, "%s Fatal Error", self)
+            BayLog.fatal_e(e, traceback.format_stack(), "%s Fatal Error", self)
 
         finally:
             BayLog.debug("Agent end: %d", self.agent_id)
@@ -263,8 +263,8 @@ class GrandAgent:
     def send_closed_letter(self, st: RudderState, wakeup: bool) -> None:
         self._send_letter(ClosedLetter(st),  wakeup)
 
-    def send_error_letter(self, st: RudderState, err: Exception, wakeup: bool) -> None:
-        self._send_letter(ErrorLetter(st, err),  wakeup)
+    def send_error_letter(self, st: RudderState, err: BaseException, stk: List[str], wakeup: bool) -> None:
+        self._send_letter(ErrorLetter(st, err, stk),  wakeup)
 
     def shutdown(self):
         BayLog.debug("%s shutdown", self)
@@ -290,7 +290,7 @@ class GrandAgent:
                 try:
                     port._secure_docker.reload_cert()
                 except BaseException as e:
-                    BayLog.error_e(e)
+                    BayLog.error_e(e, traceback.format_stack())
 
     def add_postpone(self, p: Postpone) -> None:
         with self.postpone_queue_lock:
@@ -307,7 +307,7 @@ class GrandAgent:
             try:
                 self.command_receiver.send_command_to_monitor(self, GrandAgent.CMD_CATCHUP, False)
             except IOError as e:
-                BayLog.error_e(e)
+                BayLog.error_e(e, traceback.format_stack())
                 self.abort_agent()
 
     def catch_up(self) -> None:
@@ -346,7 +346,7 @@ class GrandAgent:
             if st.transporter is not None:
                 st.transporter.on_error(st.rudder, e)
             else:
-                BayLog.error_e(e, "Error on handling accept")
+                BayLog.error_e(e, traceback.format_stack(), "Error on handling accept")
             self._next_action(st, NextSocketAction.CLOSE, False)
 
         if not self.net_multiplexer.is_busy():
@@ -455,14 +455,13 @@ class GrandAgent:
 
 
     def _on_error(self, let: ErrorLetter) -> None:
-        try:
-            raise let.err
-        except (IOError, HttpException) as e:
-            BayLog.error_e(e)
+
+        if isinstance(let.err, IOError) or isinstance(let.err, EOFError) or isinstance(let.err, HttpException):
+            BayLog.error_e(let.err, let.stack)
             self._next_action(let.state, NextSocketAction.CLOSE, False)
-        except Exception as e:
-            BayLog.fatal_e(e, "Cannot handle error")
-            raise e
+        else:
+            BayLog.fatal_e(let.err, let.stack, "Cannot handle error")
+            raise let.err
 
     def _next_action(self, st: RudderState, act: int, reading: bool) -> None:
         BayLog.debug("%s next action: %s (reading=%s)", self, act, reading)

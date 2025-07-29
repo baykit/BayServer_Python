@@ -1,5 +1,5 @@
 import subprocess
-from typing import Any
+from typing import Any, List
 
 from bayserver_core.bay_log import BayLog
 
@@ -128,8 +128,8 @@ class CgiStdOutShip(ReadOnlyShip):
         else:
             return NextSocketAction.SUSPEND
 
-    def notify_error(self, e: Exception) -> None:
-        BayLog.debug_e(e, "%s CGI notifyError tur=%s", self, self.tour)
+    def notify_error(self, e: Exception, stk: List[str]) -> None:
+        BayLog.debug_e(e, stk, "%s CGI notifyError tur=%s", self, self.tour)
 
     def notify_eof(self):
         BayLog.debug("%s CGI StdOut: EOF(^o^)", self)

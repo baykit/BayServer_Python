@@ -1,3 +1,5 @@
+import traceback
+
 from concurrent.futures import ThreadPoolExecutor
 
 from bayserver_core.bay_log import BayLog
@@ -20,7 +22,7 @@ class TrainRunner:
             TrainRunner.exe.submit(Train.run, train)
             return True
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             return False
 
 

@@ -1,6 +1,7 @@
 import socket
 import signal
 import threading
+import traceback
 from typing import ClassVar, List, Dict
 
 from bayserver_core.bay_log import BayLog
@@ -117,7 +118,7 @@ class SignalAgent:
         try:
             server_skt.bind(("0.0.0.0", port))
         except OSError as e:
-            BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, "0.0.0.0", port, ExceptionUtil.message(e)))
+            BayLog.error_e(e, traceback.format_stack(), BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, "0.0.0.0", port, ExceptionUtil.message(e)))
 
         server_skt.listen(0)
         BayLog.info(BayMessage.get(Symbol.MSG_OPEN_CTL_PORT, port))
@@ -135,7 +136,7 @@ class SignalAgent:
                 f.write("OK\r\n")
                 f.flush()
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
 
         finally:
             if skt:

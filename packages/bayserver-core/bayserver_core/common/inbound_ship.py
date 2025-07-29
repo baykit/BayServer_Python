@@ -1,5 +1,5 @@
 import threading
-from typing import List, Any
+from typing import List, Any, Optional
 
 from bayserver_core import bayserver as bs
 from bayserver_core.agent.next_socket_action import NextSocketAction
@@ -95,11 +95,11 @@ class InboundShip(Ship):
         BayLog.debug("%s EOF detected", self)
         return NextSocketAction.CLOSE
 
-    def notify_error(self, e: Exception) -> None:
-        BayLog.debug_e(e, "%s Error notified", self)
+    def notify_error(self, e: Exception, stk: List[str]) -> None:
+        BayLog.debug_e(e, stk, "%s Error notified", self)
 
-    def notify_protocol_error(self, e: ProtocolException) -> bool:
-        BayLog.debug_e(e)
+    def notify_protocol_error(self, e: ProtocolException, stk: List[str]) -> bool:
+        BayLog.debug_e(e, stk)
         return self.tour_handler().on_protocol_error(e)
 
     def notify_close(self) -> None:
@@ -229,13 +229,13 @@ class InboundShip(Ship):
 
 
 
-    def send_error(self, chk_id, tour, status, message, e):
+    def send_error(self, chk_id, tour, status, message, e: BaseException, stk: List[str]):
         self.check_ship_id(chk_id)
 
         BayLog.info("%s send error: status=%d, message=%s ex=%s", self, status, message, ExceptionUtil.message(e) if e else "");
 
         if e is not None:
-            BayLog.debug_e(e)
+            BayLog.debug_e(e, stk)
 
         # Create body
         desc = HttpStatus.description(status)

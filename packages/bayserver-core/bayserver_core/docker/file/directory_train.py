@@ -1,6 +1,7 @@
 import io
 import os
 import time
+import traceback
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.http_exception import HttpException
@@ -68,7 +69,7 @@ class DirectoryTrain(Train, ReqContentHandler):
             self.tour.res.end_content(self.tour_id)
 
         except IOError as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, e)
 
     #######################################################

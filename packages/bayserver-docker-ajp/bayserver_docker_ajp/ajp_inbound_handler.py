@@ -1,3 +1,5 @@
+import traceback
+
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bay_message import BayMessage
@@ -177,13 +179,14 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
         except HttpException as e:
 
             if req_cont_len <= 0:
-                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
                 self.reset_state()
                 return NextSocketAction.WRITE
             else:
                 # Delay send
                 self.change_state(AjpInboundHandler.STATE_READ_DATA)
                 tur.error = e
+                tur.stack = traceback.format_stack()
                 tur.req.set_content_handler(ReqContentHandler.dev_null)
                 return NextSocketAction.CONTINUE
 
@@ -208,7 +211,7 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
                 # request content completed
 
                 if tur.error is not None:
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error)
+                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error, tur.stack)
                     self.reset_state()
                     return NextSocketAction.WRITE
                 else:
@@ -216,7 +219,7 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
                         self.end_req_content(tur)
                         return NextSocketAction.CONTINUE
                     except HttpException as e:
-                        tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                        tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
                         self.reset_state()
                     return NextSocketAction.WRITE
 
@@ -236,7 +239,7 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
         except HttpException as e:
 
             tur.req.abort()
-            tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+            tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
             self.reset_state()
             return NextSocketAction.WRITE
 

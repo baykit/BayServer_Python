@@ -1,3 +1,6 @@
+import traceback
+from typing import Optional, List
+
 from bayserver_core.agent.transporter.data_listener import DataListener
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
@@ -67,7 +70,7 @@ class WarpDataListener(DataListener):
                     BayLog.debug("%s EOF is not an error: tur=%s", self, tur)
                     tur.res.end_content(Tour.TOUR_ID_NOCHECK)
             except IOError as e:
-                BayLog.debug_e(e)
+                BayLog.debug_e(e, traceback.format_stack())
 
         self.ship.tour_map.clear()
         return NextSocketAction.CLOSE
@@ -75,8 +78,8 @@ class WarpDataListener(DataListener):
     def notify_read(self, buf, adr):
         return self.ship.protocol_handler.bytes_received(buf)
 
-    def notify_protocol_error(self, err):
-        BayLog.error_e(err)
+    def notify_protocol_error(self, err, stk: List[str]):
+        BayLog.error_e(err, stk)
         self.ship.notify_error_to_owner_tour(HttpStatus.SERVICE_UNAVAILABLE, err.args[0])
         return True
 

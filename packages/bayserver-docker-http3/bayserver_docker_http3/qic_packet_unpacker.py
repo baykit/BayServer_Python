@@ -1,5 +1,6 @@
-
 import os
+import traceback
+
 from typing import Dict
 
 from aioquic.buffer import Buffer
@@ -56,7 +57,7 @@ class QicPacketUnPacker(PacketUnPacker):
         try:
             hdr = packet.pull_quic_header(buf=Buffer(data=buf), host_cid_length=self.port_docker().config.connection_id_length)
         except ValueError as e:
-            BayLog.warn_e(e, "%s Cannot parse header: %s", self, ExceptionUtil.message(e))
+            BayLog.warn_e(e, traceback.format_stack(),  "%s Cannot parse header: %s", self, ExceptionUtil.message(e))
             return NextSocketAction.CONTINUE
 
         BayLog.debug("%s packet received :len=%d ver=%s type=%s scid=%s dcid=%s tkn=%s",
@@ -166,7 +167,7 @@ class QicPacketUnPacker(PacketUnPacker):
         try:
             (odcid, scid) = self.retry_token_handler.validate_token(adr, hdr.token)
         except ValueError as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             raise ProtocolException("Invalid address validation token")
 
         # create new connection

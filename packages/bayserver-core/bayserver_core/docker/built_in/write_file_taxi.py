@@ -1,4 +1,5 @@
 import threading
+import traceback
 
 from bayserver_core.bay_log import BayLog
 
@@ -56,7 +57,7 @@ class WriteFileTaxi(Taxi, Valve):
                     self.next_run()
 
         except BaseException as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
 
     def on_timer(self):
         pass

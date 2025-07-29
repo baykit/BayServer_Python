@@ -1,3 +1,5 @@
+from typing import List
+
 from bayserver_core.common.inbound_handler import InboundHandler
 from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.protocol.protocol_handler_factory import ProtocolHandlerFactory
@@ -53,6 +55,6 @@ class QicInboundHandler(QicHandler, InboundHandler):
     def send_end_tour(self, tur, keep_alive, callback):
         raise Sink()
 
-    def on_protocol_error(self, e: ProtocolException) -> bool:
+    def on_protocol_error(self, e: ProtocolException, stk: List[str]) -> bool:
         pass
 

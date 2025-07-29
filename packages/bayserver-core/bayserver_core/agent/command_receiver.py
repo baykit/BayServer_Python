@@ -1,3 +1,4 @@
+import traceback
 from typing import Any
 
 from bayserver_core.agent.monitor.grand_agent_monitor import GrandAgentMonitor
@@ -89,8 +90,7 @@ class CommandReceiver(Ship):
                 self.send_command_to_monitor(agt, ga.GrandAgent.CMD_OK, False)
 
         except BaseException as e:
-            BayLog.error_e(e)
-            BayLog.error_e(e, "%s Command thread aborted(end)", self)
+            BayLog.error_e(e, traceback.format_stack(), "%s Command thread aborted(end)", self)
             self.close()
 
     def send_command_to_monitor(self, agt, cmd: int, sync: bool):
@@ -101,7 +101,7 @@ class CommandReceiver(Ship):
         try:
             self.send_command_to_monitor(None, ga.GrandAgent.CMD_CLOSE, True)
         except BaseException as e:
-            BayLog.error_e(e, "%s Write error", self.agent)
+            BayLog.error_e(e, traceback.format_stack(), "%s Write error", self.agent)
         self.close()
 
     def close(self):

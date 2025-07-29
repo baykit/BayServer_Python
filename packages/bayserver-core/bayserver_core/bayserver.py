@@ -294,7 +294,7 @@ class BayServer:
 
         except BaseException as e:
             trc = traceback.format_exception_only(type(e), e)
-            BayLog.fatal_e(e, "%s", trc[0].rstrip("\n"))
+            BayLog.fatal_e(e, traceback.format_stack(), "%s", trc[0].rstrip("\n"))
 
         exit(1)
 
@@ -323,7 +323,7 @@ class BayServer:
                 try:
                     skt.bind(adr)
                 except OSError as e:
-                    BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
+                    BayLog.error_e(e, traceback.format_stack(), BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
                                                      ExceptionUtil.message(e)))
                     raise e
                 skt.listen(0)

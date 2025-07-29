@@ -1,4 +1,6 @@
 import threading
+import traceback
+
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_message import BayMessage
@@ -246,10 +248,10 @@ class H1InboundHandler(H1Handler, InboundHandler):
                 return NextSocketAction.CONTINUE
 
         except HttpException as e:
-            BayLog.debug_e(e, "%s Http error occurred: %s", self, e)
+            BayLog.debug_e(e, traceback.format_stack(), "%s Http error occurred: %s", self, e)
             if req_cont_len <= 0:
                 # no post data
-                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e)
+                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
 
                 self.reset_state()  # next: read empty stdin command
                 return NextSocketAction.CONTINUE
@@ -258,6 +260,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
                 BayLog.trace("%s error sending is delayed", self)
                 self.change_state(H1InboundHandler.STATE_READ_CONTENT)
                 tur.error = e
+                tur.stack = traceback.format_stack()
                 return NextSocketAction.CONTINUE
 
     def handle_content(self, cmd):
@@ -282,7 +285,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
             if tur.req.bytes_posted == tur.req.bytes_limit:
                 if tur.error:
                     # Error has occurred on header completed
-                    tur.res.send_http_exception(tur_id, tur.error)
+                    tur.res.send_http_exception(tur_id, tur.error, tur.stack)
                     raise tur.error
                 else:
                     self.end_req_content(tur_id, tur)
@@ -295,7 +298,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
 
         except HttpException as e:
             tur.req.abort()
-            tur.res.send_http_exception(tur_id, e)
+            tur.res.send_http_exception(tur_id, e, traceback.format_stack())
             self.reset_state()
             return NextSocketAction.WRITE
 

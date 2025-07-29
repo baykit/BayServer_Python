@@ -1,4 +1,6 @@
 import time
+import traceback
+
 from abc import ABCMeta, abstractmethod
 from time import sleep
 from typing import List
@@ -79,7 +81,7 @@ class SpinMultiplexer(MultiplexerBase, TimerHandler, Multiplexer):
                 return False
 
             except BaseException as e:
-                self.agent.send_error_letter(self.state, e, False)
+                self.agent.send_error_letter(self.state, e, traceback.format_stack(), False)
                 return False
 
         def next(self) -> None:

@@ -1,4 +1,5 @@
 import os
+import traceback
 
 from bayserver_core.agent.grand_agent import GrandAgent
 from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
@@ -113,7 +114,7 @@ class FileContentHandler(ReqContentHandler):
         except HttpException as e:
             raise e
         except Exception as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
             raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, file)
 
 

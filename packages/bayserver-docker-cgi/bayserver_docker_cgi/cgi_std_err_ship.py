@@ -1,3 +1,5 @@
+from typing import List
+
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.read_only_ship import ReadOnlyShip
@@ -45,8 +47,8 @@ class CgiStdErrShip(ReadOnlyShip):
         self.handler.access()
         return NextSocketAction.CONTINUE
 
-    def notify_error(self, e: Exception) -> None:
-        BayLog.debug_e(e)
+    def notify_error(self, e: Exception, stk: List[str]) -> None:
+        BayLog.debug_e(e, stk)
 
     def notify_eof(self) -> None:
         BayLog.debug("%s CGI StdErr: EOF\\(^o^)/", self)

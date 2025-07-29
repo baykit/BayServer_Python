@@ -1,4 +1,5 @@
-from typing import Any
+import traceback
+from typing import List
 
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
@@ -58,12 +59,12 @@ class SendFileShip(ReadOnlyShip):
             self.notify_error(e)
             return NextSocketAction.CLOSE
 
-    def notify_error(self, e: Exception) -> None:
-        BayLog.debug_e(e, "%s Error notified", self)
+    def notify_error(self, e: Exception, stk: List[str]) -> None:
+        BayLog.debug_e(e, stk, "%s Error notified", self)
         try:
-            self.tour.res.send_error(self.tour_id, HttpStatus.INTERNAL_SERVER_ERROR, None, e)
+            self.tour.res.send_error(self.tour_id, HttpStatus.INTERNAL_SERVER_ERROR, None, e, stk)
         except IOError as ex:
-            BayLog.debug_e(ex)
+            BayLog.debug_e(ex, traceback.format_stack())
 
 
     def notify_eof(self) -> int:
@@ -71,7 +72,7 @@ class SendFileShip(ReadOnlyShip):
         try:
             self.tour.res.end_res_content(self.tour_id)
         except IOError as ex:
-            BayLog.debug_e(ex)
+            BayLog.debug_e(ex, traceback.format_stack())
         return NextSocketAction.CLOSE
 
     def notify_close(self) -> None:

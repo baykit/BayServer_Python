@@ -1,5 +1,6 @@
 import os.path
 import urllib.parse
+import traceback
 from typing import List
 
 from bayserver_core.bayserver import BayServer
@@ -125,7 +126,7 @@ class BuiltInCityDocker(DockerBase, City):
                 try:
                     tur.req.path_info = urllib.parse.unquote(tur.req.path_info, tur.req._charset)
                 except BaseException as e:
-                    BayLog.error_e("%s %s", tur, e)
+                    BayLog.error_e(e,  traceback.format_stack(), "%s %s", tur)
                     tur.req.path_info = urllib.parse.unquote(tur.req.path_info, "us-ascii")
 
             if match_info.rewritten_uri is not None:
@@ -141,7 +142,7 @@ class BuiltInCityDocker(DockerBase, City):
             try:
                 dkr.log(tur)
             except BaseException as e:
-                BayLog.error_e(e)
+                BayLog.error_e(e, traceback.format_stack())
 
     ######################################################
     # Implements City

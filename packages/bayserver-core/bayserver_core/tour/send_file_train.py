@@ -1,4 +1,5 @@
 import time
+import traceback
 
 from bayserver_core.train.train import Train
 from bayserver_core.bay_log import BayLog
@@ -29,18 +30,18 @@ class SendFileTrain(Train):
                     try:
                         buf = fd.read(max_read_size)
                     except BaseException as e:
-                        self.tour.res.send_error(self.tour_id, HttpStatus.INTERNAL_SERVER_ERROR, e);
+                        self.tour.res.send_error(self.tour_id, HttpStatus.INTERNAL_SERVER_ERROR, e, traceback.format_stack())
                         break;
 
                     if len(buf) == 0:
                         break
 
-                    self.tour.res.send_content(self.tour_id, buf, 0, len(buf));
+                    self.tour.res.send_content(self.tour_id, buf, 0, len(buf))
 
                     while not self.tour.res.available:
                         time.sleep(0.1)
 
                 self.tour.res.end_content(self.tour_id)
             except BaseException as e:
-                BayLog.error_e(e)
+                BayLog.error_e(e, traceback.format_stack())
 

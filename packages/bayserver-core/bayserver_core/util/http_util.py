@@ -2,6 +2,7 @@ import binascii
 import re
 import base64
 import socket
+import traceback
 
 from bayserver_core.bay_log import BayLog
 
@@ -101,7 +102,7 @@ class HttpUtil:
                     ptn = r"(.*):(.*)"
                     result = re.match(ptn, auth)
                 except binascii.Error as e:
-                    BayLog.warn_e(e, "decode error: %s", ExceptionUtil.message(e))
+                    BayLog.warn_e(e, traceback.format_stack(), "decode error: %s", ExceptionUtil.message(e))
 
                 if result is not None:
                     tur.req.remote_user = result.group(1)
@@ -139,5 +140,5 @@ class HttpUtil:
         try:
             return socket.gethostbyaddr(adr)[0]
         except OSError as e:
-            BayLog.warn_e(e, "Cannot get remote host name: %s", e)
+            BayLog.warn_e(e, traceback.format_stack(), "Cannot get remote host name: %s", e)
             return None

@@ -1,3 +1,4 @@
+import traceback
 from bayserver_core.bay_log import BayLog
 
 from bayserver_docker_http.h2.huffman.hnode import HNode
@@ -32,7 +33,7 @@ class HTree:
         try:
             return w.decode("us-ascii")
         except UnicodeDecodeError as e:
-            BayLog.warn_e(e, "Decode error (use utf-8): %s", ExceptionUtil.message(e))
+            BayLog.warn_e(e, traceback.format_stack(),"Decode error (use utf-8): %s", ExceptionUtil.message(e))
             return w.decode("utf-8")
 
     @classmethod

@@ -1,5 +1,6 @@
 import threading
-from typing import Dict, List, Any
+import traceback
+from typing import Dict, List, Any, Optional
 
 from bayserver_core import bayserver as bs
 from bayserver_core.agent.next_socket_action import NextSocketAction
@@ -115,16 +116,16 @@ class WarpShip(Ship):
                     BayLog.debug("%s EOF is not an error: tur=%s", self, tur)
                     tur.res.end_res_content(Tour.TOUR_ID_NOCHECK)
             except IOError as e:
-                BayLog.debug_e(e)
+                BayLog.debug_e(e, traceback.format_stack())
 
         self.tour_map.clear()
         return NextSocketAction.CLOSE
 
-    def notify_error(self, e: Exception) -> None:
-        BayLog.error_e(e, "notify_error")
+    def notify_error(self, e: Exception, stk: List[str]) -> None:
+        BayLog.error_e(e, stk, "notify_error")
 
-    def notify_protocol_error(self, e: ProtocolException) -> bool:
-        BayLog.error_e(e)
+    def notify_protocol_error(self, e: ProtocolException, stk: List[str]) -> bool:
+        BayLog.error_e(e, stk)
         self.notify_error_to_owner_tour(HttpStatus.SERVICE_UNAVAILABLE, e.args[0])
 
     def notify_close(self) -> None:
@@ -214,7 +215,7 @@ class WarpShip(Ship):
                     try:
                         tur.res.send_error(Tour.TOUR_ID_NOCHECK, status, msg)
                     except BaseException as e:
-                        BayLog.error_e(e)
+                        BayLog.error_e(e, traceback.format_stack())
                 else:
                     tur.res.end_res_content(Tour.TOUR_ID_NOCHECK)
 

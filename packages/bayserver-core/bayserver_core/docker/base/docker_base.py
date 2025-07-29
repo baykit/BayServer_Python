@@ -27,7 +27,7 @@ class DockerBase(Docker):
                 except ConfigException as e:
                     raise e
                 except BaseException as e:
-                    BayLog.error_e(e)
+                    BayLog.error_e(e, traceback.format_stack())
                     raise ConfigException(o.file_name, o.line_no, BayMessage.get(Symbol.CFG_INVALID_PARAMETER_VALUE, o.key))
             else:
                 try:
@@ -36,7 +36,7 @@ class DockerBase(Docker):
                     raise e
                 except BaseException as e:
                     traceback.print_exc()
-                    BayLog.error_e(e)
+                    BayLog.error_e(e, traceback.format_stack())
                     raise ConfigException(o.file_name, o.line_no, BayMessage.get(Symbol.CFG_INVALID_DOCKER, o.name))
 
                 if not self.init_docker(dkr):

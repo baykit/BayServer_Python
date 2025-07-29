@@ -1,5 +1,6 @@
 from threading import Lock
 import time
+import traceback
 from typing import Dict
 
 from bayserver_core.agent import grand_agent as gs
@@ -76,7 +77,7 @@ class MultiplexerBase(Multiplexer):
         try:
             rd.close()
         except IOError as e:
-            BayLog.error_e(e)
+            BayLog.error_e(e, traceback.format_stack())
 
     def is_busy(self):
         return self.channel_count >= self.agent.max_inbound_ships
@@ -107,7 +108,7 @@ class MultiplexerBase(Multiplexer):
                         close_list.append(st)
 
                 except IOError as e:
-                    BayLog.error_e(e)
+                    BayLog.error_e(e, traceback.format_stack())
                     close_list.append(st)
 
         for st in close_list:
