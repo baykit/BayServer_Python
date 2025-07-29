@@ -28,6 +28,10 @@ class MaccaferriDocker(ClubBase):
             BayLog.error(string)
 
     DEFAULT_POST_CACHE_THRESHOLD = 1024 * 128  # 128 KB
+    script: str
+    app: str
+    project: str
+    module: str
 
     def __init__(self):
         super().__init__()

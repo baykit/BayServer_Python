@@ -166,7 +166,7 @@ class TourRes:
                 self.header_sent = True
                 self.end_res_content(chk_tour_id)
 
-    def set_res_consume_listener(self, listener):
+    def set_res_consume_listener(self, listener: ContentConsumeListener):
         self.res_consume_listener = listener
         self.bytes_consumed = 0
         self.bytes_posted = 0

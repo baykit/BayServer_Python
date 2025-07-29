@@ -454,7 +454,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                     BayLog.debug("%s Handshake: Need to write more st=%s", self, st)
 
             if len(st.write_queue) == 0:
-                BayLog.warn("%s No data to write: %s", self, st.rudder)
+                BayLog.debug("%s No data to write: %s", self, st.rudder)
                 self.cancel_write(st)
                 return
 

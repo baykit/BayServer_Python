@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
-from bayserver_core.util.data_consume_listener import DataConsumeListener
+from bayserver_core.tour.content_consume_listener import ContentConsumeListener
 
 
 class ReqContentHandler(metaclass=ABCMeta):
@@ -8,7 +8,7 @@ class ReqContentHandler(metaclass=ABCMeta):
     # interface
     #
     @abstractmethod
-    def on_read_req_content(self, tur: "Tour", buf: bytearray, start: int, length: int, lis: DataConsumeListener):
+    def on_read_req_content(self, tur: "Tour", buf: bytearray, start: int, length: int, lis: ContentConsumeListener):
         pass
 
     @abstractmethod

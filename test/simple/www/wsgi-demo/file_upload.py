@@ -37,7 +37,7 @@ class FileUpload:
             parts = {}
             items = req_cont.split(boundary)
             for item in items:
-                item = item.lstrip().decode("us-ascii")
+                item = item.lstrip().decode("utf-8", errors="ignore")
                 #print(f"item={item}")
                 item_in = io.StringIO(item)
                 part = {}
@@ -70,7 +70,7 @@ class FileUpload:
                                         part[value_item_name] = value_item_value
 
                 if len(part.keys()) > 0:
-                    part["body"] = item_in.read(len(item)).encode("us-ascii")
+                    part["body"] = item_in.read(len(item)).encode("utf-8", errors="ignore")
                     parts[part["name"]] = part
 
                 print(f"part={part}")
