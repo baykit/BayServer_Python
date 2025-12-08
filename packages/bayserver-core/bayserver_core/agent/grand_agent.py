@@ -373,7 +373,7 @@ class GrandAgent:
             BayLog.debug("%s nextAct=%s", self, next_act)
 
         except IOError as e:
-            st.transporter.on_error(st.rudder, e)
+            st.transporter.on_error(st.rudder, e, traceback.format_stack())
             next_act = NextSocketAction.CLOSE
 
         if next_act == NextSocketAction.READ:

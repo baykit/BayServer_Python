@@ -62,7 +62,7 @@ class PlainTransporter(Transporter):
                 return self.ship.notify_read(buf, adr)
 
             except ProtocolException as e:
-                close = self.ship.notify_protocol_error(e)
+                close = self.ship.notify_protocol_error(e, traceback.format_stack())
 
                 if not close and self.server_mode:
                     return NextSocketAction.CONTINUE

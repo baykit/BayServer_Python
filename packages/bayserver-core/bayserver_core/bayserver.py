@@ -341,7 +341,8 @@ class BayServer:
                     try:
                        skt.bind(adr)
                     except OSError as e:
-                       BayLog.error_e(e, BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
+                       BayLog.error_e(e, traceback.format_stack(),
+                                      BayMessage.get(Symbol.INT_CANNOT_OPEN_PORT, dkr.host(), dkr.port(),
                                                         ExceptionUtil.message(e)))
                        return
 
