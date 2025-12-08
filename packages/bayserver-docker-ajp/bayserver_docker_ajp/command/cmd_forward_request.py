@@ -142,7 +142,10 @@ class CmdForwardRequest(AjpCommand):
         #BayLog.info("%s", self)
         acc = pkt.new_ajp_data_accessor()
         acc.put_byte(self.type)  # prefix code
-        acc.put_byte(CmdForwardRequest.get_method_code(self.method))
+        code = CmdForwardRequest.get_method_code(self.method)
+        if code <= 0:
+            raise ProtocolException(f"Invalid method: {self.method}")
+        acc.put_byte(code)
         acc.put_string(self.protocol)
         acc.put_string(self.req_uri)
         acc.put_string(self.remote_addr)
