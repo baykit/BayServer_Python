@@ -3,7 +3,7 @@ version=`cat VERSION`
 
 major=`echo ${version} | cut -d '.' -f 1`
 
-if [ "$major" != "2" ]; then
+if [ "$major" != "3" ]; then
   repo=testpypi
 else
   repo=pypi
