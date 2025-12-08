@@ -152,16 +152,6 @@ class H1InboundHandler(H1Handler, InboundHandler):
             ensure_func()
             raise e
 
-    def send_req_protocol_error(self, err):
-        if self.cur_tour is None:
-            tur = self.ship().get_error_tour()
-        else:
-            tur = self.cur_tour
-
-        tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, ExceptionUtil.message(err), err)
-        return True
-
-
     def on_protocol_error(self, e: Exception) -> bool:
         BayLog.debug("%s onProtocolError: %s", self.ship(), e)
         if self.cur_tour is None:
@@ -170,7 +160,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
             tur = self.cur_tour
 
         tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, ExceptionUtil.message(e))
-        return True
+        return False
 
     ######################################################
     # implements H1CommandHandler
