@@ -215,6 +215,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
 
         tur.req.uri = URLEncoder.encode_tilde(cmd.uri)
         tur.req.method = cmd.method.upper()
+        HttpUtil.check_method(tur.req.method)
         tur.req.protocol = protocol
 
         if not (tur.req.protocol == "HTTP/1.1" or

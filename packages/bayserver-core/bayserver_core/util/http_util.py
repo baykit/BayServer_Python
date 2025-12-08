@@ -5,6 +5,7 @@ import socket
 import traceback
 
 from bayserver_core.bay_log import BayLog
+from bayserver_core.protocol.protocol_exception import ProtocolException
 
 from bayserver_core.util.headers import Headers
 from bayserver_core.util.string_util import StringUtil
@@ -142,3 +143,21 @@ class HttpUtil:
         except OSError as e:
             BayLog.warn("Cannot get remote host name: %s", e)
             return None
+
+    @classmethod
+    def check_uri(cls, uri):
+        if '\x00' in uri:
+            raise ProtocolException("path contains null byte")
+
+        if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in uri):
+            raise ProtocolException("path contains control character")
+
+
+    TOKEN_RE = re.compile(r"^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$")
+
+    @classmethod
+    def check_method(cls, method):
+        if not bool(cls.TOKEN_RE.match(method)):
+            raise ProtocolException(f"invalid method: {method}")
+
+

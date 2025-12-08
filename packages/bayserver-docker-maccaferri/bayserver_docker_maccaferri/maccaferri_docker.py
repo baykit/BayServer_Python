@@ -2,6 +2,7 @@ import os.path
 import importlib
 import sys
 import wsgiref.util
+import traceback
 
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_log import BayLog
@@ -84,7 +85,11 @@ class MaccaferriDocker(ClubBase):
         if tur.req.uri.find("..") >= 0:
             raise HttpException(HttpStatus.FORBIDDEN, tur.req.uri)
 
-        env = CgiUtil.get_env_hash(tur.town.name, self.project, self.project, tur)
+        try:
+            env = CgiUtil.get_env_hash(tur.town.name, self.project, self.project, tur)
+        except ValueError as e:
+            BayLog.error_e(e, traceback.format_stack(), "Invalid CGI environment value")
+            raise HttpException(HttpStatus.BAD_REQUEST, tur.req.uri)
 
         script_name = tur.town.name
         if script_name.endswith("/"):

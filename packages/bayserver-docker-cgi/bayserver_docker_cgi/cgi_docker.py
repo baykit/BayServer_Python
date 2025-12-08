@@ -1,4 +1,5 @@
 import os.path
+import traceback
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bayserver import BayServer
@@ -82,7 +83,12 @@ class CgiDocker(ClubBase):
         if StringUtil.is_empty(root):
             raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, "$s docRoot of cgi docker or location of town is not specified.", tur.town)
 
-        env = CgiUtil.get_env_hash(tur.town.name, root, base, tur)
+        try:
+            env = CgiUtil.get_env_hash(tur.town.name, root, base, tur)
+        except ValueError as e:
+            BayLog.error_e(e, traceback.format_stack(), "Invalid CGI environment value")
+            raise HttpException(HttpStatus.BAD_REQUEST, tur.req.uri)
+
         if BayServer.harbor.trace_header():
             for name in env.keys():
                 value = env[name]

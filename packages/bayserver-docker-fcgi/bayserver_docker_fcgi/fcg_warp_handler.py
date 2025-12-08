@@ -1,9 +1,11 @@
 import datetime
+import traceback
 
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.warp_handler import WarpHandler
 from bayserver_core.common.warp_ship import WarpShip
+from bayserver_core.http_exception import HttpException
 from bayserver_core.protocol.command_packer import CommandPacker
 from bayserver_core.protocol.packet_packer import PacketPacker
 from bayserver_core.sink import Sink
@@ -17,6 +19,7 @@ from bayserver_core.common.warp_data import WarpData
 from bayserver_core.util.char_util import CharUtil
 from bayserver_core.util.class_util import ClassUtil
 from bayserver_core.util.headers import Headers
+from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.string_util import StringUtil
 from bayserver_core.util.cgi_util import CgiUtil
 from bayserver_core.util.data_consume_listener import DataConsumeListener
@@ -282,7 +285,12 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
             else:
                 cmd.add_param(name, value)
 
-        CgiUtil.get_env(tur.town.name, doc_root, script_base, tur, callback)
+        try:
+            CgiUtil.get_env(tur.town.name, doc_root, script_base, tur, callback)
+        except ValueError as e:
+            BayLog.error_e(e, traceback.format_stack(), "Invalid CGI environment value")
+            raise HttpException(HttpStatus.BAD_REQUEST, tur.req.uri)
+
 
         script_fname = f"proxy:fcgi://{self.ship().docker.host()}:{self.ship().docker.port()}{script_fname[0]}"
         cmd.add_param(CgiUtil.SCRIPT_FILENAME, script_fname[0])
