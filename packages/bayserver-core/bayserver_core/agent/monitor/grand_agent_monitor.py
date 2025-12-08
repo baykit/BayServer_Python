@@ -115,6 +115,10 @@ class GrandAgentMonitor:
     # Class methods
     ########################################
     @classmethod
+    def init(cls, num_agents: int) -> None:
+        cls.num_agents = num_agents
+
+    @classmethod
     def add(cls, anchorable: bool, self_listen: Optional[bool] = False, self_listen_port_idx: Optional[int] = -1) -> None:
         cls.cur_id = cls.cur_id + 1
         agt_id = cls.cur_id

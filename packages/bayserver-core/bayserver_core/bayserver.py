@@ -364,6 +364,7 @@ class BayServer:
             elif not dkr.anchored():
                 GrandAgentMonitor.add(False)
 
+        GrandAgentMonitor.init(cls.harbor.grand_agents())
         for i in range(0, cls.harbor.grand_agents()):
             GrandAgentMonitor.add(True)
 
