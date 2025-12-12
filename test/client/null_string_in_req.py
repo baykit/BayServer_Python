@@ -37,7 +37,7 @@ def main():
     body = "param=hello\x00world"
 
     request = (
-        f"POST {path}\x00hoge HTTP/1.1\r\n"
+        f"POST {path}\x00hoge.cgi HTTP/1.1\r\n"
         f"Host: {host}\r\n"
         "Content-Type: application/x-www-form-urlencoded\r\n"
         f"Content-Length: {len(body)}\r\n"
