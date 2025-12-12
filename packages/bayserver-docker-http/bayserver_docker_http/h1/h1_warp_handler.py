@@ -1,3 +1,4 @@
+from typing import List
 
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_log import BayLog
@@ -201,7 +202,7 @@ class H1WarpHandler(H1Handler, WarpHandler):
         raise Sink()
 
 
-    def on_protocol_error(self, e: ProtocolException) -> bool:
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]) -> bool:
         raise Sink()
 
     def req_finished(self):

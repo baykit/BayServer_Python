@@ -1,5 +1,6 @@
 import threading
 import traceback
+from typing import List
 
 from bayserver_core.bay_log import BayLog
 from bayserver_core.bayserver import BayServer
@@ -152,14 +153,14 @@ class H1InboundHandler(H1Handler, InboundHandler):
             ensure_func()
             raise e
 
-    def on_protocol_error(self, e: Exception) -> bool:
-        BayLog.debug("%s onProtocolError: %s", self.ship(), e)
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]) -> bool:
+        BayLog.debug("%s onProtocolError: %s", self.ship(), err)
         if self.cur_tour is None:
             tur = self.ship().get_error_tour()
         else:
             tur = self.cur_tour
 
-        tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, ExceptionUtil.message(e))
+        tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, ExceptionUtil.message(err), err, stk)
         return False
 
     ######################################################

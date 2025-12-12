@@ -1,3 +1,5 @@
+from typing import List
+
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.warp_ship import WarpShip
@@ -83,7 +85,7 @@ class AjpWarpHandler(AjpHandler, WarpHandler):
     def verify_protocol(self, proto):
         pass
 
-    def on_protocol_error(self, e:ProtocolException) -> bool:
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]) -> bool:
         raise Sink()
 
     ######################################################

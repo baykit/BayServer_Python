@@ -1,6 +1,8 @@
 import abc
 from abc import abstractmethod
+from typing import List
 
+from bayserver_core.protocol.protocol_exception import ProtocolException
 from bayserver_core.tour.tour import Tour
 from bayserver_core.util.data_consume_listener import DataConsumeListener
 
@@ -24,7 +26,7 @@ class TourHandler(metaclass=abc.ABCMeta):
 
     # Send protocol error to client
     @abstractmethod
-    def on_protocol_error(self, e: Exception):
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]):
         pass
 
 

@@ -1,5 +1,6 @@
 import datetime
 import traceback
+from typing import List
 
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_log import BayLog
@@ -112,7 +113,7 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
     def verify_protocol(self, proto: str):
         pass
 
-    def on_protocol_error(self, e: Exception) -> bool:
+    def on_protocol_error(sself, err: ProtocolException, stk: List[str]) -> bool:
         raise Sink()
 
     ######################################################

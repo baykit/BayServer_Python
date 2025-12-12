@@ -1,4 +1,5 @@
 import traceback
+from typing import List
 
 from bayserver_core.agent.next_socket_action import NextSocketAction
 from bayserver_core.bay_log import BayLog
@@ -14,6 +15,7 @@ from bayserver_core.protocol.protocol_handler_factory import ProtocolHandlerFact
 from bayserver_core.symbol import Symbol
 from bayserver_core.tour.req_content_handler import ReqContentHandler
 from bayserver_core.tour.tour import Tour
+from bayserver_core.util.exception_util import ExceptionUtil
 from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.http_util import HttpUtil
 from bayserver_core.util.string_util import StringUtil
@@ -118,9 +120,9 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
             ensure_func()
             raise e
 
-    def on_protocol_error(self, e: ProtocolException):
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]):
         tur = self.ship().get_error_tour()
-        tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, e.message, e)
+        tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, ExceptionUtil.message(err), err, stk)
         return True
 
 

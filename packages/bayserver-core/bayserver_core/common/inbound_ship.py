@@ -99,7 +99,7 @@ class InboundShip(Ship):
 
     def notify_protocol_error(self, e: ProtocolException, stk: List[str]) -> bool:
         BayLog.debug_e(e, stk)
-        return self.tour_handler().on_protocol_error(e)
+        return self.tour_handler().on_protocol_error(e, stk)
 
     def notify_close(self) -> None:
         BayLog.debug("%s notifyClose", self)

@@ -1,5 +1,5 @@
 import traceback
-from typing import Dict
+from typing import Dict, List
 
 from bayserver_core.bayserver import BayServer
 from bayserver_core.bay_log import BayLog
@@ -140,9 +140,9 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
             ensure_func()
             raise e
 
-    def on_protocol_error(self, err: ProtocolException):
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]):
         tur = self.ship().get_error_tour()
-        tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, ExceptionUtil.message(err), err)
+        tur.res.send_error(Tour.TOUR_ID_NOCHECK, HttpStatus.BAD_REQUEST, ExceptionUtil.message(err), err, stk)
         return True
 
 

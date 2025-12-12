@@ -1,7 +1,7 @@
 import time
 import traceback
 from asyncio import run_coroutine_threadsafe
-from typing import Union, Tuple, Dict
+from typing import Union, Tuple, Dict, List
 
 from aioquic.h0.connection import H0_ALPN, H0Connection
 from aioquic.h3.connection import H3Connection, H3_ALPN
@@ -147,7 +147,7 @@ class QicTicket():
 
         run_coroutine_threadsafe(postpone(), self.port_docker.loop)
 
-    def on_protocol_error(self, e: ProtocolException) -> bool:
+    def on_protocol_error(self, err: ProtocolException, stk: List[str]) -> bool:
         raise Sink()
 
 

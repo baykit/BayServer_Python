@@ -1,4 +1,8 @@
 from abc import ABCMeta, abstractmethod
+from typing import List
+
+from bayserver_core.protocol.protocol_exception import ProtocolException
+from bayserver_core.tour.tour import Tour
 
 
 class InboundHandler(metaclass=ABCMeta):
@@ -8,7 +12,7 @@ class InboundHandler(metaclass=ABCMeta):
     #   return true if connection must be closed
     #
     @abstractmethod
-    def on_protocol_error(self, protocol_ex):
+    def on_protocol_error(self, e: ProtocolException, stk: List[str]):
         pass
 
     #
