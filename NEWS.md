@@ -1,5 +1,9 @@
 # BayServer for Python
 
+# 3.0.1
+
+- Fixes some bugs
+
 # 3.0.0
 
 - [Core] Performes a significant overall refactoring.
