@@ -163,7 +163,10 @@ class CmdForwardRequest(AjpCommand):
         super().unpack(pkt)
         acc = pkt.new_ajp_data_accessor()
         acc.get_byte()  # prefix code
-        self.method = CmdForwardRequest.method_map.get(acc.get_byte())
+        code = acc.get_byte()
+        self.method = CmdForwardRequest.method_map.get(code)
+        if self.method is None:
+            raise ProtocolException(f"Invalid method code: {code}")
         self.protocol = acc.get_string()
         self.req_uri = acc.get_string()
         self.remote_addr = acc.get_string()
