@@ -19,14 +19,14 @@ class InboundHandler(metaclass=ABCMeta):
     #  Send HTTP headers to client
     #
     @abstractmethod
-    def send_res_headers(self, tur):
+    def send_res_headers(self, tur: Tour):
         pass
 
     #
     # Send Contents to client
     #
     @abstractmethod
-    def send_res_content(self, tur, bytes, ofs, len, callback):
+    def send_res_content(self, tur: Tour, bytes, ofs: int, length: int, callback):
         pass
 
     #
@@ -34,5 +34,5 @@ class InboundHandler(metaclass=ABCMeta):
     #  sendEnd cannot refer Tour instance because it is discarded before call.
     #
     @abstractmethod
-    def send_end_tour(self, tur, keep_alive, callback):
+    def send_end_tour(self, tur: Tour, keep_alive: bool, callback):
         pass

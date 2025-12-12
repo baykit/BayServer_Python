@@ -87,7 +87,7 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
     # implements InboundHandler
     ######################################################
 
-    def send_res_headers(self, tur):
+    def send_res_headers(self, tur: Tour):
         BayLog.debug("%s PH:sendHeaders: tur=%s", self.ship(), tur)
 
         scode = tur.res.headers.status
@@ -106,13 +106,13 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
         cmd = CmdStdOut(tur.req.key, buf.buf, 0, buf.length)
         self.protocol_handler.post(cmd)
 
-    def send_res_content(self, tur, bytes, ofs, length, callback):
+    def send_res_content(self, tur: Tour, bytes, ofs: int, length: int, callback):
 
         cmd = CmdStdOut(tur.req.key, bytes, ofs, length)
         self.protocol_handler.post(cmd, callback)
 
 
-    def send_end_tour(self, tur, keep_alive, cb):
+    def send_end_tour(self, tur: Tour, keep_alive: bool, cb):
         BayLog.debug("%s PH:endTour: tur=%s keep=%s", self.ship(), tur, keep_alive)
 
         # Send empty stdout command
