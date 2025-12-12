@@ -266,34 +266,37 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
         self.check_req_id(cmd.req_id)
 
         tur = self.ship().get_tour(cmd.req_id)
-        if cmd.length == 0:
-            #  request content completed
-            if tur.error:
-                # Error has occurred on header completed
-                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error, tur.stack)
-                self.reset_state()
-                return NextSocketAction.WRITE
-            else:
-                try:
+        try:
+            if cmd.length == 0:
+                #  request content completed
+                if tur.error:
+                    # Error has occurred on header completed
+                    BayLog.debug("%s Delay send error", tur)
+                    raise tur.error.with_traceback(tur.stack)
+                else:
                     self.end_req_content(Tour.TOUR_ID_NOCHECK, tur)
                     return NextSocketAction.CONTINUE
-                except HttpException as e:
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
-                    return NextSocketAction.WRITE
 
-        else:
-            sid = self.ship().ship_id
-
-            def callback(length: int, resume: bool):
-                if resume:
-                    self.ship().resume_read(sid)
-
-            success = tur.req.post_req_content(Tour.TOUR_ID_NOCHECK, cmd.data, cmd.start, cmd.length, callback)
-
-            if not success:
-                return NextSocketAction.SUSPEND
             else:
-                return NextSocketAction.CONTINUE
+                sid = self.ship().ship_id
+
+                def callback(length: int, resume: bool):
+                    if resume:
+                        self.ship().resume_read(sid)
+
+                success = tur.req.post_req_content(Tour.TOUR_ID_NOCHECK, cmd.data, cmd.start, cmd.length, callback)
+
+                if not success:
+                    return NextSocketAction.SUSPEND
+                else:
+                    return NextSocketAction.CONTINUE
+
+        except HttpException as e:
+            tur.req.abort()
+            stk = traceback.format_stack()
+            tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, stk)
+            self.reset_state()
+            return NextSocketAction.WRITE
 
     def handle_stdout(self, cmd):
         raise ProtocolException("Invalid FCGI command: %d", cmd.type)
