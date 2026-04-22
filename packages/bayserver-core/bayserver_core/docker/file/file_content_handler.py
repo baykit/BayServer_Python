@@ -11,6 +11,7 @@ from bayserver_core.docker.harbor import Harbor
 from bayserver_core.http_exception import HttpException
 from bayserver_core.rudder.io_rudder import IORudder
 from bayserver_core.sink import Sink
+from bayserver_core.tour.content_consume_listener import content_consume_listener_dev_null
 from bayserver_core.tour.req_content_handler import ReqContentHandler
 from bayserver_core.tour.tour import Tour
 from bayserver_core.util.data_consume_listener import DataConsumeListener
@@ -23,9 +24,10 @@ class FileContentHandler(ReqContentHandler):
     path: str
     abortable: bool
 
-    def __init__(self, path):
+    def __init__(self, path, file_store=None):
         self.path = path
         self.abortable = True
+        self._file_store = file_store
 
     ######################################################
     # Implements ReqContentHandler
@@ -71,6 +73,23 @@ class FileContentHandler(ReqContentHandler):
 
         file_len = os.path.getsize(file)
         #BayLog.debug("%s send_file %s async=%s len=%d", self.tour, file, async_mode, file_len)
+
+        if self._file_store is not None:
+            data = self._file_store.get(file, file_len)
+            if data is not None:
+                tur.res.set_res_consume_listener(content_consume_listener_dev_null)
+                tur.res.headers.set_content_type(mime_type)
+                tur.res.headers.set_content_length(file_len)
+                try:
+                    tur.res.send_res_headers(Tour.TOUR_ID_NOCHECK)
+                    tur.res.send_res_content(Tour.TOUR_ID_NOCHECK, data, 0, len(data))
+                    tur.res.end_res_content(Tour.TOUR_ID_NOCHECK)
+                except HttpException:
+                    raise
+                except Exception as e:
+                    BayLog.error_e(e, traceback.format_stack())
+                    raise HttpException(HttpStatus.INTERNAL_SERVER_ERROR, file)
+                return
 
         tur.res.headers.set_content_type(mime_type)
         tur.res.headers.set_content_length(file_len)

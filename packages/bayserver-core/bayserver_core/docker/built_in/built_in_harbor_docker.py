@@ -36,6 +36,9 @@ class BuiltInHarborDocker(DockerBase, Harbor):
     DEFAULT_CGI_MULTIPLEXER = Harbor.MULTIPLEXER_TYPE_SPIDER
     DEFAULT_RECIPIENT = Harbor.RECIPIENT_TYPE_SPIDER
     DEFAULT_PID_FILE = "bayserver.pid"
+    DEFAULT_ENABLE_CACHE = False
+    DEFAULT_CACHE_LIFESPAN_SEC = 60
+    DEFAULT_CACHE_SIZE_MB = 32
 
     # Default charset
     _charset: str
@@ -103,6 +106,15 @@ class BuiltInHarborDocker(DockerBase, Harbor):
     # PID file name
     _pid_file: str
 
+    # True if cache is enabled
+    _enable_cache: bool
+
+    # Lifespan seconds of cache
+    _cache_lifespan_sec: int
+
+    # Limit size of cache (in MB)
+    _cache_size_mb: int
+
     def __init__(self):
         super().__init__()
 
@@ -129,6 +141,10 @@ class BuiltInHarborDocker(DockerBase, Harbor):
 
         # PID file name
         self._pid_file = BuiltInHarborDocker.DEFAULT_PID_FILE
+
+        self._enable_cache = BuiltInHarborDocker.DEFAULT_ENABLE_CACHE
+        self._cache_lifespan_sec = BuiltInHarborDocker.DEFAULT_CACHE_LIFESPAN_SEC
+        self._cache_size_mb = BuiltInHarborDocker.DEFAULT_CACHE_SIZE_MB
 
     ######################
     # Implements Docker
@@ -250,6 +266,12 @@ class BuiltInHarborDocker(DockerBase, Harbor):
             self._multi_core = StringUtil.parse_bool(kv.value)
         elif key == "gzipcomp":
             self._gzip_comp = StringUtil.parse_bool(kv.value)
+        elif key == "enablecache":
+            self._enable_cache = StringUtil.parse_bool(kv.value)
+        elif key == "cachelifespan":
+            self._cache_lifespan_sec = int(kv.value)
+        elif key == "cachesize":
+            self._cache_size_mb = int(kv.value)
         elif key == "netmultiplexer":
             try:
                 self._net_multiplexer = Harbor.get_multiplexer_type(kv.value)
@@ -352,5 +374,14 @@ class BuiltInHarborDocker(DockerBase, Harbor):
 
     def pid_file(self) -> str:
         return self._pid_file
+
+    def enable_cache(self) -> bool:
+        return self._enable_cache
+
+    def cache_lifespan_sec(self) -> int:
+        return self._cache_lifespan_sec
+
+    def cache_size_mb(self) -> int:
+        return self._cache_size_mb
 
 

@@ -142,6 +142,21 @@ class Harbor(Docker, metaclass=ABCMeta):
     def multi_core(self) -> bool:
         pass
 
+    # True if cache is enabled
+    @abstractmethod
+    def enable_cache(self) -> bool:
+        pass
+
+    # Lifespan seconds of cache
+    @abstractmethod
+    def cache_lifespan_sec(self) -> int:
+        pass
+
+    # Limit size of cache (in MB)
+    @abstractmethod
+    def cache_size_mb(self) -> int:
+        pass
+
     @classmethod
     def get_multiplexer_type_name(cls, type: int) -> str:
         if type == Harbor.MULTIPLEXER_TYPE_SPIDER:

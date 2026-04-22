@@ -1,8 +1,10 @@
 import urllib.parse
 import os.path
 
+from bayserver_core.bayserver import BayServer
 from bayserver_core.docker.base.club_base import ClubBase
 from bayserver_core.docker.file.file_content_handler import FileContentHandler
+from bayserver_core.docker.file.file_store import FileStore
 from bayserver_core.docker.file.directory_train import DirectoryTrain
 
 from bayserver_core.util.string_util import StringUtil
@@ -12,6 +14,7 @@ class FileDocker(ClubBase):
     def __init__(self):
         super().__init__()
         self.list_files = False
+        self._file_store = None
 
     ######################################################
     # Implements DockerBase
@@ -41,7 +44,11 @@ class FileDocker(ClubBase):
             train = DirectoryTrain(tur, real)
             train.start_tour()
         else:
-            handler = FileContentHandler(real)
+            if self._file_store is None and BayServer.harbor.enable_cache():
+                self._file_store = FileStore(
+                    BayServer.harbor.cache_lifespan_sec(),
+                    BayServer.harbor.cache_size_mb() * 1024 * 1024)
+            handler = FileContentHandler(real, self._file_store)
             tur.req.set_content_handler(handler)
 
 

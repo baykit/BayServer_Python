@@ -46,6 +46,7 @@ class PortBase(DockerBase, Port, metaclass=ABCMeta):
         self._socket_path = None
         self._secure_docker = None
         self._cities = Cities()
+        self._socket_buffer_size = -1
 
     def __str__(self):
         return super().__str__() + "[" + str(self._port) + "]"
@@ -190,12 +191,18 @@ class PortBase(DockerBase, Port, metaclass=ABCMeta):
         sip = PortBase.get_ship_store(agt_id).rent()
         agt = GrandAgent.get(agt_id)
 
+        if self._socket_buffer_size < 0:
+            try:
+                self._socket_buffer_size = IOUtil.get_sock_recv_buf_size(rd.key())
+            except OSError:
+                self._socket_buffer_size = 8192
+
         if self.anchored() and self.secure():
             tp = (
                 self._secure_docker.new_transporter(
                     agt_id,
                     sip,
-                    IOUtil.get_sock_recv_buf_size(rd.key())
+                    self._socket_buffer_size
             ))
             ssl_soket = self._secure_docker.sslctx.wrap_socket(rd.key(), server_side=True, do_handshake_on_connect=False)
             rd = SocketRudder(ssl_soket)
@@ -203,13 +210,11 @@ class PortBase(DockerBase, Port, metaclass=ABCMeta):
                 rd.set_non_blocking()
 
         else:
-            size = IOUtil.get_sock_recv_buf_size(rd.key())
-
             tp = PlainTransporter(
                 agt.net_multiplexer,
                 sip,
                 True,
-                size,
+                self._socket_buffer_size,
                 False)
 
         proto_hnd = PortBase.get_protocol_handler_store(self.protocol(), agt_id).rent()
