@@ -284,7 +284,7 @@ class TourRes:
                          self.bytes_consumed)
             resume = True
 
-        if not self.tour.is_running():
+        if self.tour.is_running():
             self.res_consume_listener(length, resume)
 
 
