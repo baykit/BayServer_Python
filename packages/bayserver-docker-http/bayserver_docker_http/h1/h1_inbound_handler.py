@@ -103,17 +103,14 @@ class H1InboundHandler(H1Handler, InboundHandler):
             # If client doesn't support "Keep-Alive", set "Close"
             res_con = "Close"
         else:
+            # Client supports "Keep-Alive".
+            # If Content-Length is present, use Keep-Alive; otherwise, use Close
+            # only when the payload is text (Java e422615).
             res_con = "Keep-Alive"
-            # Client supports "Keep-Alive"
-            res_hdr_con = tur.res.headers.get_connection()
-            if res_hdr_con != Headers.CONNECTION_KEEP_ALIVE and res_hdr_con != Headers.CONNECTION_UNKOWN:
-                # If tours doesn't need "Keep-Alive"
-                if tur.res.headers.content_length() == -1:
-                    # If content-length not specified
-                    if (tur.res.headers.content_type() is not None and
-                            tur.res.headers.content_type().startswith("text/")):
-                        # If content is text, connection must be closed
-                        res_con = "Close"
+            if tur.res.headers.content_length() == -1:
+                if (tur.res.headers.content_type() is not None and
+                        tur.res.headers.content_type().startswith("text/")):
+                    res_con = "Close"
 
         tur.res.headers.set_fast(Headers.CONNECTION, res_con)
 

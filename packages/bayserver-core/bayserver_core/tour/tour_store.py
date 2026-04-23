@@ -24,7 +24,7 @@ class TourStore:
             del TourStore.stores[agt_id]
 
 
-    MAX_TOURS = 1024
+    MAX_TOURS = 12800
 
     # class variables
     max_count = None

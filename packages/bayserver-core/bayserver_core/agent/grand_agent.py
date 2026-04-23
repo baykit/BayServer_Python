@@ -209,6 +209,10 @@ class GrandAgent:
 
         except BaseException as e:
             BayLog.fatal_e(e, traceback.format_stack(), "%s Fatal Error", self)
+            if isinstance(e, MemoryError):
+                # After a MemoryError the process state is unsafe; abort the
+                # whole process so it can be restarted cleanly (Java 681eee1).
+                os._exit(1)
 
         finally:
             BayLog.debug("Agent end: %d", self.agent_id)

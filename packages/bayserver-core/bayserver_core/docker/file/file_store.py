@@ -23,6 +23,18 @@ class FileStore:
         self._contents = collections.OrderedDict()
         self._lock = threading.Lock()
 
+    def has_cached(self, path: str) -> bool:
+        """Return True iff `path` is currently present (and not expired) in the
+        cache. Allows callers to skip a stat(2) on a cache hit (Java cf1b87b).
+        """
+        with self._lock:
+            fc = self._contents.get(path)
+            if fc is None:
+                return False
+            if fc.loaded_time + self.lifespan_sec < time.time():
+                return False
+            return True
+
     def get(self, path: str, file_len: int):
         """Return bytes when the file is cached (or freshly loaded).
         Returns None when the file does not fit in the cache."""
