@@ -161,15 +161,15 @@ class Tour(Reusable):
 
     def change_state(self, chk_id, new_state):
         BayLog.trace("%s change state: %s", self, new_state)
-        self.check_tour_id(chk_id)
+        #self.check_tour_id(chk_id)
         self.state = new_state
 
     def check_tour_id(self, chk_id):
         if chk_id == Tour.TOUR_ID_NOCHECK:
             return
 
-        if not self.is_initialized():
-            raise Sink("%s Tour not initialized", self)
+        #if not self.is_initialized():
+        #    raise Sink("%s Tour not initialized", self)
 
         if chk_id != self.tour_id:
             raise Sink("%s Invalid tour id: %s", self, "" if chk_id is None else str(chk_id))

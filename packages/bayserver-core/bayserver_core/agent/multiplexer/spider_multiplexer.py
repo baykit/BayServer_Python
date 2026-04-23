@@ -3,7 +3,6 @@ import os
 import selectors
 import socket
 import ssl
-import threading
 import traceback
 from selectors import SelectorKey
 from typing import List
@@ -11,7 +10,7 @@ from typing import List
 from bayserver_core import bayserver as bs
 from bayserver_core.agent import grand_agent as ga
 from bayserver_core.agent.multiplexer.multiplexer_base import MultiplexerBase
-from bayserver_core.agent.multiplexer.write_unit import WriteUnit
+from bayserver_core.common.write_unit import WriteUnit
 from bayserver_core.agent.timer_handler import TimerHandler
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.multiplexer import Multiplexer
@@ -29,20 +28,9 @@ from bayserver_core.util.sys_util import SysUtil
 
 class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
-    class ChannelOperation:
-        rudder: Rudder
-        op: int
-        to_connect: bool
-
-        def __init__(self, rudder: Rudder, op: int, to_connect: bool):
-            self.rudder = rudder
-            self.op = op
-            self.to_connect = to_connect
-
     anchorable: bool
     selector: selectors.BaseSelector
-    operations: List[ChannelOperation]
-    operations_lock: threading.Lock
+    rudders_to_register: List[Rudder]
     select_wakeup_pipe: List[socket.socket]
 
     def __init__(self, agt: "ga.GrandAgent", anchorable: bool):
@@ -61,8 +49,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
                 self.selector = selectors.SelectSelector()
 
-        self.operations = []
-        self.operations_lock = threading.Lock()
+        self.rudders_to_register = []
 
         pair = socket.socketpair()
         pair[0].setblocking(False)
@@ -82,7 +69,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
     def req_accept(self, rd: Rudder) -> None:
         st = self.get_rudder_state(rd)
-        self.selector.register(rd.key(), selectors.EVENT_READ)
+        self.selector.register(rd.key(), selectors.EVENT_READ, data=rd)
         st.accepting = True
 
     def req_connect(self, rd: Rudder, adr: InternetAddress) -> None:
@@ -176,7 +163,8 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
             if op != selectors.EVENT_READ:
                 self.selector.unregister(st.rudder.key())
             else:
-                self.selector.modify(st.rudder.key(), op)
+                # modify() replaces data; preserve attached rudder.
+                self.selector.modify(st.rudder.key(), op, data=st.rudder)
 
     def next_accept(self, st: RudderState) -> None:
         pass
@@ -250,75 +238,84 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
     ######################################################
 
     def _add_operation(self, rd: Rudder, op: int, to_connect=False) -> None:
-        with self.operations_lock:
-            found = False
-            for rd_op in self.operations:
-                if rd_op.rudder == rd:
-                    rd_op.op |= op
-                    rd_op.to_connect = rd_op.to_connect or to_connect
-                    found = True
-                    BayLog.debug("%s Update operation: %s ch=%s", self, self.op_mode(rd_op.op), rd_op.rudder)
+        first_register = len(self.rudders_to_register) == 0
 
-            if not found:
-                BayLog.debug("%s New operation: %s ch=%s", self, self.op_mode(op), rd)
-                self.operations.append(self.ChannelOperation(rd, op, to_connect))
+        if rd.in_dirty_list:
+            rd.pending_ops |= op
+        else:
+            rd.pending_ops = op
+            rd.pending_to_connect = to_connect
+            self.rudders_to_register.append(rd)
+            rd.in_dirty_list = True
 
-        self.wakeup()
+        if to_connect:
+            rd.pending_to_connect = True
+
+        if first_register:
+            self.wakeup()
 
 
     def _register_channel_ops(self) -> int:
-        if len(self.operations) == 0:
+        if len(self.rudders_to_register) == 0:
             return 0
 
-        #BayLog.info("%s register op list: %s", self, self.operations)
-        with self.operations_lock:
-            nch = len(self.operations)
-            for ch_op in self.operations:
-                st = self.get_rudder_state(ch_op.rudder)
-                if st is None:
-                    BayLog.debug("%s Try to register closed socket (Ignore)", self)
-                    continue
+        nch = len(self.rudders_to_register)
+        for rd in self.rudders_to_register:
+            st = self.get_rudder_state(rd)
+            if st is None:
+                BayLog.debug("%s Try to register closed socket (Ignore)", self)
+                rd.in_dirty_list = False
+                rd.pending_ops = 0
+                rd.pending_to_connect = False
+                continue
 
-                fileobj = ch_op.rudder.key()
+            fileobj = rd.key()
+            try:
+                BayLog.debug("%s register op=%s rd=%s chState=%s", self, SpiderMultiplexer.op_mode(rd.pending_ops), rd, st)
                 try:
-                    BayLog.debug("%s register op=%s ch=%s chState=%s", self, SpiderMultiplexer.op_mode(ch_op.op), ch_op.rudder, st)
-                    try:
-                        key = self.selector.get_key(fileobj)
-                        op = key.events
-                        new_op = op | ch_op.op
+                    key = self.selector.get_key(fileobj)
+                    op = key.events
+                    new_op = op | rd.pending_ops
+                    if new_op != op:
                         BayLog.trace("%s Already registered op=%s update to %s", self, SpiderMultiplexer.op_mode(op), SpiderMultiplexer.op_mode(new_op))
-                        self.selector.modify(fileobj, new_op)
-                    except KeyError:
-                        # channel is not registered in selector
-                        BayLog.trace("%s Not registered", self)
-                        self.selector.register(fileobj, ch_op.op)
+                        self.selector.modify(fileobj, new_op, data=rd)
+                except KeyError:
+                    # channel is not registered in selector
+                    BayLog.trace("%s Not registered", self)
+                    self.selector.register(fileobj, rd.pending_ops, data=rd)
 
-                    if ch_op.to_connect:
-                        if st is None:
-                            BayLog.warn("%s register connect but ChannelState is null", self)
-                        else:
-                            st.connecting = True
+                if rd.pending_to_connect:
+                    st.connecting = True
 
-                except BaseException as e:
-                    cst = self.get_rudder_state(ch_op.rudder)
-                    BayLog.error_e(e, traceback.format_stack(), "%s Cannot register operation: %s", self, st.rudder)
+            except BaseException as e:
+                BayLog.error_e(e, traceback.format_stack(), "%s Cannot register operation: %s", self, rd)
 
-            self.operations.clear()
-            return nch
+            rd.in_dirty_list = False
+            rd.pending_ops = 0
+            rd.pending_to_connect = False
+
+        self.rudders_to_register.clear()
+        return nch
 
 
     def _handle_channel(self, key: SelectorKey, events: int) -> None:
 
         ch = key.fileobj
-        #BayLog.trace("%s Handle channel: readable=%s writable=%s fd=%s",
-        #             self.agent, events & selectors.EVENT_READ, events & selectors.EVENT_WRITE, ch)
+        rd: Rudder = key.data
+        if rd is None:
+            BayLog.error("Rudder is not attached to key: ch=%s", ch)
+            try:
+                self.selector.unregister(ch)
+            except (KeyError, ValueError) as e:
+                BayLog.debug("%s Unregister error (Ignore): %s", self, e)
+            return
 
-        st = self._find_rudder_state_by_key(ch)
+        st = self.get_rudder_state(rd)
         if st is None:
             BayLog.error("Channel state is not registered: ch=%s", ch)
             try:
                 self.selector.unregister(ch)
-            except ValueError as e:
+            except (KeyError, ValueError) as e:
                 BayLog.debug("%s Unregister error (Ignore): %s", self, e)
             return
 
@@ -334,13 +331,14 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                 st.connecting = False
 
                 # "Write-OP Off"
-                key = self.selector.get_key(ch)
-                op = key.events & ~selectors.EVENT_WRITE
+                sk = self.selector.get_key(ch)
+                op = sk.events & ~selectors.EVENT_WRITE
                 if op != selectors.EVENT_READ:
                     BayLog.debug("%s Unregister channel (Write Off) chState=%s", self.agent, st)
                     self.selector.unregister(ch)
                 else:
-                    self.selector.modify(ch, op)
+                    # modify() replaces data; preserve attached rudder.
+                    self.selector.modify(ch, op, data=rd)
 
             elif st.accepting:
                 self._on_acceptable(st)
@@ -458,33 +456,64 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                 self.cancel_write(st)
                 return
 
-            for i in range(0, len(st.write_queue)):
-                wunit = st.write_queue[i]
+            if st.closed:
+                return
 
-                BayLog.debug("%s Try to write q[%d/%d]: pkt=%s buflen=%d rd=%s closed=%s adr=%s", self, i, len(st.write_queue), wunit.tag,
-                             len(wunit.buf), st.rudder, st.closed, wunit.adr)
+            if isinstance(st.rudder, UdpSocketRudder):
+                # UDP: each WriteUnit has its own destination, cannot combine.
+                for i in range(0, len(st.write_queue)):
+                    wunit = st.write_queue[i]
 
-                if not st.closed:
+                    BayLog.debug("%s Try to write q[%d/%d]: pkt=%s buflen=%d rd=%s adr=%s",
+                                 self, i, len(st.write_queue), wunit.tag, len(wunit.buf), st.rudder, wunit.adr)
+
                     if len(wunit.buf) == 0:
                         length = 0
                     else:
                         try:
-                            if isinstance(st.rudder, UdpSocketRudder):
-                                # UDP
-                                length = st.rudder.skt.sendto(wunit.buf, wunit.adr)
-                            else:
-                                length = st.rudder.write(wunit.buf)
-                        except (BlockingIOError, ssl.SSLWantWriteError) as e:
+                            length = st.rudder.skt.sendto(wunit.buf, wunit.adr)
+                        except (BlockingIOError, ssl.SSLWantWriteError):
                             BayLog.debug("%s Write will be pended", self)
                             break
-                            # self.agent.send_error_letter(st, e, False)
 
-                    BayLog.debug("%s wrote %d bytes", self, length)
-                    wunit.buf = wunit.buf[length::]
+                    wunit.buf = wunit.buf[length:]
                     self.agent.send_wrote_letter(st, length, False)
 
                     if length < len(wunit.buf):
                         BayLog.debug("%s Data remains", self)
+                        break
+            else:
+                # TCP / TLS: gather all pending buffers into one write to
+                # reduce syscall count (Java 862441d writev equivalent).
+                combined_parts = [bytes(w.buf) for w in st.write_queue if len(w.buf) > 0]
+                if not combined_parts:
+                    return
+                combined = combined_parts[0] if len(combined_parts) == 1 else b"".join(combined_parts)
+
+                BayLog.debug("%s Try to write gathered: bufs=%d total=%d rd=%s",
+                             self, len(st.write_queue), len(combined), st.rudder)
+
+                try:
+                    n = st.rudder.write(combined)
+                except (BlockingIOError, ssl.SSLWantWriteError):
+                    BayLog.debug("%s Write will be pended", self)
+                    return
+
+                BayLog.debug("%s wrote %d bytes (gathered)", self, n)
+                self.agent.send_wrote_letter(st, n, False)
+
+                # Distribute n across the queued WriteUnits, oldest first.
+                remaining = n
+                for wunit in st.write_queue:
+                    blen = len(wunit.buf)
+                    if blen == 0:
+                        continue
+                    if remaining >= blen:
+                        remaining -= blen
+                        wunit.buf = bytearray()
+                    else:
+                        wunit.buf = wunit.buf[remaining:]
+                        remaining = 0
                         break
 
         except Exception as e:

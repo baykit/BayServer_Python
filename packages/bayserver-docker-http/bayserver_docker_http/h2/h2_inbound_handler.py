@@ -381,7 +381,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
         tur.req.protocol = self.http_protocol
 
         skt = self.ship().rudder.key()
-        client_adr = tur.req.headers.get(Headers.X_FORWARDED_FOR)
+        client_adr = tur.req.headers.get_fast(Headers.X_FORWARDED_FOR)
         if client_adr is not None:
             tur.req.remote_address = client_adr
             tur.req.remote_port = None

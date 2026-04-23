@@ -13,7 +13,10 @@ class PacketPacker(Reusable):
         #if lsnr is None:
         #    raise Sink()
 
-        sip.transporter.req_write(sip.rudder, pkt.buf.copy(), adr, pkt, lsnr)
+        # Slice to buf_len: after the c28d6dc optimization reset() preserves the
+        # pre-allocated bytearray capacity, so len(buf) >= buf_len and we must
+        # not send the unused tail.
+        sip.transporter.req_write(sip.rudder, bytearray(pkt.buf[:pkt.buf_len]), adr, pkt, lsnr)
 
 
     def flush(self, postman):

@@ -2,7 +2,7 @@ import threading
 import time
 from typing import List, Any
 
-from bayserver_core.agent.multiplexer.write_unit import WriteUnit
+from bayserver_core.common.write_unit import WriteUnit
 from bayserver_core.common.multiplexer import Multiplexer
 from bayserver_core.common.transporter import Transporter
 from bayserver_core.rudder.rudder import Rudder

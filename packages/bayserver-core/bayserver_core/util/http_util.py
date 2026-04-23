@@ -89,7 +89,7 @@ class HttpUtil:
 
     @classmethod
     def parse_authorization(cls, tur):
-        auth = tur.req.headers.get(Headers.AUTHORIZATION)
+        auth = tur.req.headers.get_fast(Headers.AUTHORIZATION)
         if StringUtil.is_set(auth):
             ptn = r"Basic (.*)"
             result = re.match(ptn, auth)
@@ -113,12 +113,12 @@ class HttpUtil:
     def parse_host_port(cls, tur, default_port):
         tur.req.req_host = ""
 
-        host_port = tur.req.headers.get(Headers.X_FORWARDED_HOST)
+        host_port = tur.req.headers.get_fast(Headers.X_FORWARDED_HOST)
         if StringUtil.is_set(host_port):
             tur.req.headers.remove(Headers.X_FORWARDED_HOST)
-            tur.req.headers.set(Headers.HOST, host_port)
+            tur.req.headers.set_fast(Headers.HOST, host_port)
 
-        host_port = tur.req.headers.get(Headers.HOST)
+        host_port = tur.req.headers.get_fast(Headers.HOST)
 
         if StringUtil.is_set(host_port):
             pos = host_port.rfind(':')

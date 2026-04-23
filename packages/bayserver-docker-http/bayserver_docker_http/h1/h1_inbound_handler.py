@@ -115,7 +115,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
                         # If content is text, connection must be closed
                         res_con = "Close"
 
-        tur.res.headers.set(Headers.CONNECTION, res_con)
+        tur.res.headers.set_fast(Headers.CONNECTION, res_con)
 
         if BayServer.harbor.trace_header():
             BayLog.info("%s resStatus:%d", tur, tur.res.headers.status)
@@ -237,7 +237,8 @@ class H1InboundHandler(H1Handler, InboundHandler):
 
             if req_cont_len <= 0:
                 self.end_req_content(self.cur_tour_id, tur)
-                return NextSocketAction.SUSPEND  # end reading
+                #return NextSocketAction.SUSPEND  # end reading
+                return NextSocketAction.CONTINUE  # continue reading (Java 1598953)
             else:
                 self.change_state(H1InboundHandler.STATE_READ_CONTENT)
                 return NextSocketAction.CONTINUE
@@ -330,7 +331,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
         if skt is None:
             raise Sink("%s Illegal state", self.ship)
 
-        client_adr = tur.req.headers.get(Headers.X_FORWARDED_FOR)
+        client_adr = tur.req.headers.get_fast(Headers.X_FORWARDED_FOR)
         if client_adr is not None:
             tur.req.remote_address = client_adr
             tur.req.remote_port = None

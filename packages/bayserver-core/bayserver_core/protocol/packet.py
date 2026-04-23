@@ -20,9 +20,13 @@ class Packet(Reusable):
         self.reset()
 
     def reset(self):
-        self.buf.clear()
+        # Zero only the header region (Java c28d6dc): the data region is
+        # overwritten by the next pack and does not need clearing.
+        # Preserve the pre-allocated buffer capacity.
+        if len(self.buf) < self.header_len:
+            self.buf.extend(bytes(self.header_len - len(self.buf)))
         for i in range(self.header_len):
-            self.buf.append(0)
+            self.buf[i] = 0
         self.buf_len = self.header_len
 
     def data_len(self):

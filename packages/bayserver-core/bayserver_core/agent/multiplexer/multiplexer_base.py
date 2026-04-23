@@ -1,10 +1,9 @@
-from threading import Lock
 import time
 import traceback
-from typing import Dict
+from typing import Set
 
 from bayserver_core.agent import grand_agent as gs
-from bayserver_core.agent.multiplexer.write_unit import WriteUnit
+from bayserver_core.common.write_unit import WriteUnit
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.multiplexer import Multiplexer
 from bayserver_core.common.rudder_state import RudderState
@@ -16,16 +15,12 @@ from bayserver_core.sink import Sink
 class MultiplexerBase(Multiplexer):
 
     agent: "gs.GrandAgent"
-    rudders: Dict[object, RudderState]
-    rudders_lock: Lock
-    lock: Lock
+    rudders: Set[Rudder]
     channel_count: int
 
     def __init__(self, agt: "gs.GrandAgent"):
         self.agent = agt
-        self.rudders = {}
-        self.rudders_lock = Lock()
-        self.lock = Lock()
+        self.rudders = set()
         self.channel_count = 0
 
     def __str__(self):
@@ -36,19 +31,21 @@ class MultiplexerBase(Multiplexer):
     ######################################################
 
     def add_rudder_state(self, rd: Rudder, st: RudderState) -> None:
+        BayLog.trace("%s add rd=%s chState=%s", self.agent, rd, st)
         st.multiplexer = self
-        with self.rudders_lock:
-            self.rudders[rd.key()] = st
+        rd.state = st
+        self.rudders.add(rd)
         self.channel_count = self.channel_count + 1
         st.access()
 
     def remove_rudder_state(self, rd: Rudder) -> None:
-        with self.rudders_lock:
-            del self.rudders[rd.key()]
+        BayLog.trace("%s remove rd=%s", self.agent, rd)
+        rd.state = None
+        self.rudders.discard(rd)
         self.channel_count = self.channel_count - 1
 
     def get_rudder_state(self, rd: Rudder) -> RudderState:
-        return self._find_rudder_state_by_key(rd.key())
+        return rd.state
 
     def get_transporter(self, rd: Rudder) -> Transporter:
         return self.get_rudder_state(rd).transporter
@@ -87,36 +84,35 @@ class MultiplexerBase(Multiplexer):
     # Custom methods
     ######################################################
 
-    def _find_rudder_state_by_key(self, key: object) -> RudderState:
-        if key in self.rudders.keys():
-            return self.rudders[key]
-        return None
-
     def close_timeout_sockets(self):
-        if len(self.rudders) == 0:
+        if not self.rudders:
             return
 
-        close_list = []
-
         now = time.time()
-        for st in self.rudders.values():
-            if st.transporter is not None:
-                try:
-                    duration = int(now - st.last_access_time)
-                    if self.agent.anchorable and st.transporter.check_timeout(st.rudder, duration):
-                        BayLog.debug("%s timeout: rd=%s st=%s", self, st.rudder, st)
-                        close_list.append(st)
+        to_close = []
+        for rd in list(self.rudders):
+            if rd.closed():
+                to_close.append(rd)
+                continue
 
-                except IOError as e:
-                    BayLog.error_e(e, traceback.format_stack())
-                    close_list.append(st)
+            st = rd.state
+            if st is None or st.transporter is None:
+                continue
 
-        for st in close_list:
-            self.req_close(st.rudder)
+            try:
+                duration = int(now - st.last_access_time)
+                if self.agent.anchorable and st.transporter.check_timeout(rd, duration):
+                    BayLog.debug("%s timeout: rd=%s st=%s", self, rd, st)
+                    to_close.append(rd)
+
+            except IOError as e:
+                BayLog.error_e(e, traceback.format_stack())
+                to_close.append(rd)
+
+        for rd in to_close:
+            self.req_close(rd)
 
     def close_all(self) -> None:
-        copied = self.rudders.values()
-
-        for st in copied:
-            if st.rudder != self.agent.command_receiver.rudder:
-                self.close_rudder(st.rudder)
+        for rd in list(self.rudders):
+            if rd != self.agent.command_receiver.rudder:
+                self.close_rudder(rd)

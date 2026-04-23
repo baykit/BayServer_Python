@@ -178,7 +178,7 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
             wdat.res_headers.copy_to(tur.res.headers)
 
             # Check HTTP Status from headers
-            status = wdat.res_headers.get(Headers.STATUS)
+            status = wdat.res_headers.get_fast(Headers.STATUS)
             if StringUtil.is_set(status):
                 stlist = status.split(" ")
                 tur.res.headers.status = int(stlist[0])

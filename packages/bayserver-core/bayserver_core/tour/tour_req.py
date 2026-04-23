@@ -143,7 +143,7 @@ class TourReq(Reusable):
         self.available = True
 
     def post_req_content(self, check_id: int, data: bytearray, start: int, length: int, lis: ContentConsumeListener):
-        self.tour.check_tour_id(check_id)
+        #self.tour.check_tour_id(check_id)
 
         data_passed = False
 
@@ -186,7 +186,7 @@ class TourReq(Reusable):
         return self.available
 
     def end_content(self, check_id):
-        self.tour.check_tour_id(check_id)
+        #self.tour.check_tour_id(check_id)
 
         if self.ended:
             raise Sink(f"{self.tour} Request content is already ended")

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.bay_log import BayLog
@@ -26,16 +26,19 @@ class ProtocolHandlerStore(ObjectStore):
             self.server_mode = svr_mode
             self.protocol_handler_factory = proto_hnd_factory
 
-            # Agent ID => ProtocolHandlerStore
-            self.stores = {}
+            # stores[agent_id - 1] => ProtocolHandlerStore
+            self.stores: List = []
 
         def add_agent(self, agt_id: int):
-            store = PacketStore.get_store(self.protocol, agt_id);
-            self.stores[agt_id] = ProtocolHandlerStore(self.protocol, self.server_mode,
-                                                             self.protocol_handler_factory, store);
+            store = PacketStore.get_store(self.protocol, agt_id)
+            while len(self.stores) < agt_id:
+                self.stores.append(None)
+            self.stores[agt_id - 1] = ProtocolHandlerStore(
+                self.protocol, self.server_mode,
+                self.protocol_handler_factory, store)
 
         def remove_agent(self, agt_id: int):
-            del self.stores[agt_id]
+            self.stores[agt_id - 1] = None
 
     proto_map: Dict[str, ProtocolInfo] = None
 
@@ -63,14 +66,14 @@ class ProtocolHandlerStore(ObjectStore):
 
     @classmethod
     def get_store(cls, protocol: str, svr_mode: bool, agent_id: int):
-        return ProtocolHandlerStore.proto_map[ProtocolHandlerStore.construct_protocol(protocol, svr_mode)].stores[agent_id]
+        return ProtocolHandlerStore.proto_map[ProtocolHandlerStore.construct_protocol(protocol, svr_mode)].stores[agent_id - 1]
 
 
     @classmethod
     def get_stores(cls, agent_id):
         store_list = []
         for ifo in ProtocolHandlerStore.proto_map.values():
-            store_list.append(ifo.stores[agent_id])
+            store_list.append(ifo.stores[agent_id - 1])
         return store_list
 
 

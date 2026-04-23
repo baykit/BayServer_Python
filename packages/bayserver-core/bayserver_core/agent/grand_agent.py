@@ -416,22 +416,26 @@ class GrandAgent:
         st.bytes_written += let.n_bytes
 
         if len(st.write_queue) == 0:
-            raise Sink("%s Write queue is empty: rd=%s", self, st.rudder)
+            BayLog.debug("%s Write queue is empty: rd=%s", self, st.rudder)
+            return
 
-        unit = st.write_queue[0]
-        if len(unit.buf) > 0:
-            BayLog.debug("Could not write enough data buf_len=%d", len(unit.buf))
-            write_more = True
-        else:
+        # Drain multiple completed units per letter (Java 862441d).
+        # A single writev syscall may have consumed several units.
+        while True:
+            unit = st.write_queue[0]
+            if len(unit.buf) > 0:
+                BayLog.debug("Could not write enough data buf_len=%d", len(unit.buf))
+                write_more = True
+                break
+
             # Removes write unit from write_queue
             st.multiplexer.consume_oldest_unit(st)
 
-            with st.writing_lock:
-                if len(st.write_queue) == 0:
+            if len(st.write_queue) == 0:
+                with st.writing_lock:
                     write_more = False
                     st.writing = False
-                else:
-                    write_more = True
+                break
 
         if write_more:
             st.multiplexer.next_write(st)
@@ -486,12 +490,11 @@ class GrandAgent:
 
 
         elif act == NextSocketAction.WRITE:
-            if reading and self.anchorable:
-                cancel = True
+            # (Java 862441d): do not cancel reading just because we're writing.
+            pass
 
         elif act == NextSocketAction.CLOSE:
-            if reading:
-                cancel = True
+            # (Java 862441d): close path no longer cancels reads pre-emptively.
             st.multiplexer.req_close(st.rudder)
 
         elif act == NextSocketAction.SUSPEND:

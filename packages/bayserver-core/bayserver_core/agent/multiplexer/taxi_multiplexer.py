@@ -2,7 +2,7 @@ import traceback
 
 from bayserver_core.agent import grand_agent as gs
 from bayserver_core.agent.multiplexer.multiplexer_base import MultiplexerBase
-from bayserver_core.agent.multiplexer.write_unit import WriteUnit
+from bayserver_core.common.write_unit import WriteUnit
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.rudder_state import RudderState
 from bayserver_core.rudder.rudder import Rudder

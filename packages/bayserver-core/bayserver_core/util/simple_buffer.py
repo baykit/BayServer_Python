@@ -14,9 +14,8 @@ class SimpleBuffer(Reusable):
     ######################################################
 
     def reset(self):
-        # clear for security raeson
-        for i in range(self.length):
-            self.buf[i] = 0
+        # Skip zeroing for performance (Java c28d6dc); length reset suffices
+        # because the payload is overwritten by the next write.
         self.length = 0
 
     def __len__(self):

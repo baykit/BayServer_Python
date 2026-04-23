@@ -92,7 +92,7 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
 
         scode = tur.res.headers.status
         status = f"{scode} {HttpStatus.description(scode)}"
-        tur.res.headers.set(Headers.STATUS, status)
+        tur.res.headers.set_fast(Headers.STATUS, status)
 
         if BayServer.harbor.trace_header():
             BayLog.info("%s resStatus:%d", tur, tur.res.headers.status)
@@ -189,9 +189,9 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
             #  keep-alive flag of BeginRequest has high priority
             if self.req_keep_alive:
                 if not tur.req.headers.contains(Headers.CONNECTION):
-                    tur.req.headers.set(Headers.CONNECTION, "Keep-Alive")
+                    tur.req.headers.set_fast(Headers.CONNECTION, "Keep-Alive")
                 else:
-                    tur.req.headers.set(Headers.CONNECTION, "Close")
+                    tur.req.headers.set_fast(Headers.CONNECTION, "Close")
 
             req_cont_len = tur.req.headers.content_length()
 

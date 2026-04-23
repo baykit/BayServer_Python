@@ -1,6 +1,6 @@
 
 class H2Type:
-    PREFACE = -1
+    PREFACE = 31
     DATA = 0
     HEADERS = 1
     PRIORITY = 2

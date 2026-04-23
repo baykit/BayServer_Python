@@ -94,25 +94,25 @@ class H1WarpHandler(H1Handler, WarpHandler):
 
 
         if tur.req.headers.contains(Headers.X_FORWARDED_FOR):
-            cmd.set_header(Headers.X_FORWARDED_FOR, tur.req.headers.get(Headers.X_FORWARDED_FOR))
+            cmd.set_header(Headers.X_FORWARDED_FOR, tur.req.headers.get_fast(Headers.X_FORWARDED_FOR))
         else:
             cmd.set_header(Headers.X_FORWARDED_FOR, tur.req.remote_address)
 
         if tur.req.headers.contains(Headers.X_FORWARDED_PROTO):
-            cmd.set_header(Headers.X_FORWARDED_PROTO, tur.req.headers.get(Headers.X_FORWARDED_PROTO))
+            cmd.set_header(Headers.X_FORWARDED_PROTO, tur.req.headers.get_fast(Headers.X_FORWARDED_PROTO))
         else:
             cmd.set_header(Headers.X_FORWARDED_PROTO, "https" if tur.is_secure else "http")
 
 
         if tur.req.headers.contains(Headers.X_FORWARDED_PORT):
-            cmd.set_header(Headers.X_FORWARDED_PORT, tur.req.headers.get(Headers.X_FORWARDED_PORT))
+            cmd.set_header(Headers.X_FORWARDED_PORT, tur.req.headers.get_fast(Headers.X_FORWARDED_PORT))
         else:
             cmd.set_header(Headers.X_FORWARDED_PORT, str(tur.req.server_port))
 
         if tur.req.headers.contains(Headers.X_FORWARDED_HOST):
-            cmd.set_header(Headers.X_FORWARDED_HOST, tur.req.headers.get(Headers.X_FORWARDED_HOST))
+            cmd.set_header(Headers.X_FORWARDED_HOST, tur.req.headers.get_fast(Headers.X_FORWARDED_HOST))
         else:
-            cmd.set_header(Headers.X_FORWARDED_HOST, tur.req.headers.get(Headers.HOST))
+            cmd.set_header(Headers.X_FORWARDED_HOST, tur.req.headers.get_fast(Headers.HOST))
 
         cmd.set_header(Headers.HOST, f"{sip.docker._host}:{sip.docker._port}")
         cmd.set_header(Headers.CONNECTION, "Keep-Alive")

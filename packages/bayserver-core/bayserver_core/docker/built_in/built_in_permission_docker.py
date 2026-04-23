@@ -143,7 +143,7 @@ class BuiltInPermissionDocker(DockerBase, Permission):
                     break
 
         if not is_ok:
-            tur.res.headers.set(Headers.WWW_AUTHENTICATE, "Basic realm=\"Auth\"")
+            tur.res.headers.set_fast(Headers.WWW_AUTHENTICATE, "Basic realm=\"Auth\"")
             raise HttpException(HttpStatus.UNAUTHORIZED)
 
     def parse_value(self, kv):

@@ -108,7 +108,7 @@ class CgiUtil:
 
         cls.add_env(CgiUtil.REQUEST_SCHEME, "https" if tur.is_secure else "http", cb)
         tmp_secure = tur.is_secure
-        fproto = tur.req.headers.get(Headers.X_FORWARDED_PROTO)
+        fproto = tur.req.headers.get_fast(Headers.X_FORWARDED_PROTO)
         if fproto is not None:
             tmp_secure = fproto.lower() == "https"
 

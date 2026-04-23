@@ -8,7 +8,7 @@ from threading import Lock
 
 from bayserver_core.agent import grand_agent as ga
 from bayserver_core.agent.multiplexer.multiplexer_base import MultiplexerBase
-from bayserver_core.agent.multiplexer.write_unit import WriteUnit
+from bayserver_core.common.write_unit import WriteUnit
 from bayserver_core.agent.timer_handler import TimerHandler
 from bayserver_core.bay_log import BayLog
 from bayserver_core.common.multiplexer import Multiplexer

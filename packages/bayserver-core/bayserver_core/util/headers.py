@@ -59,11 +59,14 @@ class Headers:
         self.status = int(status)
 
     def get(self, name):
-        values = self.headers.get(name.lower())
+        return self.get_fast(name.lower())
+
+    def get_fast(self, name):
+        """Fast variant that assumes `name` is already lowercase."""
+        values = self.headers.get(name)
         if values is None:
             return None
-        else:
-            return values[0]
+        return values[0]
 
     def get_int(self, name):
         val = self.get(name)
@@ -73,7 +76,10 @@ class Headers:
             return int(val)
 
     def set(self, name, value):
-        name = name.lower()
+        self.set_fast(name.lower(), value)
+
+    def set_fast(self, name, value):
+        """Fast variant that assumes `name` is already lowercase."""
         values = self.headers.get(name)
         if values is None:
             values = []
@@ -132,23 +138,23 @@ class Headers:
     # Utility methods
     #
     def content_type(self):
-        return self.get(Headers.CONTENT_TYPE)
+        return self.get_fast(Headers.CONTENT_TYPE)
 
     def set_content_type(self, type):
-        self.set(Headers.CONTENT_TYPE, type)
+        self.set_fast(Headers.CONTENT_TYPE, type)
 
     def content_length(self):
-        length = self.get(Headers.CONTENT_LENGTH)
+        length = self.get_fast(Headers.CONTENT_LENGTH)
         if StringUtil.is_empty(length):
             return -1
         else:
             return int(length)
 
     def set_content_length(self, length):
-        self.set_int(Headers.CONTENT_LENGTH, length)
+        self.set_fast(Headers.CONTENT_LENGTH, str(length))
 
     def get_connection(self):
-        con = self.get(Headers.CONNECTION)
+        con = self.get_fast(Headers.CONNECTION)
         if con is not None:
             con = con.lower()
 

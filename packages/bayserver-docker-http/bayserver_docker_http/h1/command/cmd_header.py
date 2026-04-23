@@ -237,7 +237,17 @@ class CmdHeader(H1Command):
         acc.put_string(self.version);
         acc.put_bytes(CharUtil.CRLF_BYTES)
 
+    _H11_200 = "HTTP/1.1 200 OK\r\n".encode('us-ascii')
+    _H10_200 = "HTTP/1.0 200 OK\r\n".encode('us-ascii')
+
     def pack_status_line(self, acc):
+        if self.status == 200:
+            if self.version is not None and self.version.upper() == "HTTP/1.1":
+                acc.put_bytes(CmdHeader._H11_200)
+            else:
+                acc.put_bytes(CmdHeader._H10_200)
+            return
+
         desc = HttpStatus.description(self.status)
 
         if self.version is not None and self.version.upper() == "HTTP/1.1":

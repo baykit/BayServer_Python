@@ -82,7 +82,7 @@ class TourRes:
     ######################################################
 
     def send_res_headers(self, chk_tour_id):
-        self.tour.check_tour_id(chk_tour_id)
+        #self.tour.check_tour_id(chk_tour_id)
         BayLog.debug("%s send headers", self)
 
         if self.tour.is_zombie():
@@ -101,13 +101,13 @@ class TourRes:
             self.headers.content_type().lower().startswith("text/") and \
             not self.headers.contains(Headers.CONTENT_ENCODING):
 
-            enc = self.tour.req.headers.get(Headers.ACCEPT_ENCODING)
+            enc = self.tour.req.headers.get_fast(Headers.ACCEPT_ENCODING)
 
             if enc is not None:
                 for tkn in enc.split(","):
                     if tkn.strip().lower() == "gzip":
                         self.can_compress = True
-                        self.headers.set(Headers.CONTENT_ENCODING, "gzip")
+                        self.headers.set_fast(Headers.CONTENT_ENCODING, "gzip")
                         self.headers.remove(Headers.CONTENT_LENGTH)
                         break
 
@@ -173,7 +173,7 @@ class TourRes:
         self.available = True
 
     def send_res_content(self, chk_tour_id, buf, ofs, length) -> bool:
-        self.tour.check_tour_id(chk_tour_id)
+        #self.tour.check_tour_id(chk_tour_id)
         BayLog.debug("%s send content: len=%d", self, length)
 
         # Callback
@@ -222,7 +222,7 @@ class TourRes:
         return self.available
 
     def end_res_content(self, chk_id):
-        self.tour.check_tour_id(chk_id)
+        #self.tour.check_tour_id(chk_id)
 
         BayLog.debug("%s end ResContent: chk_id=%d", self, chk_id)
         if self.tour.is_ended():
@@ -297,7 +297,7 @@ class TourRes:
 
 
     def send_error(self, chk_tour_id, status=HttpStatus.INTERNAL_SERVER_ERROR, msg="", err: Optional[Exception]=None, stk: Optional[List[str]]=None):
-        self.tour.check_tour_id(chk_tour_id)
+        #self.tour.check_tour_id(chk_tour_id)
 
         if self.tour.is_zombie():
             return
