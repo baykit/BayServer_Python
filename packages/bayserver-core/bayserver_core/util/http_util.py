@@ -146,6 +146,9 @@ class HttpUtil:
 
     @classmethod
     def check_uri(cls, uri):
+        if uri is None:
+            raise ProtocolException("path is null")
+
         if '\x00' in uri:
             raise ProtocolException("path contains null byte")
 

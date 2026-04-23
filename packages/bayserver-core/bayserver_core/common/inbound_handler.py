@@ -34,5 +34,5 @@ class InboundHandler(metaclass=ABCMeta):
     #  sendEnd cannot refer Tour instance because it is discarded before call.
     #
     @abstractmethod
-    def send_end_tour(self, tur: Tour, keep_alive: bool, callback):
+    def send_end_tour(self, tur: Tour, callback):
         pass

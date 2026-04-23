@@ -244,9 +244,6 @@ class TourReq(Reusable):
         if hnd is None:
             raise Sink("None")
 
-        if self.content_handler is not None:
-            raise Sink("content handler already set")
-
         self.content_handler = hnd
 
 

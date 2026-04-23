@@ -212,19 +212,7 @@ class InboundShip(Ship):
             if not tur.is_valid():
               raise Sink("Tour is not valid")
 
-            keep_alive = False
-            if tur.req.headers.get_connection() == Headers.CONNECTION_KEEP_ALIVE:
-                keep_alive = True
-                if keep_alive:
-                    res_conn = tur.res.headers.get_connection()
-                    keep_alive = (res_conn == Headers.CONNECTION_KEEP_ALIVE) or \
-                                (res_conn == Headers.CONNECTION_UNKOWN)
-
-                if keep_alive:
-                    if tur.res.headers.content_length() < 0:
-                        keep_alive = False
-
-            self.tour_handler().send_end_tour(tur, keep_alive, callback)
+            self.tour_handler().send_end_tour(tur, callback)
 
 
 

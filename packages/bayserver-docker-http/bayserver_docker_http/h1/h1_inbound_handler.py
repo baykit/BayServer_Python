@@ -98,13 +98,15 @@ class H1InboundHandler(H1Handler, InboundHandler):
     def send_res_headers(self, tur):
 
         # determine Connection header value
-        if tur.req.headers.get_connection() != Headers.CONNECTION_KEEP_ALIVE:
+        req_con = tur.req.headers.get_connection()
+        if req_con != Headers.CONNECTION_KEEP_ALIVE and req_con != Headers.CONNECTION_UNKOWN:
             # If client doesn't support "Keep-Alive", set "Close"
             res_con = "Close"
         else:
             res_con = "Keep-Alive"
             # Client supports "Keep-Alive"
-            if tur.res.headers.get_connection() != Headers.CONNECTION_KEEP_ALIVE:
+            res_hdr_con = tur.res.headers.get_connection()
+            if res_hdr_con != Headers.CONNECTION_KEEP_ALIVE and res_hdr_con != Headers.CONNECTION_UNKOWN:
                 # If tours doesn't need "Keep-Alive"
                 if tur.res.headers.content_length() == -1:
                     # If content-length not specified
@@ -129,7 +131,8 @@ class H1InboundHandler(H1Handler, InboundHandler):
         cmd = CmdContent(bytes, ofs, length)
         self.protocol_handler.post(cmd, callback)
 
-    def send_end_tour(self, tur, keep_alive, cb):
+    def send_end_tour(self, tur, cb):
+        keep_alive = tur.res.headers.get_connection() == Headers.CONNECTION_KEEP_ALIVE
         BayLog.debug("%s %s sendEndTour: tur=%s keep=%s", threading.current_thread().name, self.ship, tur, keep_alive)
 
         sid = self.ship().ship_id

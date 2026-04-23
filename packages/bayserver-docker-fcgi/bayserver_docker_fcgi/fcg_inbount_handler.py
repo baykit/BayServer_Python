@@ -112,8 +112,8 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
         self.protocol_handler.post(cmd, callback)
 
 
-    def send_end_tour(self, tur: Tour, keep_alive: bool, cb):
-        BayLog.debug("%s PH:endTour: tur=%s keep=%s", self.ship(), tur, keep_alive)
+    def send_end_tour(self, tur: Tour, cb):
+        BayLog.debug("%s PH:endTour: tur=%s", self.ship(), tur)
 
         # Send empty stdout command
         cmd = CmdStdOut(tur.req.key)
@@ -124,19 +124,17 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
 
         def ensure_func():
             # DO NOT close socket by FCGI server
-            #if not keep_alive:
-            #    self.ship().post_close()
             pass
 
         def callback_func():
-            BayLog.debug("%s call back in sendEndTour: tur=%s keep=%s", self, tur, keep_alive)
+            BayLog.debug("%s call back in sendEndTour: tur=%s", self, tur)
             ensure_func()
             cb()
 
         try:
             self.protocol_handler.post(cmd, callback_func)
         except IOError as e:
-            BayLog.debug("%s post failed in sendEndTour: tur=%s keep=%s", self, tur, keep_alive)
+            BayLog.debug("%s post failed in sendEndTour: tur=%s", self, tur)
             ensure_func()
             raise e
 

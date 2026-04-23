@@ -421,15 +421,17 @@ class GrandAgent:
         unit = st.write_queue[0]
         if len(unit.buf) > 0:
             BayLog.debug("Could not write enough data buf_len=%d", len(unit.buf))
+            write_more = True
         else:
+            # Removes write unit from write_queue
             st.multiplexer.consume_oldest_unit(st)
 
-        write_more = True
-
-        with st.writing_lock:
-            if len(st.write_queue) == 0:
-              write_more = False
-              st.writing = False
+            with st.writing_lock:
+                if len(st.write_queue) == 0:
+                    write_more = False
+                    st.writing = False
+                else:
+                    write_more = True
 
         if write_more:
             st.multiplexer.next_write(st)

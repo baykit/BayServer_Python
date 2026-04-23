@@ -124,7 +124,7 @@ class QicTicket():
         run_coroutine_threadsafe(postpone(), self.port_docker.loop)
 
 
-    def send_end_tour(self, tur: Tour, keep_alive: bool, lis: DataConsumeListener) -> None:
+    def send_end_tour(self, tur: Tour, lis: DataConsumeListener) -> None:
 
         stm_id = tur.req.key
         BayLog.info("%s stm#%d sendEndTour", tur, stm_id)

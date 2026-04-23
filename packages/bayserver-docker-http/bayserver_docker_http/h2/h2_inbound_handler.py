@@ -127,7 +127,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
         cmd = CmdData(tur.req.key, None, bytes, ofs, length)
         self.protocol_handler.post(cmd, callback)
 
-    def send_end_tour(self, tur, keep_alive, callback):
+    def send_end_tour(self, tur, callback):
         cmd = CmdData(tur.req.key, None, [], 0, 0)
         cmd.flags.set_end_stream(True)
         self.protocol_handler.post(cmd, callback)
@@ -212,6 +212,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
             BayLog.debug("%s H2 read header method=%s protocol=%s uri=%s contlen=%d",
                         self.ship, tur.req.method, tur.req.protocol, tur.req.uri, tur.req.headers.content_length())
 
+            HttpUtil.check_uri(tur.req.uri)
             req_cont_len = tur.req.headers.content_length()
 
             if req_cont_len > 0:

@@ -99,24 +99,24 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
         cmd = CmdSendBodyChunk(bytes, ofs, length);
         self.protocol_handler.post(cmd, callback)
 
-    def send_end_tour(self, tur, keep_alive, cb):
-        BayLog.debug("%s endTour: tur=%s keep=%s", self.ship(), tur, keep_alive)
+    def send_end_tour(self, tur, cb):
+        BayLog.debug("%s endTour: tur=%s", self.ship(), tur)
         cmd = CmdEndResponse()
-        cmd.reuse = keep_alive
+        cmd.reuse = True  # Always reuse connection
 
         def ensure_func():
-            if not keep_alive:
+            if not cmd.reuse:
                 self.ship().post_close()
 
         def callback_func():
-            BayLog.debug("%s call back in sendEndTour: tur=%s keep=%s", self, tur, keep_alive)
+            BayLog.debug("%s call back in sendEndTour: tur=%s", self, tur)
             ensure_func()
             cb()
 
         try:
             self.protocol_handler.post(cmd, callback_func)
         except IOError as e:
-            BayLog.debug("%s post failed in sendEndTour: tur=%s keep=%s", self, tur, keep_alive)
+            BayLog.debug("%s post failed in sendEndTour: tur=%s", self, tur)
             ensure_func()
             raise e
 

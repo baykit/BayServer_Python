@@ -21,7 +21,7 @@ class TourHandler(metaclass=abc.ABCMeta):
 
     # Send end of contents to client.
     @abstractmethod
-    def send_end_tour(self, tur: Tour, keep_alive: bool, lis: DataConsumeListener) -> None:
+    def send_end_tour(self, tur: Tour, lis: DataConsumeListener) -> None:
         pass
 
     # Send protocol error to client
