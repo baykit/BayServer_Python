@@ -172,12 +172,15 @@ class H2CommandUnPacker(CommandUnPacker):
                 if implicitly_closed:
                     raise ProtocolException(
                         f"Stream id {sid} is not greater than previous {self.highest_seen_stream_id}")
-                # § 5.1.2: refuse new stream beyond MAX_CONCURRENT_STREAMS.
-                max_streams = InboundShip.MAX_TOURS
-                if self._count_active_streams() >= max_streams:
-                    raise H2ProtocolException(
-                        H2ErrorCode.REFUSED_STREAM,
-                        f"Concurrent stream limit ({max_streams}) exceeded")
+                # § 5.1.2 active-stream enforcement was rolled back upstream
+                # (Java commit 39811d1) because counting open streams against
+                # MAX_CONCURRENT_STREAMS clashes with the closed-stream tests
+                # in § 5.1 (HALF_CLOSED_REMOTE never transitions to CLOSED, so
+                # the count grows monotonically and h2spec's later closed-
+                # stream cases get REFUSED_STREAM instead of STREAM_CLOSED).
+                # The per-tour slot exhaustion is still enforced via the
+                # REFUSED_STREAM path in H2InboundHandler.handle_headers when
+                # get_tour() returns None.
             if t in (H2Type.HEADERS, H2Type.PRIORITY):
                 # HEADERS opens new stream; PRIORITY allowed on any state.
                 return
