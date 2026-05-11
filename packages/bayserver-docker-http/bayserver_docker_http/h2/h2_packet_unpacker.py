@@ -81,17 +81,21 @@ class H2PacketUnPacker(PacketUnPacker):
 
         self.pos = 0
         if self.server_mode and not self.preface_read:
-            length = len(H2PacketUnPacker.CONNECTION_PREFACE) - len(self.tmp_buf)
+            prev_len = len(self.tmp_buf)
+            length = len(H2PacketUnPacker.CONNECTION_PREFACE) - prev_len
             if length > len(buf):
                 length = len(buf)
 
             self.tmp_buf.put(buf, self.pos, length)
             self.pos += length
+            # RFC 7540 § 3.5: validate each newly arrived preface byte
+            # immediately so a malformed client is rejected (= GOAWAY)
+            # even if it sends fewer than 24 bytes before closing.
+            for i in range(prev_len, len(self.tmp_buf)):
+                if H2PacketUnPacker.CONNECTION_PREFACE[i] != self.tmp_buf.buf[i]:
+                    raise ProtocolException(
+                        f"Invalid connection preface at byte {i}: got {self.tmp_buf.buf[i] & 0xFF}")
             if len(self.tmp_buf) == len(H2PacketUnPacker.CONNECTION_PREFACE):
-                for i in range(len(self.tmp_buf)):
-                    if H2PacketUnPacker.CONNECTION_PREFACE[i] != self.tmp_buf.buf[i]:
-                        raise ProtocolException("Invalid connection preface: %s", self.tmp_buf.buf[0:len(self.tmp_buf)])
-
                 pkt = self.pkt_store.rent(H2Type.PREFACE)
                 pkt.new_data_accessor().put_bytes(self.tmp_buf.buf, 0, len(self.tmp_buf))
                 nstat = self.cmd_unpacker.packet_received(pkt)
@@ -109,6 +113,12 @@ class H2PacketUnPacker(PacketUnPacker):
                     self.payload_len = ((self.item.get(self.tmp_buf, 0) & 0xFF) << 16 |
                                         (self.item.get(self.tmp_buf, 1) & 0xFF) << 8 |
                                         (self.item.get(self.tmp_buf, 2) & 0xFF))
+                    # RFC 7540 § 4.2: payload size must not exceed
+                    # SETTINGS_MAX_FRAME_SIZE (initial value 16384).
+                    if self.payload_len > H2Packet.DEFAULT_PAYLOAD_MAXLEN:
+                        raise ProtocolException(
+                            f"Frame size {self.payload_len} exceeds MAX_FRAME_SIZE "
+                            f"{H2Packet.DEFAULT_PAYLOAD_MAXLEN}")
                     self.item = H2PacketUnPacker.FrameHeaderItem(len(self.tmp_buf), H2PacketUnPacker.FRAME_LEN_TYPE)
                     self.change_state(H2PacketUnPacker.STATE_READ_TYPE)
 

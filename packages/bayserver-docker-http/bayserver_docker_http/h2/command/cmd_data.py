@@ -1,3 +1,5 @@
+from bayserver_core.protocol.protocol_exception import ProtocolException
+
 from bayserver_docker_http.h2.h2_command import H2Command
 from bayserver_docker_http.h2.h2_type import H2Type
 
@@ -23,9 +25,19 @@ class CmdData(H2Command):
 
     def unpack(self, pkt):
         super().unpack(pkt)
+        acc = pkt.new_data_accessor()
+
+        pad_length = 0
+        if pkt.flags.padded():
+            pad_length = acc.get_byte()
+
         self.data = pkt.buf
-        self.start = pkt.header_len
-        self.length = pkt.data_len()
+        self.start = pkt.header_len + acc.pos
+        self.length = pkt.data_len() - acc.pos - pad_length
+
+        # RFC 7540 § 6.1: padding length must leave at least one octet of data.
+        if self.length < 0:
+            raise ProtocolException(f"DATA pad length exceeds payload: pad={pad_length}")
 
     def pack(self, pkt):
         acc = pkt.new_data_accessor()

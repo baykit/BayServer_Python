@@ -1,3 +1,5 @@
+from bayserver_core.protocol.protocol_exception import ProtocolException
+
 from bayserver_docker_http.h2.h2_command import H2Command
 from bayserver_docker_http.h2.h2_type import H2Type
 from bayserver_docker_http.h2.h2_packet import H2Packet
@@ -28,6 +30,11 @@ class CmdPriority(H2Command):
         self.excluded = H2Packet.extract_flag(val) == 1
         self.stream_dependency = H2Packet.extract_int31(val)
         self.weight = acc.get_byte()
+
+        # RFC 7540 § 5.3.1: a stream MUST NOT depend on itself.
+        if self.stream_dependency == self.stream_id:
+            raise ProtocolException(
+                f"PRIORITY stream depends on itself: {self.stream_id}")
 
     def pack(self, pkt):
         acc = pkt.new_data_accessor()

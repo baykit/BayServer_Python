@@ -1,3 +1,5 @@
+from bayserver_core.protocol.protocol_exception import ProtocolException
+
 
 class HeaderBlock:
     INDEX = 1
@@ -6,6 +8,10 @@ class HeaderBlock:
     KNOWN_HEADER = 4
     UNKNOWN_HEADER = 5
     UPDATE_DYNAMIC_TABLE_SIZE = 6
+
+    # RFC 7541 default for SETTINGS_HEADER_TABLE_SIZE; BayServer does not
+    # currently advertise a different value in its initial SETTINGS frame.
+    MAX_DYNAMIC_TABLE_SIZE = 4096
 
     def __init__(self):
         self.op = None
@@ -54,6 +60,9 @@ class HeaderBlock:
             # +---+---------------------------+
             blk.op = HeaderBlock.INDEX
             blk.index = index & 0x7F
+            # RFC 7541 § 6.1: index 0 is not used and MUST be treated as a decoding error.
+            if blk.index == 0:
+                raise ProtocolException("Indexed header field with index 0")
 
         else:
             # literal header field
@@ -105,6 +114,12 @@ class HeaderBlock:
                     if size == 0x1F:
                         size = size + acc.get_hpack_int_rest()
 
+                    # RFC 7541 § 6.3: the dynamic table size update must not exceed
+                    # SETTINGS_HEADER_TABLE_SIZE (RFC default 4096).
+                    if size > HeaderBlock.MAX_DYNAMIC_TABLE_SIZE:
+                        raise ProtocolException(
+                            f"Dynamic table size update {size} exceeds "
+                            f"SETTINGS_HEADER_TABLE_SIZE {HeaderBlock.MAX_DYNAMIC_TABLE_SIZE}")
                     blk.op = HeaderBlock.UPDATE_DYNAMIC_TABLE_SIZE
                     blk.size = size
                 else:

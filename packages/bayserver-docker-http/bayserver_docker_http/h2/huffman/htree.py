@@ -1,10 +1,15 @@
 import traceback
 from bayserver_core.bay_log import BayLog
+from bayserver_core.protocol.protocol_exception import ProtocolException
 
 from bayserver_docker_http.h2.huffman.hnode import HNode
 from bayserver_core.util.exception_util import ExceptionUtil
 
 class HTree:
+
+    # RFC 7541 defines the EOS symbol with value 256; it must never appear
+    # in a header's payload except as the padding prefix at the tail.
+    EOS_SYMBOL = 256
 
     root = HNode()
 
@@ -12,10 +17,8 @@ class HTree:
     def decode(cls, data):
         w = bytearray()
         cur = HTree.root
+        bits_since_last_leaf = 0
         for i in range(len(data)):
-            if data[i] is None:
-                BayLog.info("NIL")
-
             for j in range(8):
                 bit = data[i] >> (8 - j - 1) & 0x1
 
@@ -25,16 +28,47 @@ class HTree:
                 else:
                     cur = cur.zero
 
+                if cur is None:
+                    # Bit pattern does not match any Huffman code.
+                    raise ProtocolException("Huffman decode: invalid code sequence")
+                bits_since_last_leaf += 1
+
                 if cur.value > 0:
                     # leaf node
+                    # RFC 7541 § 5.2: EOS must not appear inside a string literal.
+                    if cur.value == HTree.EOS_SYMBOL:
+                        raise ProtocolException("Huffman decode: EOS symbol in string literal")
                     w.append(cur.value)
                     cur = HTree.root
+                    bits_since_last_leaf = 0
+
+        if cur is not HTree.root:
+            # RFC 7541 § 5.2: any trailing bits form a padding that must be a
+            # strict prefix of the EOS code (which is all 1s) and be no longer
+            # than 7 bits.
+            if bits_since_last_leaf > 7:
+                raise ProtocolException(
+                    f"Huffman decode: padding longer than 7 bits ({bits_since_last_leaf})")
+            if not HTree._is_eos_prefix(cur):
+                raise ProtocolException("Huffman decode: padding must be MSB of EOS (all 1s)")
 
         try:
             return w.decode("us-ascii")
         except UnicodeDecodeError as e:
             BayLog.warn_e(e, traceback.format_stack(),"Decode error (use utf-8): %s", ExceptionUtil.message(e))
             return w.decode("utf-8")
+
+    @classmethod
+    def _is_eos_prefix(cls, node):
+        # Returns True iff the path from root to node traverses only the
+        # `one` branch. EOS is all 1s, so this is "bits consumed so far are
+        # a prefix of EOS."
+        cur = HTree.root
+        while cur is not node:
+            if cur.one is None:
+                return False
+            cur = cur.one
+        return True
 
     @classmethod
     def insert(cls, code, len_in_bits, sym):
