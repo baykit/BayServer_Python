@@ -83,11 +83,10 @@ class H2InboundHandler(H2Handler, InboundHandler):
         self.http_protocol = None
         self.req_header_tbl = HeaderTable.create_dynamic_table()
         self.res_header_tbl = HeaderTable.create_dynamic_table()
-        # Multi-frame header block buffer (HEADERS without END_HEADERS + CONTINUATION...)
+        # Multi-frame header block buffer (HEADERS without END_HEADERS + CONTINUATION).
+        # CmdHeaders.unpack stores each frame's raw fragment; handle_headers
+        # appends here and only parses once END_HEADERS arrives.
         self.header_buffer = SimpleBuffer()
-        self.header_buffer_stream_id = 0
-        self._pending_blocks = []
-        self._pending_end_stream = False
         # Flow control tracking (RFC 7540 § 6.9.1). Only tracked; outgoing
         # DATA is not yet gated.
         self.conn_send_window = H2InboundHandler.DEFAULT_INITIAL_WINDOW
@@ -109,16 +108,10 @@ class H2InboundHandler(H2Handler, InboundHandler):
         self.req_cont_len = 0
         self.req_cont_read = 0
         self.header_buffer.reset()
-        self.header_buffer_stream_id = 0
         # Flow control tracking is per-connection; pooled handlers must
         # start each new connection with fresh windows.
         self.conn_send_window = H2InboundHandler.DEFAULT_INITIAL_WINDOW
         self.stream_send_windows = {}
-        # Also reset the command unpacker's stream-state machine.
-        try:
-            self.protocol_handler.command_unpacker.reset()
-        except Exception:
-            pass
 
     ######################################################
     # implements InboundHandler
@@ -232,41 +225,24 @@ class H2InboundHandler(H2Handler, InboundHandler):
             self.protocol_handler.post(rst)
             return NextSocketAction.CONTINUE
 
-        # Multi-frame header block handling. HPACK encoding may span
-        # HEADERS+CONTINUATION boundaries (RFC 7540 § 6.2 / § 6.10), so
-        # parsing has to be deferred until END_HEADERS arrives on the
-        # last frame; cmd.data / cmd.start / cmd.length is the raw fragment
-        # captured by CmdHeaders.unpack.
-        end_stream = cmd.flags.end_stream()
-        # First HEADERS frame of a new block — remember end_stream from it,
-        # which is the authoritative end-of-body signal for the request.
-        if self.header_buffer_stream_id == 0:
-            self.header_buffer_stream_id = cmd.stream_id
-            self._pending_end_stream = end_stream
-            self.header_buffer.reset()
-        elif cmd.stream_id != self.header_buffer_stream_id:
-            raise ProtocolException(
-                f"CONTINUATION stream id mismatch: expected {self.header_buffer_stream_id}, got {cmd.stream_id}")
-
+        # Java H2InboundHandler equivalent: buffer raw HEADERS / CONTINUATION
+        # fragments until END_HEADERS, then dispatch onEndHeader once. HPACK
+        # encoding can span frame boundaries, so parsing the block before the
+        # full body is available risks splitting a literal field.
         if cmd.data is not None and cmd.length > 0:
             self.header_buffer.put(cmd.data, cmd.start, cmd.length)
-
         if cmd.flags.end_headers():
             buf_bytes = bytes(self.header_buffer.buf[:len(self.header_buffer)])
-            pend_end = self._pending_end_stream
             self.header_buffer.reset()
-            self.header_buffer_stream_id = 0
-            self._pending_end_stream = False
-            blocks = self._parse_combined_block(buf_bytes)
-            return self._on_end_header(tur, blocks, pend_end)
+            return self._on_end_header(tur, buf_bytes)
         return NextSocketAction.CONTINUE
 
-    def _parse_combined_block(self, raw_bytes):
-        """Re-parse a multi-frame HPACK header-block fragment by synthesizing
-        an H2Packet whose data area contains the combined bytes."""
+    def _parse_header_blocks(self, raw_bytes):
+        """Java HeaderBlockParser equivalent: walk the combined raw fragment
+        bytes via the existing HeaderBlock.unpack loop. Synthesizes an
+        H2Packet whose data area holds the bytes so the existing H2DataAccessor
+        + HeaderBlock.unpack can be reused."""
         synth = H2Packet(H2Type.HEADERS)
-        # Make the buffer large enough and copy the bytes directly,
-        # then advance buf_len so the read accessor's bounds match.
         end = synth.header_len + len(raw_bytes)
         if len(synth.buf) < end:
             synth.buf.extend(bytes(end - len(synth.buf)))
@@ -286,7 +262,14 @@ class H2InboundHandler(H2Handler, InboundHandler):
             blocks.append(blk)
         return blocks
 
-    def _on_end_header(self, tur, header_blocks, end_stream):
+    def _on_end_header(self, tur, raw_bytes):
+        # Java H2InboundHandler.onEndHeader direct port.
+        try:
+            header_blocks = self._parse_header_blocks(raw_bytes)
+        except (IndexError, ValueError, KeyError, IOError) as e:
+            # § 7541 § 2.3.3: HPACK decode errors -> COMPRESSION_ERROR.
+            raise H2ProtocolException(H2ErrorCode.COMPRESSION_ERROR, f"HPACK decode failed: {e}")
+
         # Pseudo-header + header-field validation (RFC 7540 § 8.1.2).
         saw_method = False
         saw_scheme = False
@@ -380,20 +363,8 @@ class H2InboundHandler(H2Handler, InboundHandler):
                      tur.req.headers.content_length())
 
         HttpUtil.check_uri(tur.req.uri)
-
-        # If a body is coming (no END_STREAM on HEADERS) but the peer
-        # did not advertise a content-length, set a placeholder so
-        # tour.go() puts the tour into READING state instead of
-        # RUNNING. END_STREAM on the trailing DATA frame is the
-        # authoritative end-of-body signal; mark the placeholder so
-        # the content-length consistency check (handle_data) skips it.
-        if not end_stream and tur.req.headers.content_length() < 0:
-            tur.req.headers.set_content_length(1 << 30)
-            tur._h2_placeholder_clen = True
-        else:
-            tur._h2_placeholder_clen = False
-
         req_cont_len = tur.req.headers.content_length()
+
         if req_cont_len > 0:
             tur.req.set_limit(req_cont_len)
 
@@ -402,7 +373,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
                 raise HttpException(HttpStatus.BAD_REQUEST, "Missing uri")
 
             self.start_tour(tur)
-            if end_stream:
+            if tur.req.headers.content_length() <= 0:
                 self.end_req_content(Tour.TOUR_ID_NOCHECK, tur)
 
         except HttpException as e:
@@ -418,6 +389,7 @@ class H2InboundHandler(H2Handler, InboundHandler):
         return NextSocketAction.CONTINUE
 
     def handle_data(self, cmd):
+        # Direct port of Java H2InboundHandler.handleData.
         BayLog.debug("%s handle_data: stm=%d len=%d", self.ship(), cmd.stream_id, cmd.length)
 
         tur = self.get_tour(cmd.stream_id)
@@ -425,66 +397,58 @@ class H2InboundHandler(H2Handler, InboundHandler):
             raise RuntimeError(f"Invalid stream id: {cmd.stream_id}")
 
         # RFC 7540 § 8.1.2.6: if content-length is given, sum of DATA payload
-        # lengths MUST match it. Detect at END_STREAM boundary. Skip the
-        # check when the peer omitted content-length and we set a placeholder
-        # so tour.go() would enter READING state.
-        if cmd.flags.end_stream() and not getattr(tur, "_h2_placeholder_clen", False):
+        # lengths MUST match it. Detect at END_STREAM boundary.
+        if cmd.flags.end_stream():
             cont_len = tur.req.headers.content_length()
             if cont_len >= 0 and tur.req.bytes_posted + cmd.length != cont_len:
                 raise ProtocolException(
                     f"content-length {cont_len} does not match DATA payload "
                     f"{tur.req.bytes_posted + cmd.length}")
 
-        success = True
-        if cmd.length > 0:
-            tid = tur.tour_id
+        try:
+            success = True
+            if cmd.length > 0:
+                tid = tur.tour_id
 
-            def callback(length: int, resume: bool):
-                tur.check_tour_id(tid)
-                if length > 0:
-                    upd = CmdWindowUpdate(cmd.stream_id)
-                    upd.window_size_increment = length
-                    upd2 = CmdWindowUpdate(0)
-                    upd2.window_size_increment = length
-                    try:
-                        self.protocol_handler.post(upd)
-                        self.protocol_handler.post(upd2)
-                    except IOError as ex:
-                        BayLog.error_e(ex, traceback.format_stack())
+                def callback(length: int, resume: bool):
+                    tur.check_tour_id(tid)
+                    if length > 0:
+                        upd = CmdWindowUpdate(cmd.stream_id)
+                        upd.window_size_increment = length
+                        upd2 = CmdWindowUpdate(0)
+                        upd2.window_size_increment = length
+                        try:
+                            self.protocol_handler.post(upd)
+                            self.protocol_handler.post(upd2)
+                        except IOError as ex:
+                            BayLog.error_e(ex, traceback.format_stack())
 
-                if resume:
-                    tur.ship.resume(tur.ship.id)
+                    if resume:
+                        tur.ship.resume(tur.ship.id)
 
-            success = tur.req.post_req_content(
-                Tour.TOUR_ID_NOCHECK,
-                cmd.data,
-                cmd.start,
-                cmd.length,
-                callback
-            )
+                success = tur.req.post_req_content(
+                    Tour.TOUR_ID_NOCHECK,
+                    cmd.data,
+                    cmd.start,
+                    cmd.length,
+                    callback
+                )
 
-        # End the request body either when END_STREAM is signaled or, when
-        # content-length is known, when we have received the full payload.
-        cont_len = tur.req.headers.content_length()
-        if cmd.flags.end_stream() or (cont_len > 0 and tur.req.bytes_posted >= cont_len):
-            if tur.error:
-                tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, tur.error, tur.stack)
-                return NextSocketAction.CONTINUE
+                if tur.req.bytes_posted >= tur.req.headers.content_length():
+                    if tur.error is not None:
+                        # Error has occurred on header completed
+                        BayLog.debug("%s Delay send error", tur)
+                        raise tur.error
+                    else:
+                        self.end_req_content(tur.id(), tur)
+
+            if not success:
+                return NextSocketAction.SUSPEND
             else:
-                # When we used the placeholder content-length (no advertised
-                # content-length), align bytes_limit with bytes_posted so the
-                # TourReq.end_content length check passes.
-                if getattr(tur, "_h2_placeholder_clen", False):
-                    tur.req.bytes_limit = tur.req.bytes_posted
-                try:
-                    self.end_req_content(tur.id(), tur)
-                except HttpException as e:
-                    tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
-                    return NextSocketAction.CONTINUE
-
-        if not success:
-            return NextSocketAction.SUSPEND
-        else:
+                return NextSocketAction.CONTINUE
+        except HttpException as e:
+            tur.req.abort() if hasattr(tur.req, "abort") else None
+            tur.res.send_http_exception(Tour.TOUR_ID_NOCHECK, e, traceback.format_stack())
             return NextSocketAction.CONTINUE
 
     def handle_priority(self, cmd):
