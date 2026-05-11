@@ -1,4 +1,5 @@
 import socket
+import ssl
 
 from bayserver_core.rudder.rudder import Rudder
 
@@ -25,6 +26,14 @@ class SocketRudder(Rudder):
         return self.skt.send(data)
 
     def close(self) -> None:
+        # Half-close the write side so the peer sees TCP FIN (and TLS
+        # close_notify on SSLSocket) instead of a RST that would happen
+        # if close() were called while data was still pending in the
+        # receive buffer. Java's NIO SSLEngine does this automatically.
+        try:
+            self.skt.shutdown(socket.SHUT_WR)
+        except (OSError, ssl.SSLError):
+            pass
         self.skt.close()
 
     def closed(self) -> bool:
