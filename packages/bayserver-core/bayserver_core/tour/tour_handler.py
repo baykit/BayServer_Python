@@ -3,6 +3,7 @@ from abc import abstractmethod
 from typing import List
 
 from bayserver_core.protocol.protocol_exception import ProtocolException
+from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.tour.tour import Tour
 from bayserver_core.util.data_consume_listener import DataConsumeListener
 
@@ -17,6 +18,11 @@ class TourHandler(metaclass=abc.ABCMeta):
     # Send Contents to client
     @abstractmethod
     def send_res_content(self, tur: Tour, buf: bytearray, ofs: int, length: int, lis: DataConsumeListener) -> None:
+        pass
+
+    # Transfer file contents (Direct Boarding / sendfile path)
+    @abstractmethod
+    def transfer_content(self, tur: Tour, file_rd: Rudder, ofs: int, length: int, lis: DataConsumeListener) -> None:
         pass
 
     # Send end of contents to client.

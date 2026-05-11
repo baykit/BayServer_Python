@@ -3,7 +3,10 @@ from typing import List
 
 from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
 from bayserver_core.common.multiplexer import Multiplexer
+from bayserver_core.rudder.rudder import Rudder
 from bayserver_core.ship.ship import Ship
+from bayserver_core.sink import Sink
+from bayserver_core.util.data_consume_listener import DataConsumeListener
 
 
 class SecureTransporter(PlainTransporter):
@@ -28,5 +31,9 @@ class SecureTransporter(PlainTransporter):
 
     def is_secure(self):
         return True
+
+    def req_transfer(self, rd: Rudder, file_rd: Rudder, ofs: int, length: int, listener: DataConsumeListener) -> None:
+        # Direct Boarding (sendfile) is incompatible with TLS framing.
+        raise Sink()
 
 

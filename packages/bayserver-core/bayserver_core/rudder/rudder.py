@@ -42,3 +42,9 @@ class Rudder(metaclass=ABCMeta):
     @abstractmethod
     def closed(self) -> bool:
         pass
+
+    # Underlying integer file descriptor, or -1 if not file-descriptor backed.
+    # Subclasses that wrap a real fd (sockets, regular files) override.
+    # Required for the os.sendfile / Direct Boarding path in SpiderMultiplexer.
+    def fileno(self) -> int:
+        return -1

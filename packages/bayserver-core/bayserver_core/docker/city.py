@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from typing import List
 
+from bayserver_core.docker.barge import Barge
 from bayserver_core.docker.club import Club
 from bayserver_core.docker.docker import Docker
 from bayserver_core.docker.town import Town
@@ -23,6 +24,11 @@ class City(Docker, metaclass=ABCMeta):
     # All towns in this city
     @abstractmethod
     def towns(self) -> List[Town]:
+        pass
+
+    # Find barge by path
+    @abstractmethod
+    def find_barge(self, path: str) -> Barge:
         pass
 
     # Enter city

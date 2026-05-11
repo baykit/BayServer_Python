@@ -42,6 +42,10 @@ class Multiplexer(metaclass=abc.ABCMeta):
         pass
 
     @abstractmethod
+    def req_transfer(self, rd: Rudder, file_rd: Rudder, ofs: int, length: int, lis: DataConsumeListener) -> None:
+        pass
+
+    @abstractmethod
     def req_end(self, rd: Rudder) -> None:
         pass
 

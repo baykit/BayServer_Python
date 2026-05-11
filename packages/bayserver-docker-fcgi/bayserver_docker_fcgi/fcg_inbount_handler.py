@@ -112,6 +112,12 @@ class FcgInboundHandler(FcgHandler, InboundHandler):
         self.protocol_handler.post(cmd, callback)
 
 
+    def transfer_content(self, tur, file_rd, ofs, length, lis):
+        from bayserver_core.sink import Sink
+        # FCGI framing requires user-space encoding, so Direct Boarding is unsupported.
+        raise Sink()
+
+
     def send_end_tour(self, tur: Tour, cb):
         BayLog.debug("%s PH:endTour: tur=%s", self.ship(), tur)
 

@@ -56,6 +56,10 @@ class MultiplexerBase(Multiplexer):
     def req_closing(self, rd: Rudder) -> None:
         raise Sink()
 
+    def req_transfer(self, rd: Rudder, file_rd: Rudder, ofs: int, length: int, lis) -> None:
+        # TODO: implement Direct Boarding (sendfile-style transfer)
+        raise NotImplementedError("req_transfer is not yet implemented")
+
     def consume_oldest_unit(self, st: RudderState) -> bool:
         u: WriteUnit
         with st.write_queue_lock:

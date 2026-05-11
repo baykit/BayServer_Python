@@ -1,0 +1,2 @@
+class DirectoryException(IOError):
+    pass

@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
+from bayserver_core.docker.barge import Barge
 from bayserver_core.docker.docker import Docker
 from bayserver_core.docker.trouble import Trouble
 from bayserver_core.sink import Sink
@@ -142,19 +143,32 @@ class Harbor(Docker, metaclass=ABCMeta):
     def multi_core(self) -> bool:
         pass
 
-    # True if cache is enabled
+    # Whether to enable Direct Boarding (the sendfile API).
+    # This bypasses user-space formalities for efficient data transfer.
     @abstractmethod
-    def enable_cache(self) -> bool:
+    def direct_boarding(self) -> bool:
         pass
 
-    # Lifespan seconds of cache
+    # The lifespan, in seconds, of a cargo (cached file).
     @abstractmethod
-    def cache_lifespan_sec(self) -> int:
+    def cargo_lifespan_sec(self) -> int:
         pass
 
-    # Limit size of cache (in MB)
+    # The maximum number of files (file descriptors) to be cached for Direct Boarding.
+    # When this limit is reached, the least recently used (LRU) items are evicted.
     @abstractmethod
-    def cache_size_mb(self) -> int:
+    def max_direct_boardings(self) -> int:
+        pass
+
+    # The maximum file size, in mega-bytes, to be cached.
+    # Files exceeding this size will not be cached.
+    @abstractmethod
+    def max_cargo_size(self) -> int:
+        pass
+
+    # Find barge by path
+    @abstractmethod
+    def find_barge(self, path: str) -> Barge:
         pass
 
     @classmethod

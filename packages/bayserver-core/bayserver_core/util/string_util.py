@@ -57,3 +57,17 @@ class StringUtil:
         else:
             bay_log.BayLog.warn("Invalid boolean value(set false): " + val)
             return False
+
+    @classmethod
+    def parse_size(cls, value: str) -> int:
+        value = value.lower()
+        rate = 1
+        if value.endswith("b"):
+            value = value[:-1]
+        if value.endswith("k"):
+            value = value[:-1]
+            rate = 1024
+        elif value.endswith("m"):
+            value = value[:-1]
+            rate = 1024 * 1024
+        return int(value) * rate

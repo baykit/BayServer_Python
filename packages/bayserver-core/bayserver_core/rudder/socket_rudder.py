@@ -29,3 +29,6 @@ class SocketRudder(Rudder):
 
     def closed(self) -> bool:
         return self.skt.fileno() == -1
+
+    def fileno(self) -> int:
+        return self.skt.fileno()

@@ -18,5 +18,7 @@ log                 bayserver_core.docker.built_in.BuiltInLogDocker
 permission          bayserver_core.docker.built_in.BuiltInPermissionDocker
 secure              bayserver_core.docker.built_in.BuiltInSecureDocker
 trouble             bayserver_core.docker.built_in.BuiltInTroubleDocker
+barge               bayserver_core.docker.barges.MemBargeDocker
+barge:mem           bayserver_core.docker.barges.MemBargeDocker
 reroute:wordpress   bayserver_docker_wordpress.WordPressDocker
 

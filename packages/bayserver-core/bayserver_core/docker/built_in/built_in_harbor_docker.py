@@ -2,12 +2,14 @@ import os
 import pathlib
 
 from bayserver_core import bayserver as bs
+from bayserver_core.common.barges import Barges
 from bayserver_core.util.groups import Groups
 from bayserver_core.bay_log import BayLog
 from bayserver_core.config_exception import ConfigException
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.symbol import Symbol
 
+from bayserver_core.docker.barge import Barge
 from bayserver_core.docker.harbor import Harbor
 from bayserver_core.docker.base.docker_base import DockerBase
 from bayserver_core.docker.trouble import Trouble
@@ -36,9 +38,10 @@ class BuiltInHarborDocker(DockerBase, Harbor):
     DEFAULT_CGI_MULTIPLEXER = Harbor.MULTIPLEXER_TYPE_SPIDER
     DEFAULT_RECIPIENT = Harbor.RECIPIENT_TYPE_SPIDER
     DEFAULT_PID_FILE = "bayserver.pid"
-    DEFAULT_ENABLE_CACHE = False
-    DEFAULT_CACHE_LIFESPAN_SEC = 60
-    DEFAULT_CACHE_SIZE_MB = 32
+    DEFAULT_DIRECT_BOARDING = False
+    DEFAULT_CARGO_LIFESPAN_SEC = 60
+    DEFAULT_DIRECT_BOARDINGS = 128
+    DEFAULT_MAX_CARGO_SIZE = 1 * 1024 * 1024
 
     # Default charset
     _charset: str
@@ -106,14 +109,24 @@ class BuiltInHarborDocker(DockerBase, Harbor):
     # PID file name
     _pid_file: str
 
-    # True if cache is enabled
-    _enable_cache: bool
+    # Whether to enable Direct Boarding (the sendfile API).
+    # This bypasses user-space formalities for efficient data transfer.
+    _direct_boarding: bool
 
-    # Lifespan seconds of cache
-    _cache_lifespan_sec: int
+    # Lifespan seconds of cargo
+    _cargo_lifespan_sec: int
 
-    # Limit size of cache (in MB)
-    _cache_size_mb: int
+    # The maximum number of files (file descriptors) to be cached for Direct
+    # Boarding. When this limit is reached, the least recently used (LRU)
+    # items are evicted.
+    _max_direct_boardings: int
+
+    # The maximum file size (in bytes) to be cached. Files exceeding this
+    # size will not be cached.
+    _max_cargo_size: int
+
+    # Barge dockers
+    _barges: "Barges"
 
     def __init__(self):
         super().__init__()
@@ -142,9 +155,11 @@ class BuiltInHarborDocker(DockerBase, Harbor):
         # PID file name
         self._pid_file = BuiltInHarborDocker.DEFAULT_PID_FILE
 
-        self._enable_cache = BuiltInHarborDocker.DEFAULT_ENABLE_CACHE
-        self._cache_lifespan_sec = BuiltInHarborDocker.DEFAULT_CACHE_LIFESPAN_SEC
-        self._cache_size_mb = BuiltInHarborDocker.DEFAULT_CACHE_SIZE_MB
+        self._direct_boarding = BuiltInHarborDocker.DEFAULT_DIRECT_BOARDING
+        self._cargo_lifespan_sec = BuiltInHarborDocker.DEFAULT_CARGO_LIFESPAN_SEC
+        self._max_direct_boardings = BuiltInHarborDocker.DEFAULT_DIRECT_BOARDINGS
+        self._max_cargo_size = BuiltInHarborDocker.DEFAULT_MAX_CARGO_SIZE
+        self._barges = Barges()
 
     ######################
     # Implements Docker
@@ -223,6 +238,8 @@ class BuiltInHarborDocker(DockerBase, Harbor):
     def init_docker(self, dkr):
         if isinstance(dkr, Trouble):
             self._trouble = dkr
+        elif isinstance(dkr, Barge):
+            self._barges.add(dkr)
         else:
             return super().init_docker(dkr)
 
@@ -266,12 +283,14 @@ class BuiltInHarborDocker(DockerBase, Harbor):
             self._multi_core = StringUtil.parse_bool(kv.value)
         elif key == "gzipcomp":
             self._gzip_comp = StringUtil.parse_bool(kv.value)
-        elif key == "enablecache":
-            self._enable_cache = StringUtil.parse_bool(kv.value)
-        elif key == "cachelifespan":
-            self._cache_lifespan_sec = int(kv.value)
-        elif key == "cachesize":
-            self._cache_size_mb = int(kv.value)
+        elif key == "directboarding":
+            self._direct_boarding = StringUtil.parse_bool(kv.value)
+        elif key == "cargolifespan":
+            self._cargo_lifespan_sec = int(kv.value)
+        elif key == "maxdirectboardings":
+            self._max_direct_boardings = int(kv.value)
+        elif key == "maxcargosize":
+            self._max_cargo_size = StringUtil.parse_size(kv.value)
         elif key == "netmultiplexer":
             try:
                 self._net_multiplexer = Harbor.get_multiplexer_type(kv.value)
@@ -375,13 +394,19 @@ class BuiltInHarborDocker(DockerBase, Harbor):
     def pid_file(self) -> str:
         return self._pid_file
 
-    def enable_cache(self) -> bool:
-        return self._enable_cache
+    def direct_boarding(self) -> bool:
+        return self._direct_boarding
 
-    def cache_lifespan_sec(self) -> int:
-        return self._cache_lifespan_sec
+    def cargo_lifespan_sec(self) -> int:
+        return self._cargo_lifespan_sec
 
-    def cache_size_mb(self) -> int:
-        return self._cache_size_mb
+    def max_direct_boardings(self) -> int:
+        return self._max_direct_boardings
+
+    def max_cargo_size(self) -> int:
+        return self._max_cargo_size
+
+    def find_barge(self, path: str):
+        return self._barges.find_barge(path)
 
 

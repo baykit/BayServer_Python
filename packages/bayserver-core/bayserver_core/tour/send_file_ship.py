@@ -10,13 +10,12 @@ from bayserver_core.tour.tour import Tour
 from bayserver_core.util.http_status import HttpStatus
 from bayserver_core.util.internet_address import InternetAddress
 
+
 class SendFileShip(ReadOnlyShip):
 
     file_wrote_len: int
     tour: Tour
     tour_id: int
-    path: str
-    abortable: bool
 
     def __init__(self):
         super().__init__()
@@ -27,6 +26,9 @@ class SendFileShip(ReadOnlyShip):
         self.file_wrote_len = 0
         self.tour = tur
         self.tour_id = tur.tour_id
+
+    def __str__(self):
+        return f"agt#{self.agent_id} send_file#{self.ship_id}/{self.object_id}"
 
     ######################################################
     # Implements Reusable
@@ -39,9 +41,8 @@ class SendFileShip(ReadOnlyShip):
         self.tour_id = -1
         self.tour = None
 
-
     ######################################################
-    # Implements ReqContentHandler
+    # Implements ReadOnlyShip
     ######################################################
 
     def notify_read(self, buf: bytes, adr: InternetAddress) -> int:
@@ -54,9 +55,8 @@ class SendFileShip(ReadOnlyShip):
                 return NextSocketAction.CONTINUE
             else:
                 return NextSocketAction.SUSPEND
-
         except IOError as e:
-            self.notify_error(e)
+            self.notify_error(e, traceback.format_stack())
             return NextSocketAction.CLOSE
 
     def notify_error(self, e: Exception, stk: List[str]) -> None:
@@ -65,7 +65,6 @@ class SendFileShip(ReadOnlyShip):
             self.tour.res.send_error(self.tour_id, HttpStatus.INTERNAL_SERVER_ERROR, None, e, stk)
         except IOError as ex:
             BayLog.debug_e(ex, traceback.format_stack())
-
 
     def notify_eof(self) -> int:
         BayLog.debug("%s EOF", self)
@@ -80,4 +79,3 @@ class SendFileShip(ReadOnlyShip):
 
     def check_timeout(self, duration_sec: int) -> bool:
         return False
-

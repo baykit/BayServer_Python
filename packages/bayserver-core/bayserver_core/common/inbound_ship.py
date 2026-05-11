@@ -204,6 +204,12 @@ class InboundShip(Ship):
             self.tour_handler().send_res_content(tur, bytes, ofs, length, callback)
 
 
+    def transfer_res_content(self, chk_ship_id, tur, file_rd: Rudder, ofs: int, length: int, callback):
+        self.check_ship_id(chk_ship_id)
+
+        self.tour_handler().transfer_content(tur, file_rd, ofs, length, callback)
+
+
     def send_end_tour(self, chk_ship_id, tur, callback):
         with self.lock:
             self.check_ship_id(chk_ship_id)

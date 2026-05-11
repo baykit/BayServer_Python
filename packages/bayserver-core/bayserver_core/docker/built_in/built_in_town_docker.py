@@ -6,6 +6,8 @@ from bayserver_core.config_exception import ConfigException
 from bayserver_core.bay_message import BayMessage
 from bayserver_core.symbol import Symbol
 
+from bayserver_core.common.barges import Barges
+from bayserver_core.docker.barge import Barge
 from bayserver_core.docker.town import Town
 from bayserver_core.docker.club import Club
 from bayserver_core.docker.permission import Permission
@@ -23,6 +25,7 @@ class BuiltInTownDocker(DockerBase, Town):
         self.permission_list = []
         self.city = None
         self.reroute_list = []
+        self.barges = Barges()
 
 
 
@@ -54,8 +57,10 @@ class BuiltInTownDocker(DockerBase, Town):
             self.permission_list.append(dkr)
         elif isinstance(dkr, Reroute):
             self.reroute_list.append(dkr)
+        elif isinstance(dkr, Barge):
+            self.barges.add(dkr)
         else:
-            return False
+            return super().init_docker(dkr)
         return True
 
 
@@ -92,6 +97,9 @@ class BuiltInTownDocker(DockerBase, Town):
 
     def clubs(self) -> List[Club]:
         return self.clubs
+
+    def find_barge(self, path):
+        return self.barges.find_barge(path)
 
     def reroute(self, uri):
         for r in self.reroute_list:

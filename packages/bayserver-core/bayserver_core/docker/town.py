@@ -2,6 +2,7 @@ from abc import abstractmethod, ABCMeta
 from typing import List
 
 from bayserver_core.docker import city as c
+from bayserver_core.docker.barge import Barge
 from bayserver_core.docker.club import Club
 from bayserver_core.docker.docker import Docker
 from bayserver_core.tour.tour import Tour
@@ -39,7 +40,10 @@ class Town(Docker, metaclass=ABCMeta):
     def clubs(self) -> List[Club]:
         pass
 
-
+    # Find barge by path
+    @abstractmethod
+    def find_barge(self, path: str) -> Barge:
+        pass
 
     @abstractmethod
     def reroute(self, uri: str) -> str:

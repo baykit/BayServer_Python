@@ -119,6 +119,30 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
         st.access()
 
+    def req_transfer(self, rd: Rudder, file_rd: Rudder, ofs: int, length: int, lis) -> None:
+        """Direct Boarding (sendfile) request. Enqueues a file-mode WriteUnit;
+        the sendfile syscall is issued in `_on_writable` when the socket becomes
+        writable. Only supported on platforms where `os.sendfile` exists."""
+        st = self.get_rudder_state(rd)
+        BayLog.debug("%s reqTransfer st=%s ofs=%d len=%d file=%s", self, st, ofs, length, file_rd)
+
+        if st is None or st.closed:
+            BayLog.warn("%s Rudder is closed: %s", self, rd)
+            if lis is not None:
+                lis()
+            return
+
+        if not hasattr(os, "sendfile"):
+            raise Sink("os.sendfile is not available on this platform")
+
+        unt = WriteUnit.for_file(file_rd, ofs, length, lis)
+        with st.write_queue_lock:
+            st.write_queue.append(unt)
+
+        self._add_operation(rd, selectors.EVENT_WRITE)
+
+        st.access()
+
     def req_end(self, rd: Rudder) -> None:
         st = self.get_rudder_state(rd)
         if st is None:
@@ -483,9 +507,22 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                         BayLog.debug("%s Data remains", self)
                         break
             else:
-                # TCP / TLS: gather all pending buffers into one write to
-                # reduce syscall count (Java 862441d writev equivalent).
-                combined_parts = [bytes(w.buf) for w in st.write_queue if len(w.buf) > 0]
+                head = st.write_queue[0]
+                if head.skip_formalities():
+                    # Direct Boarding: drive head unit forward via os.sendfile.
+                    # File units are not gathered with buffer units.
+                    self._on_writable_sendfile(st, head)
+                    return
+
+                # TCP / TLS: gather buffer units (up to first file unit) into
+                # one write to reduce syscall count (Java 862441d writev
+                # equivalent).
+                combined_parts = []
+                for w in st.write_queue:
+                    if w.skip_formalities():
+                        break
+                    if len(w.buf) > 0:
+                        combined_parts.append(bytes(w.buf))
                 if not combined_parts:
                     return
                 combined = combined_parts[0] if len(combined_parts) == 1 else b"".join(combined_parts)
@@ -502,9 +539,12 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
                 BayLog.debug("%s wrote %d bytes (gathered)", self, n)
                 self.agent.send_wrote_letter(st, n, False)
 
-                # Distribute n across the queued WriteUnits, oldest first.
+                # Distribute n across the queued buffer WriteUnits, oldest
+                # first. Stop at first file unit (handled separately).
                 remaining = n
                 for wunit in st.write_queue:
+                    if wunit.skip_formalities():
+                        break
                     blen = len(wunit.buf)
                     if blen == 0:
                         continue
@@ -519,6 +559,40 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
         except Exception as e:
             BayLog.debug_e(e, traceback.format_stack(),"%s Unhandled error", self)
             self.agent.send_error_letter(st, e, traceback.format_stack(), False)
+
+    def _on_writable_sendfile(self, st: RudderState, unit: WriteUnit) -> None:
+        """Drive a file-mode WriteUnit forward via os.sendfile. Loops until the
+        socket would block or the unit is fully consumed."""
+        try:
+            out_fd = st.rudder.fileno()
+            in_fd = unit.file.fileno()
+        except OSError as e:
+            BayLog.error_e(e, traceback.format_stack(), "%s sendfile fd lookup failed", self)
+            self.agent.send_error_letter(st, e, traceback.format_stack(), False)
+            return
+
+        while unit.has_remaining():
+            try:
+                n = os.sendfile(out_fd, in_fd, unit.position(), unit.remaining())
+            except BlockingIOError:
+                BayLog.debug("%s sendfile would block", self)
+                return
+            except OSError as e:
+                BayLog.debug_e(e, traceback.format_stack(), "%s sendfile error", self)
+                self.agent.send_error_letter(st, e, traceback.format_stack(), False)
+                return
+
+            if n == 0:
+                # EOF on input file before declared length completed. Mark the
+                # remaining bytes as consumed so the unit does not stall.
+                BayLog.debug("%s sendfile reached EOF early (remaining=%d)", self, unit.remaining())
+                self.agent.send_wrote_letter(st, unit.remaining(), False)
+                unit.forward(unit.remaining())
+                return
+
+            BayLog.debug("%s sendfile sent %d bytes (remaining=%d)", self, n, unit.remaining() - n)
+            unit.forward(n)
+            self.agent.send_wrote_letter(st, n, False)
 
     def _on_waked_up(self) -> None:
         BayLog.trace("%s On Waked Up", self)

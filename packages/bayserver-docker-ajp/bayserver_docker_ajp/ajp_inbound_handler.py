@@ -99,6 +99,11 @@ class AjpInboundHandler(AjpHandler, InboundHandler):
         cmd = CmdSendBodyChunk(bytes, ofs, length);
         self.protocol_handler.post(cmd, callback)
 
+    def transfer_content(self, tur, file_rd, ofs, length, lis):
+        from bayserver_core.sink import Sink
+        # AJP framing requires user-space encoding, so Direct Boarding is unsupported.
+        raise Sink()
+
     def send_end_tour(self, tur, cb):
         BayLog.debug("%s endTour: tur=%s", self.ship(), tur)
         cmd = CmdEndResponse()

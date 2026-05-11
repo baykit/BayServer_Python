@@ -58,6 +58,7 @@ class GrandAgent:
     self_listen_port_idx: Optional[int]
 
     net_multiplexer: Multiplexer
+    file_multiplexer: Multiplexer
     job_multiplexer: Multiplexer
     taxi_multiplexer: Multiplexer
     spin_multiplexer: SpinMultiplexer
@@ -121,6 +122,18 @@ class GrandAgent:
 
         else:
             raise Sink("Multiplexer not supported: %s", Harbor.get_multiplexer_type_name(bs.BayServer.harbor.net_multiplexer()))
+
+        file_mpx_type = bs.BayServer.harbor.file_multiplexer()
+        if file_mpx_type == Harbor.MULTIPLEXER_TYPE_SPIN:
+            self.file_multiplexer = self.spin_multiplexer
+        elif file_mpx_type == Harbor.MULTIPLEXER_TYPE_JOB:
+            self.file_multiplexer = self.job_multiplexer
+        elif file_mpx_type == Harbor.MULTIPLEXER_TYPE_TAXI:
+            self.file_multiplexer = self.taxi_multiplexer
+        elif file_mpx_type == Harbor.MULTIPLEXER_TYPE_SPIDER:
+            self.file_multiplexer = self.spider_multiplexer
+        else:
+            raise Sink("Multiplexer not supported: %s", Harbor.get_multiplexer_type_name(file_mpx_type))
 
         self.last_timeout_check = 0
 
@@ -427,8 +440,8 @@ class GrandAgent:
         # A single writev syscall may have consumed several units.
         while True:
             unit = st.write_queue[0]
-            if len(unit.buf) > 0:
-                BayLog.debug("Could not write enough data buf_len=%d", len(unit.buf))
+            if unit.has_remaining():
+                BayLog.debug("Could not write enough data remaining=%d", unit.remaining())
                 write_more = True
                 break
 

@@ -30,6 +30,7 @@ class RudderState:
     finale: bool
     handshaking: bool
     addr: Any
+    skip_formalities: bool
 
 
     def __init__(self, rd: Rudder, tp: Transporter=None, timeout_sec: int=0):
@@ -59,6 +60,7 @@ class RudderState:
         self.finale = False
         self.read_buf = None
         self.addr = None
+        self.skip_formalities = False
 
 
     def __str__(self):

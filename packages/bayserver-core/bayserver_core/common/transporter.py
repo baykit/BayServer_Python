@@ -45,6 +45,10 @@ class Transporter(metaclass=abc.ABCMeta):
         pass
 
     @abstractmethod
+    def req_transfer(self, rd: Rudder, file_rd: Rudder, ofs: int, length: int, listener: DataConsumeListener) -> None:
+        pass
+
+    @abstractmethod
     def req_close(self, rd: Rudder) -> None:
         pass
 

@@ -29,6 +29,7 @@ class TourRes:
     res_consume_listener: ContentConsumeListener
     can_compress: bool
     compressor: GzipCompressor
+    direct_boarding: bool
 
     def __init__(self, tur):
         self.tour = tur
@@ -53,12 +54,13 @@ class TourRes:
         self.bytes_consumed = None
         self.bytes_limit = None
         self.buffer_size = bs.BayServer.harbor.tour_buffer_size()
+        self.direct_boarding = False
 
     def __str__(self):
         return str(self.tour)
 
     def init(self):
-        pass
+        self.direct_boarding = bs.BayServer.harbor.direct_boarding()
 
     ######################################################
     # Implements Reusable
@@ -76,6 +78,7 @@ class TourRes:
         self.bytes_posted = 0
         self.bytes_consumed = 0
         self.bytes_limit = 0
+        self.direct_boarding = False
 
     ######################################################
     # other methods
@@ -92,6 +95,9 @@ class TourRes:
         if self.header_sent:
             BayLog.debug("%s header sent", self)
             return
+
+        if self.tour.cargo is not None:
+            self.tour.cargo.save_headers(self.headers)
 
         self.bytes_limit = self.headers.content_length()
 
@@ -174,7 +180,10 @@ class TourRes:
 
     def send_res_content(self, chk_tour_id, buf, ofs, length) -> bool:
         #self.tour.check_tour_id(chk_tour_id)
-        BayLog.debug("%s send content: len=%d", self, length)
+        BayLog.debug("%s send content: len=%d cargo=%s", self, length, self.tour.cargo)
+
+        if self.tour.cargo is not None:
+            self.tour.cargo.save_content(buf, ofs, length)
 
         # Callback
         def consumed_cb():
@@ -221,6 +230,144 @@ class TourRes:
 
         return self.available
 
+    def send_file(self, path: str, charset):
+        """Java TourRes.sendFile port. Sends a static file as the response body.
+
+        Picks the Direct Boarding (sendfile) path when supported by the protocol
+        and the harbor; otherwise falls back to opening the file via a Rudder
+        and reading through the configured fileMultiplexer + SendFileShip.
+        """
+        import os
+        from bayserver_core.agent.grand_agent import GrandAgent
+        from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
+        from bayserver_core.common.rudder_state import RudderState
+        from bayserver_core.docker.harbor import Harbor
+        from bayserver_core.http_exception import HttpException
+        from bayserver_core.rudder.io_rudder import IORudder
+        from bayserver_core.sink import Sink
+        from bayserver_core.tour.file_store import FileStore
+        from bayserver_core.tour.send_file_ship import SendFileShip
+        from bayserver_core.util.directory_exception import DirectoryException
+        from bayserver_core.util.mimes import Mimes
+
+        port = self.tour.ship.port_docker
+        info = None
+        rd = None
+        file_size = -1
+
+        # Direct Boarding (os.sendfile) requires:
+        #   * protocol == h1 (no per-frame user-space encoding)
+        #   * the connection is plaintext (TLS framing breaks sendfile)
+        #   * harbor enabled directBoarding for this tour
+        #   * the host OS exposes os.sendfile (POSIX only; not on Windows)
+        if (hasattr(os, "sendfile")
+                and port.protocol() == "h1"
+                and not port.secure()
+                and self.direct_boarding):
+            store = FileStore.get_file_store()
+            info = store.get(path)
+            rd = info.rudder
+            file_size = info.file_length
+            self.direct_boarding = info.rudder is not None
+        else:
+            self.direct_boarding = False
+
+        if rd is None:
+            if os.path.isdir(path):
+                raise DirectoryException()
+            f = open(path, "rb", buffering=False)
+            rd = IORudder(f)
+            file_size = os.path.getsize(path)
+
+        # Resolve mime type from extension.
+        mtype = None
+        pos = path.rfind('.')
+        if pos >= 0:
+            ext = path[pos + 1:].lower()
+            mtype = Mimes.type(ext)
+        if mtype is None:
+            mtype = "application/octet-stream"
+        if mtype.startswith("text/") and charset is not None:
+            mtype = mtype + "; charset=" + charset
+
+        self.headers.set_content_type(mtype)
+        self.headers.set_content_length(file_size)
+        self.send_res_headers(tour.Tour.TOUR_ID_NOCHECK)
+
+        if self.direct_boarding:
+            tur_id = self.tour.tour_id
+
+            def on_consumed(length, resume):
+                try:
+                    self.end_res_content(tur_id)
+                except IOError as e:
+                    BayLog.debug_e(e, traceback.format_stack())
+
+            self.set_res_consume_listener(on_consumed)
+            self.transfer_content(tour.Tour.TOUR_ID_NOCHECK, rd, 0, file_size)
+            return
+
+        bufsize = self.tour.ship.protocol_handler.max_res_packet_data_size()
+        agt = GrandAgent.get(self.tour.ship.agent_id)
+        mpx_type = bs.BayServer.harbor.file_multiplexer()
+        if mpx_type == Harbor.MULTIPLEXER_TYPE_SPIDER:
+            mpx = agt.spider_multiplexer
+        elif mpx_type == Harbor.MULTIPLEXER_TYPE_SPIN:
+            mpx = agt.spin_multiplexer
+        elif mpx_type == Harbor.MULTIPLEXER_TYPE_JOB:
+            mpx = agt.job_multiplexer
+        elif mpx_type == Harbor.MULTIPLEXER_TYPE_TAXI:
+            mpx = agt.taxi_multiplexer
+        else:
+            raise Sink()
+
+        ship = SendFileShip()
+        tp = PlainTransporter(mpx, ship, True, bufsize, False)
+        ship.init(rd, tp, self.tour)
+        sid = ship.ship_id
+
+        def on_resume(length, resume):
+            if resume:
+                ship.resume_read(sid)
+
+        self.set_res_consume_listener(on_resume)
+
+        st = RudderState(rd, tp)
+        mpx.add_rudder_state(rd, st)
+        mpx.req_read(rd)
+
+    def transfer_content(self, chk_id, file_rd, ofs, length):
+        BayLog.debug("%s transfer content: ofs=%d len=%d", self, ofs, length)
+
+        def consumed_cb():
+            self.tour.check_tour_id(chk_id)
+            self.res_consume_listener(length, False)
+
+        if self.tour.is_zombie():
+            BayLog.debug("%s zombie tour. return", self)
+            consumed_cb()
+            return
+
+        if not self.header_sent:
+            raise Sink("Header not sent")
+
+        self.bytes_posted += length
+        BayLog.debug("%s posted res content len=%d posted=%d limit=%d consumed=%d",
+                     self.tour, length, self.bytes_posted, self.bytes_limit, self.bytes_consumed)
+
+        if self.tour.is_aborted():
+            BayLog.debug("%s Aborted tour. do nothing: %s state=%s", self, self.tour, self.tour.state)
+            self.tour.change_state(chk_id, tour.Tour.TourState.ENDED)
+            consumed_cb()
+        else:
+            try:
+                self.tour.ship.transfer_res_content(self.tour.ship_id, self.tour, file_rd, ofs, length, consumed_cb)
+            except IOError as e:
+                BayLog.debug("%s error on transferring resContent: %s", self, e)
+                consumed_cb()
+                self.tour.change_state(tour.Tour.TOUR_ID_NOCHECK, tour.Tour.TourState.ABORTED)
+                raise e
+
     def end_res_content(self, chk_id):
         #self.tour.check_tour_id(chk_id)
 
@@ -231,6 +378,9 @@ class TourRes:
 
         if not self.tour.is_zombie() and self.tour.city is not None:
             self.tour.city.log(self.tour)
+
+        if self.tour.cargo is not None:
+            self.tour.cargo.end_save()
 
         # send end message
         if self.can_compress:

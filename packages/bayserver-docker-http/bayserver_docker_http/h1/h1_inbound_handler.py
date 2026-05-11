@@ -128,6 +128,9 @@ class H1InboundHandler(H1Handler, InboundHandler):
         cmd = CmdContent(bytes, ofs, length)
         self.protocol_handler.post(cmd, callback)
 
+    def transfer_content(self, tur, file_rd, ofs, length, lis):
+        self.ship().transporter.req_transfer(tur.ship.rudder, file_rd, ofs, length, lis)
+
     def send_end_tour(self, tur, cb):
         keep_alive = tur.res.headers.get_connection() == Headers.CONNECTION_KEEP_ALIVE
         BayLog.debug("%s %s sendEndTour: tur=%s keep=%s", threading.current_thread().name, self.ship, tur, keep_alive)

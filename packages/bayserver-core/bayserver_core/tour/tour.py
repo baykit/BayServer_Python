@@ -46,6 +46,7 @@ class Tour(Reusable):
     town: "Town"
     city: "City"
     club: "Club"
+    cargo: "Optional[object]"
     interval: int
     is_secure: bool
     error: Optional[BaseException]
@@ -64,6 +65,7 @@ class Tour(Reusable):
         self.town = None
         self.city = None
         self.club = None
+        self.cargo = None
         self.interval = None
         self.is_secure = None
         self.error = None
@@ -85,6 +87,7 @@ class Tour(Reusable):
         self.city = None
         self.town = None
         self.club = None
+        self.cargo = None
         self.error_handling = False
         self.change_state(Tour.TOUR_ID_NOCHECK, Tour.TourState.UNINITIALIZED)
         self.tour_id = Tour.INVALID_TOUR_ID

@@ -98,6 +98,10 @@ class PlainTransporter(Transporter):
         self.check_rudder(rd)
         self.multiplexer.req_write(rd, data, adr, tag, listener)
 
+    def req_transfer(self, rd: Rudder, file_rd: Rudder, ofs: int, length: int, listener: DataConsumeListener) -> None:
+        self.check_rudder(rd)
+        self.multiplexer.req_transfer(rd, file_rd, ofs, length, listener)
+
     def req_close(self, rd: Rudder) -> None:
         self.check_rudder(rd)
         self.closed = True

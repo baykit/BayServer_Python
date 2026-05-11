@@ -127,6 +127,11 @@ class H2InboundHandler(H2Handler, InboundHandler):
         cmd = CmdData(tur.req.key, None, bytes, ofs, length)
         self.protocol_handler.post(cmd, callback)
 
+    def transfer_content(self, tur, file_rd, ofs, length, lis):
+        from bayserver_core.sink import Sink
+        # H2 framing requires user-space encoding, so Direct Boarding is unsupported.
+        raise Sink()
+
     def send_end_tour(self, tur, callback):
         cmd = CmdData(tur.req.key, None, [], 0, 0)
         cmd.flags.set_end_stream(True)

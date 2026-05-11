@@ -31,3 +31,8 @@ class IORudder(Rudder):
 
     def closed(self) -> bool:
         return self.file.closed
+
+    def fileno(self) -> int:
+        # IOBase.fileno() raises OSError when the stream has no fd. The Direct
+        # Boarding path needs a real fd, so propagate the error to the caller.
+        return self.file.fileno()

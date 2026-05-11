@@ -9,6 +9,8 @@ from bayserver_core.bay_message import BayMessage
 from bayserver_core.http_exception import HttpException
 from bayserver_core.symbol import Symbol
 
+from bayserver_core.common.barges import Barges
+from bayserver_core.docker.barge import Barge
 from bayserver_core.docker.city import City
 from bayserver_core.docker.town import Town
 from bayserver_core.docker.club import Club
@@ -18,6 +20,7 @@ from bayserver_core.docker.log import Log
 from bayserver_core.docker.built_in.built_in_town_docker import BuiltInTownDocker
 from bayserver_core.docker.base.docker_base import DockerBase
 from bayserver_core.docker.file.file_docker import FileDocker
+from bayserver_core.tour.tour import Tour
 
 from bayserver_core.util.string_util import StringUtil
 from bayserver_core.util.http_status import HttpStatus
@@ -48,6 +51,7 @@ class BuiltInCityDocker(DockerBase, City):
 
         self.log_list = []
         self.permission_list = []
+        self.barges = Barges()
 
         self.trouble = None
         self.name = None
@@ -88,6 +92,8 @@ class BuiltInCityDocker(DockerBase, City):
             self.permission_list.append(dkr)
         elif isinstance(dkr, Trouble):
             self.trouble = dkr
+        elif isinstance(dkr, Barge):
+            self.barges.add(dkr)
         else:
             return False
         return True
@@ -135,7 +141,64 @@ class BuiltInCityDocker(DockerBase, City):
             clb = match_info.club_match.club
             tur.town = match_info.town
             tur.club = clb
+
+            barge = self._find_barge_for(tur, match_info.town)
+            if barge is not None:
+                cgo, rd = barge.get_cargo(tur)
+
+                if rd is not None:
+                    # Cargo is loading; wait until it is loaded.
+                    self._wait_for_cargo(tur, rd, cgo, clb)
+                    return
+                elif cgo.on_barge():
+                    # Cargo is ready (on cache).
+                    self._serve_from_cargo(tur, cgo)
+                    return
+                else:
+                    tur.cargo = cgo
+
             clb.arrive(tur)
+
+    def _wait_for_cargo(self, tur, rd, cgo, clb):
+        # Imported lazily to avoid bootstrap circular imports.
+        from bayserver_core.agent.grand_agent import GrandAgent
+        from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
+        from bayserver_core.common.rudder_state import RudderState
+        from bayserver_core.docker.built_in.wait_cargo_ship import WaitCargoShip
+
+        agt = GrandAgent.get(tur.ship.agent_id)
+        wait_ship = WaitCargoShip()
+        tp = PlainTransporter(agt.spider_multiplexer, wait_ship, True, 8192, False)
+        wait_ship.init(rd, tp, tur, cgo, clb)
+        agt.spider_multiplexer.add_rudder_state(rd, RudderState(rd, tp))
+        agt.spider_multiplexer.req_read(rd)
+
+    def _serve_from_cargo(self, tur, cgo):
+        from bayserver_core.tour.req_content_handler import ReqContentHandler
+
+        class _CargoReqContentHandler(ReqContentHandler):
+            def on_read_req_content(self, t, buf, start, length, lis):
+                pass
+
+            def on_end_req_content(self, t):
+                cgo.headers().copy_to(t.res.headers)
+                t.res.send_res_headers(Tour.TOUR_ID_NOCHECK)
+                t.res.set_res_consume_listener(lambda length, resume: None)
+                t.res.send_res_content(Tour.TOUR_ID_NOCHECK, cgo.content(), 0, cgo.length())
+                t.res.end_res_content(Tour.TOUR_ID_NOCHECK)
+
+            def on_abort_req(self, t):
+                return False
+
+        tur.req.set_content_handler(_CargoReqContentHandler())
+
+    def _find_barge_for(self, tur, twn):
+        b = twn.find_barge(tur.req.uri)
+        if b is None:
+            b = self.barges.find_barge(tur.req.uri)
+            if b is None:
+                b = BayServer.harbor.find_barge(tur.req.uri)
+        return b
 
     def log(self, tur):
         for dkr in self.log_list:
@@ -159,6 +222,11 @@ class BuiltInCityDocker(DockerBase, City):
 
     def get_trouble(self) -> Trouble:
         return self.trouble
+
+    def find_barge(self, path):
+        # Java BuiltInCityDocker.findBarge always returns null; lookup
+        # happens via the city/town/harbor chain inside enter().
+        return None
 
 
     ######################################################
