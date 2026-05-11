@@ -86,12 +86,12 @@ class MaccaferriDocker(ClubBase):
             raise HttpException(HttpStatus.FORBIDDEN, tur.req.uri)
 
         try:
-            env = CgiUtil.get_env_hash(tur.town.name, self.project, self.project, tur)
+            env = CgiUtil.get_env_hash(tur.town.name(), self.project, self.project, tur)
         except ValueError as e:
             BayLog.error_e(e, traceback.format_stack(), "Invalid CGI environment value")
             raise HttpException(HttpStatus.BAD_REQUEST, tur.req.uri)
 
-        script_name = tur.town.name
+        script_name = tur.town.name()
         if script_name.endswith("/"):
             script_name = script_name[0:len(script_name)-1]
 

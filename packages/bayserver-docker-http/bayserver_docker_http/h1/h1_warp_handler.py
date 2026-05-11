@@ -80,7 +80,7 @@ class H1WarpHandler(H1Handler, WarpHandler):
     def send_req_headers(self, tur: Tour):
         twn = tur.town
 
-        twn_path = twn.name
+        twn_path = twn.name()
         if not twn_path.endswith("/"):
             twn_path += "/"
 

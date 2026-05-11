@@ -202,7 +202,7 @@ class AjpWarpHandler(AjpHandler, WarpHandler):
             rel_uri = tur.req.rewritten_uri
         else:
             rel_uri = tur.req.uri
-        town_path = tur.town.name
+        town_path = tur.town.name()
         if not town_path.endswith("/"):
             town_path += "/"
 

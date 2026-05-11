@@ -18,7 +18,7 @@ from bayserver_core.docker.base.docker_base import DockerBase
 class BuiltInTownDocker(DockerBase, Town):
 
     def __init__(self):
-        self.name = None
+        self._name = None
         self.location = None
         self.welcome = None
         self.clubs = []
@@ -38,9 +38,9 @@ class BuiltInTownDocker(DockerBase, Town):
         if not arg.startswith("/"):
             arg = "/" + arg
 
-        self.name = arg
-        if not self.name.endswith("/"):
-            self.name += "/"
+        self._name = arg
+        if not self._name.endswith("/"):
+            self._name += "/"
 
         self.city = parent
         super().init(elm, parent)
@@ -84,7 +84,7 @@ class BuiltInTownDocker(DockerBase, Town):
     ######################################################
 
     def name(self) -> str:
-        return self.name
+        return self._name
 
     def city(self) -> "c.City":
         return self.city
@@ -108,9 +108,9 @@ class BuiltInTownDocker(DockerBase, Town):
         return uri
 
     def matches(self, uri):
-        if uri.startswith(self.name):
+        if uri.startswith(self._name):
             return BuiltInTownDocker.MATCH_TYPE_MATCHED
-        elif uri + "/" == self.name:
+        elif uri + "/" == self._name:
             return BuiltInTownDocker.MATCH_TYPE_CLOSE
         else:
             return BuiltInTownDocker.MATCH_TYPE_NOT_MATCHED

@@ -30,8 +30,8 @@ class FileDocker(ClubBase):
 
     def arrive(self, tur):
         rel_path = tur.req.rewritten_uri if tur.req.rewritten_uri else tur.req.uri
-        if StringUtil.is_set(tur.town.name):
-            rel_path = rel_path[len(tur.town.name):]
+        if StringUtil.is_set(tur.town.name()):
+            rel_path = rel_path[len(tur.town.name()):]
         pos = rel_path.find('?')
         if pos >= 0:
             rel_path = rel_path[0: pos]

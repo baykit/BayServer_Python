@@ -22,7 +22,7 @@ class WordPressDocker(RerouteBase):
             return uri
 
 
-        rel_path = uri2[len(twn.name):]
+        rel_path = uri2[len(twn.name()):]
         if rel_path.startswith("/"):
             rel_path = rel_path[1:]
 
@@ -38,6 +38,6 @@ class WordPressDocker(RerouteBase):
                 return uri
 
         if not os.path.exists(twn.location + "/" + rel_path):
-            return twn.name + "index.php/" + uri[len(twn.name):]
+            return twn.name() + "index.php/" + uri[len(twn.name()):]
         else:
             return uri

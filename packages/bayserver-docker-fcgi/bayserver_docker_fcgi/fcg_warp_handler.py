@@ -287,7 +287,7 @@ class FcgWarpHandler(WarpHandler, FcgHandler):
                 cmd.add_param(name, value)
 
         try:
-            CgiUtil.get_env(tur.town.name, doc_root, script_base, tur, callback)
+            CgiUtil.get_env(tur.town.name(), doc_root, script_base, tur, callback)
         except ValueError as e:
             BayLog.error_e(e, traceback.format_stack(), "Invalid CGI environment value")
             raise HttpException(HttpStatus.BAD_REQUEST, tur.req.uri)

@@ -14,7 +14,7 @@ class Cities:
         self._cities = []
 
     def add(self, c):
-        if c.name == "*":
+        if c.name() == "*":
             self._any_city = c
         else:
             self._cities.append(c)
@@ -22,7 +22,7 @@ class Cities:
     def find_city(self, name):
         # Check exact match
         for c in self._cities:
-            if c.name == name:
+            if c.name() == name:
                 return c
 
         return self._any_city

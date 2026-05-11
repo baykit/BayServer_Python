@@ -131,14 +131,14 @@ class MemBargeDocker(DockerBase, Barge):
 
     def __init__(self):
         super().__init__()
-        self.name = None
+        self._name = None
         self.capacity_bytes = MemBargeDocker.DEFAULT_CAPACITY
         self._total_size = 0
         self._cargo_map: "OrderedDict[str, MemBargeDocker.MemCargo]" = OrderedDict()
         self._lock = threading.Lock()
 
     def __str__(self):
-        return f"MemBargeDocker[{self.name}]"
+        return f"MemBargeDocker[{self._name}]"
 
     ######################################################
     # Implements Docker
@@ -146,9 +146,9 @@ class MemBargeDocker(DockerBase, Barge):
 
     def init(self, elm, parent):
         super().init(elm, parent)
-        self.name = elm.arg
-        if StringUtil.is_empty(self.name):
-            self.name = "*"
+        self._name = elm.arg
+        if StringUtil.is_empty(self._name):
+            self._name = "*"
 
     ######################################################
     # Implements DockerBase
@@ -167,7 +167,7 @@ class MemBargeDocker(DockerBase, Barge):
     ######################################################
 
     def name(self) -> str:
-        return self.name
+        return self._name
 
     def capacity(self) -> int:
         return self.capacity_bytes

@@ -54,10 +54,10 @@ class BuiltInCityDocker(DockerBase, City):
         self.barges = Barges()
 
         self.trouble = None
-        self.name = None
+        self._name = None
 
     def __str__(self):
-        return f"City[{self.name}]"
+        return f"City[{self._name}]"
 
     ######################################################
     # Implements Docker
@@ -66,11 +66,11 @@ class BuiltInCityDocker(DockerBase, City):
     def init(self, elm, parent):
         super().init(elm, parent)
 
-        self.name = elm.arg
-        self.towns.sort(key=lambda x: len(x.name), reverse=True)
+        self._name = elm.arg
+        self.towns.sort(key=lambda x: len(x.name()), reverse=True)
 
         for t in self.towns:
-            BayLog.debug(BayMessage.get(Symbol.MSG_SETTING_UP_TOWN, t.name, t.location))
+            BayLog.debug(BayMessage.get(Symbol.MSG_SETTING_UP_TOWN, t.name(), t.location))
 
         self.default_town = BuiltInTownDocker()
         self.default_club = FileDocker()
@@ -100,7 +100,7 @@ class BuiltInCityDocker(DockerBase, City):
 
 
     def enter(self, tur):
-        BayLog.debug("%s City[%s] Request URI: %s", tur, self.name, tur.req.uri)
+        BayLog.debug("%s City[%s] Request URI: %s", tur, self._name, tur.req.uri)
 
         tur.city = self
         for p in self.permission_list:
@@ -115,7 +115,7 @@ class BuiltInCityDocker(DockerBase, City):
         if match_info.redirect_uri is not None:
             raise HttpException.moved_temp(match_info.redirect_uri)
         else:
-            BayLog.debug("%s Town[%s] Club[%s]", tur, match_info.town.name, match_info.club_match.club)
+            BayLog.debug("%s Town[%s] Club[%s]", tur, match_info.town.name(), match_info.club_match.club)
 
             tur.req.query_string = match_info.query_string
             tur.req.script_name = match_info.club_match.script_name
@@ -212,7 +212,7 @@ class BuiltInCityDocker(DockerBase, City):
     ######################################################
 
     def name(self) -> str:
-        return self.name
+        return self._name
 
     def clubs(self) -> List[Club]:
         return self.clubs
@@ -314,11 +314,11 @@ class BuiltInCityDocker(DockerBase, City):
             if uri != org_uri:
                 mi.rewritten_uri = uri
 
-            rel = uri[len(t.name):]
+            rel = uri[len(t.name()):]
 
-            mi.club_match = self.club_maches(t.clubs, rel, t.name)
+            mi.club_match = self.club_maches(t.clubs, rel, t.name())
             if mi.club_match is None:
-                mi.club_match = self.club_maches(self.clubs, rel, t.name)
+                mi.club_match = self.club_maches(self.clubs, rel, t.name())
 
 
             if mi.club_match is None:
