@@ -1,0 +1,21 @@
+from setuptools import setup, find_packages
+
+print("packages: " + str(find_packages()))
+
+setup(
+    name='bayserver-docker-pharos',
+    version='${VERSION}',
+    packages=find_packages(),
+    package_data={
+        '': ['LICENSE.BAYKIT', 'README.md'],
+    },
+    install_requires=[
+      "bayserver-core==${VERSION}",
+    ],
+    author='Michisuke-P',
+    author_email='michisukep@gmail.com',
+    description='In-process libphp embedding (Pharos) club docker for BayServer',
+    license='MIT',
+    python_requires=">=3.7",
+    url='https://baykit.yokohama/',
+)
