@@ -13,50 +13,135 @@ class HTree:
 
     root = HNode()
 
+    # 4-bit table-driven decoder. The previous per-bit walk did 8
+    # attribute accesses + a leaf check per input byte; the table version
+    # does two indexed lookups + 0..2 byte appends. Packed entry layout:
+    #   bits 0-7   = first byte to emit (if count >= 1)
+    #   bits 8-15  = second byte to emit (if count == 2)
+    #   bits 16-19 = number of emitted bytes (0..2)
+    #   bits 20-29 = next state id (= internal-node index)
+    #   bit 30     = next state is on the all-ones path (= valid EOS pad)
+    #   bit 31     = invalid (input nibble walks off the tree or hits EOS)
+    _INVALID = 0x80000000
+    _EOS_PREFIX_BIT = 0x40000000
+
+    # Built lazily on the first decode() call (= after the HTree.insert
+    # calls at the bottom of this file have populated the tree).
+    _DECODE_TABLE = None
+    _EOS_PREFIX = None
+
+    @classmethod
+    def _build_decode_table(cls):
+        """Walk the HTree breadth-first and emit a (state, nibble) ->
+        packed-result lookup table. Used by decode() in place of the
+        old per-bit walk."""
+        # 1. Enumerate internal (non-leaf) nodes, root first.
+        state_id = {id(HTree.root): 0}
+        internal = [HTree.root]
+        q = [HTree.root]
+        while q:
+            n = q.pop(0)
+            for c in (n.zero, n.one):
+                if c is not None and c.value <= 0 and id(c) not in state_id:
+                    state_id[id(c)] = len(internal)
+                    internal.append(c)
+                    q.append(c)
+
+        # 2. EOS-prefix path: walk all-ones from root. States on this
+        #    path are valid trailing-bit pads per RFC 7541 § 5.2.
+        eos_prefix = [False] * len(internal)
+        walk = HTree.root
+        while walk is not None and walk.value <= 0:
+            sid = state_id.get(id(walk))
+            if sid is not None:
+                eos_prefix[sid] = True
+            walk = walk.one
+
+        # 3. For every (state, 4-bit nibble), simulate the bit walk and
+        #    record up to two emitted bytes plus the resulting state.
+        table = [0] * (len(internal) * 16)
+        INVALID = HTree._INVALID
+        EOS_PREFIX_BIT = HTree._EOS_PREFIX_BIT
+        EOS = HTree.EOS_SYMBOL
+        for s in range(len(internal)):
+            start_node = internal[s]
+            for nib in range(16):
+                cur = start_node
+                emit1 = 0
+                emit2 = 0
+                count = 0
+                invalid = False
+                for shift in (3, 2, 1, 0):
+                    bit = (nib >> shift) & 1
+                    cur = cur.one if bit == 1 else cur.zero
+                    if cur is None:
+                        invalid = True
+                        break
+                    v = cur.value
+                    if v > 0:
+                        if v == EOS:
+                            invalid = True
+                            break
+                        if count == 0:
+                            emit1 = v
+                        elif count == 1:
+                            emit2 = v
+                        count += 1
+                        cur = HTree.root
+                if invalid:
+                    packed = INVALID
+                else:
+                    next_id = state_id[id(cur)]
+                    packed = ((next_id << 20)
+                              | (count << 16)
+                              | ((emit2 & 0xff) << 8)
+                              | (emit1 & 0xff))
+                    if eos_prefix[next_id]:
+                        packed |= EOS_PREFIX_BIT
+                table[s * 16 + nib] = packed
+        return tuple(table), tuple(eos_prefix)
+
     @classmethod
     def decode(cls, data):
-        w = bytearray()
-        cur = HTree.root
-        bits_since_last_leaf = 0
-        for i in range(len(data)):
-            for j in range(8):
-                bit = data[i] >> (8 - j - 1) & 0x1
+        if HTree._DECODE_TABLE is None:
+            HTree._DECODE_TABLE, HTree._EOS_PREFIX = HTree._build_decode_table()
+        table = HTree._DECODE_TABLE
+        eos_prefix = HTree._EOS_PREFIX
+        INVALID = HTree._INVALID
 
-                # down tree
-                if bit == 1:
-                    cur = cur.one
-                else:
-                    cur = cur.zero
+        out = bytearray()
+        state = 0
+        for b in data:
+            entry = table[(state << 4) | (b >> 4)]
+            if entry & INVALID:
+                raise ProtocolException("Huffman decode: invalid code sequence")
+            count = (entry >> 16) & 0xf
+            if count:
+                out.append(entry & 0xff)
+                if count == 2:
+                    out.append((entry >> 8) & 0xff)
+            state = (entry >> 20) & 0x3ff
 
-                if cur is None:
-                    # Bit pattern does not match any Huffman code.
-                    raise ProtocolException("Huffman decode: invalid code sequence")
-                bits_since_last_leaf += 1
+            entry = table[(state << 4) | (b & 0xf)]
+            if entry & INVALID:
+                raise ProtocolException("Huffman decode: invalid code sequence")
+            count = (entry >> 16) & 0xf
+            if count:
+                out.append(entry & 0xff)
+                if count == 2:
+                    out.append((entry >> 8) & 0xff)
+            state = (entry >> 20) & 0x3ff
 
-                if cur.value > 0:
-                    # leaf node
-                    # RFC 7541 § 5.2: EOS must not appear inside a string literal.
-                    if cur.value == HTree.EOS_SYMBOL:
-                        raise ProtocolException("Huffman decode: EOS symbol in string literal")
-                    w.append(cur.value)
-                    cur = HTree.root
-                    bits_since_last_leaf = 0
-
-        if cur is not HTree.root:
-            # RFC 7541 § 5.2: any trailing bits form a padding that must be a
-            # strict prefix of the EOS code (which is all 1s) and be no longer
-            # than 7 bits.
-            if bits_since_last_leaf > 7:
-                raise ProtocolException(
-                    f"Huffman decode: padding longer than 7 bits ({bits_since_last_leaf})")
-            if not HTree._is_eos_prefix(cur):
-                raise ProtocolException("Huffman decode: padding must be MSB of EOS (all 1s)")
+        if state != 0 and not eos_prefix[state]:
+            # RFC 7541 § 5.2: trailing bits must be a strict prefix of EOS.
+            raise ProtocolException(
+                "Huffman decode: padding must be MSB of EOS (all 1s)")
 
         try:
-            return w.decode("us-ascii")
+            return out.decode("us-ascii")
         except UnicodeDecodeError as e:
-            BayLog.warn_e(e, traceback.format_stack(),"Decode error (use utf-8): %s", ExceptionUtil.message(e))
-            return w.decode("utf-8")
+            BayLog.warn_e(e, traceback.format_stack(), "Decode error (use utf-8): %s", ExceptionUtil.message(e))
+            return out.decode("utf-8")
 
     @classmethod
     def _is_eos_prefix(cls, node):

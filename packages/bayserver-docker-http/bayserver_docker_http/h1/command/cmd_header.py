@@ -44,6 +44,8 @@ class CmdHeader(H1Command):
         self.uri = None
         self.version = None
         self.status = None
+        # Reusable scratch buffer for unpack_message_header. Sized lazily.
+        self._parse_scratch = None
 
     def __str__(self):
         return "CommandHeader[H1]"
@@ -194,38 +196,50 @@ class CmdHeader(H1Command):
             raise ProtocolException(BayMessage.get(Symbol.HTP_INVALID_FIRST_LINE, line))
 
     def  unpack_message_header(self, byte_array, start, length):
-        buf = bytearray()
+        # ASCII fast path on a reusable bytearray scratch. The previous
+        # version allocated two fresh bytearrays per call (one for name,
+        # one for value) and appended byte-by-byte. The Python loop is
+        # already ASCII-only (CharUtil.lower folds A-Z only, no Unicode),
+        # but the per-byte append + per-line alloc are the dominant
+        # costs at small bodies on keep-alive.
+        if self._parse_scratch is None or len(self._parse_scratch) < length:
+            self._parse_scratch = bytearray(max(length, 64))
+        buf = self._parse_scratch
+
         read_name = True
-        name = None
         skipping = True
+        pos = 0
+        colon_pos = -1
+        SPACE = CharUtil.SPACE_BYTE
+        TAB = 9
+        COLON = CharUtil.COLON_BYTE
+        A = CharUtil.A_BYTE
+        Z = CharUtil.Z_BYTE
+        DIFF = CharUtil.CASE_DIFF
 
         for i in range(length):
             b = byte_array[start + i]
-            if skipping and b == CharUtil.SPACE_BYTE:
+            if skipping and (b == SPACE or b == TAB):
                 continue
-            elif read_name and b == CharUtil.COLON_BYTE:
-                # header name completed
-                name = buf
-                buf = bytearray()
+            if read_name and b == COLON:
+                colon_pos = pos
                 skipping = True
                 read_name = False
-            else:
-                if read_name:
-                    # make the case of header name be lower force
-                    buf.append(CharUtil.lower(b))
-                else:
-                    # header value
-                    buf.append(b)
+                continue
+            if read_name and A <= b <= Z:
+                b += DIFF
+            buf[pos] = b
+            pos += 1
+            skipping = False
 
-                skipping = False
-
-        if name is None:
+        if colon_pos < 0:
             raise ProtocolException(
                 BayMessage.get(
                     Symbol.HTP_INVALID_HEADER_FORMAT,
-                    StringUtil.from_bytes(buf[start: start + length])))
+                    StringUtil.from_bytes(byte_array[start: start + length])))
 
-        value = buf
+        name = bytes(buf[:colon_pos])
+        value = bytes(buf[colon_pos:pos])
 
         self.add_header(StringUtil.from_bytes(name), StringUtil.from_bytes(value))
 
