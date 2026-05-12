@@ -171,7 +171,13 @@ class GrandAgent:
                     if self.net_multiplexer.is_non_blocking():
                         rd.set_non_blocking()
                     port_dkr = bs.BayServer.unanchorable_port_map[rd]
-                    port_dkr.on_connected(self.agent_id, rd)
+                    # Ruby parity: ask the port docker to build the H3
+                    # transporter rather than calling on_connected, which
+                    # is the TCP wrap_socket path and does not apply to
+                    # UDP.
+                    tp = port_dkr.new_transporter(self.agent_id, rd)
+                    self.net_multiplexer.add_rudder_state(rd, RudderState(rd, tp))
+                    self.net_multiplexer.req_read(rd)
 
         busy = True
         try:

@@ -67,7 +67,10 @@ class QicTransporter(Transporter):
         pass
 
     def is_secure(self):
-        return True
+        # QUIC's TLS lives inside libquiche, not at the bayserver-core
+        # transport layer. Reporting False keeps RudderState from arming
+        # the TCP-level do_handshake() path.
+        return False
 
     def on_connected(self, rd):
         raise Sink()

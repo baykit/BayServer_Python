@@ -107,7 +107,7 @@ class QicInboundHandler(InboundHandler, QicHandler):
             self.protocol_handler.add_partial_response(stm_id, part)
         elif listener is not None:
             try:
-                listener(True, False)
+                listener()
             except Exception as e:
                 BayLog.error_e(e, traceback.format_stack())
 
@@ -144,7 +144,7 @@ class QicInboundHandler(InboundHandler, QicHandler):
                 stm_id, _PartialResponse(fin=True, listener=listener))
         elif listener is not None:
             try:
-                listener(True, False)
+                listener()
             except Exception as e:
                 BayLog.error_e(e, traceback.format_stack())
 

@@ -365,8 +365,16 @@ class BayServer:
                 GrandAgentMonitor.add(False)
 
         GrandAgentMonitor.init(cls.harbor.grand_agents())
-        for i in range(0, cls.harbor.grand_agents()):
-            GrandAgentMonitor.add(True)
+        # Only spawn anchorable (TCP) agents if there is at least one TCP
+        # listener. A UDP-only config (e.g. an H3-only port) otherwise
+        # creates an idle TCP agent that, under multi_core, races the real
+        # UDP agent for incoming datagrams because child_start derives
+        # anchorability from inherited channels (which are UDP-only).
+        has_anchorable = any(d.anchored() and not d.self_listen()
+                             for d in cls.port_docker_list)
+        if has_anchorable:
+            for i in range(0, cls.harbor.grand_agents()):
+                GrandAgentMonitor.add(True)
 
         SignalAgent.init(cls.harbor.control_port())
         cls.create_pid_file(SysUtil.pid())

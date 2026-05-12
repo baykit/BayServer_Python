@@ -185,20 +185,26 @@ class QicProtocolHandler(ProtocolHandler):
                     BayLog.debug("%s stm#%d retry header sent", self, stm_id)
                     part.finished = True
                 else:
-                    body = part.body[part.written:]
+                    # fin-only sentinel: body is None, just send fin.
+                    body = part.body[part.written:] if part.body is not None else b""
                     try:
                         n = self.h3con.send_body(stm_id, body, part.fin)
                     except CrouteError as e:
                         BayLog.error("%s stm#%d retry body failed: %s", self, stm_id, e)
                         break
-                    if n == 0:
-                        BayLog.debug("%s stm#%d retry body DONE (no capacity)", self, stm_id)
-                        break
-                    part.written += n
-                    if part.written == len(part.body):
+                    if part.body is None:
+                        # Fin without payload: a successful send means the
+                        # FIN frame is queued; nothing else to retry.
                         part.finished = True
                     else:
-                        break
+                        if n == 0:
+                            BayLog.debug("%s stm#%d retry body DONE (no capacity)", self, stm_id)
+                            break
+                        part.written += n
+                        if part.written == len(part.body):
+                            part.finished = True
+                        else:
+                            break
 
             new_parts = []
             for p in parts:
@@ -217,7 +223,7 @@ class QicProtocolHandler(ProtocolHandler):
 
         for lis in listeners:
             try:
-                lis(True, False)
+                lis()
             except Exception as e:
                 BayLog.error_e(e, traceback.format_stack())
 

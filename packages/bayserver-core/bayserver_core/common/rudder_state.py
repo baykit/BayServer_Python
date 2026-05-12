@@ -39,9 +39,12 @@ class RudderState:
         self.timeout_sec = timeout_sec
         self.closed = False
 
+        from bayserver_core.rudder.udp_socket_rudder import UdpSocketRudder
         if tp is not None:
             self.buf_size = tp.get_read_buffer()
-            self.handshaking = tp.is_secure()
+            # UDP rudders run TLS at the QUIC layer (croute / libquiche);
+            # the TCP-level do_handshake() path does not apply.
+            self.handshaking = tp.is_secure() and not isinstance(rd, UdpSocketRudder)
         else:
             self.buf_size = 8192
             self.handshaking = False

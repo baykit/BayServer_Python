@@ -93,7 +93,11 @@ class H3PortDocker(PortBase, H3Docker):
     def support_unanchored(self):
         return True
 
-    def on_connected(self, agent_id, rd):
+    def new_transporter(self, agent_id, rd):
+        """Ruby-parity entry point: grand_agent calls this when it
+        registers a UDP listener with the multiplexer. Build and return
+        the H3 transporter; bayserver-core handles RudderState setup
+        and req_read on the returned value."""
         # Lazy import to avoid pulling croute into module-load order for
         # users that never enable H3.
         from bayserver_docker_http3.qic_transporter import QicTransporter
@@ -102,13 +106,4 @@ class H3PortDocker(PortBase, H3Docker):
         agt = GrandAgent.get(agent_id)
         tp = QicTransporter()
         tp.init_udp(agent_id, rd, agt.net_multiplexer, self)
-
-        # Reuse existing rudder state if any, otherwise create one.
-        st = agt.net_multiplexer.get_rudder_state(rd)
-        if st is None:
-            from bayserver_core.common.rudder_state import RudderState
-            st = RudderState(rd, tp)
-            agt.net_multiplexer.add_rudder_state(rd, st)
-        else:
-            st.transporter = tp
-        agt.net_multiplexer.req_read(rd)
+        return tp

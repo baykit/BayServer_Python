@@ -425,7 +425,7 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
     def _on_readable(self, st: RudderState) -> None:
 
         try:
-            if st.handshaking:
+            if st.handshaking and not isinstance(st.rudder, UdpSocketRudder):
                 try:
                     st.rudder.key().do_handshake()
                     BayLog.debug("%s Handshake done (rd=%s)", self, st.rudder)
