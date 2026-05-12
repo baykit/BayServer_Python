@@ -29,6 +29,10 @@ class HtpWarpDocker(WarpBase, HtpDocker):
         super().__init__()
         self.secure = False
         self.support_h2 = True
+        # When true, the warp uses H2 from the start (h2c on cleartext, h2 on
+        # TLS without ALPN negotiation). Defaults to False so existing
+        # httpWarp configs keep their H1 behaviour.
+        self.enable_h2 = False
         self.ssl_ctx = None
         self.trace_ssl = False
 
@@ -58,6 +62,9 @@ class HtpWarpDocker(WarpBase, HtpDocker):
         if key == "supporth2":
             self.support_h2 = StringUtil.parse_bool(kv.value)
 
+        elif key == "enableh2":
+            self.enable_h2 = StringUtil.parse_bool(kv.value)
+
         elif key == "tracessl":
             self.trace_ssl = StringUtil.parse_bool(kv.value)
 
@@ -81,7 +88,13 @@ class HtpWarpDocker(WarpBase, HtpDocker):
     ######################################################
 
     def protocol(self):
-        return HtpDocker.H1_PROTO_NAME
+        # When enableh2 is set, the warp speaks HTTP/2 from the start:
+        #   - secure=False -> h2c (cleartext H2 with prior knowledge); the
+        #     H2WarpHandler emits the connection preface + initial SETTINGS
+        #     on the first send_req_headers call.
+        #   - secure=True  -> h2 over TLS *without* ALPN negotiation. Most
+        #     servers also accept this when their listener is h2-enabled.
+        return HtpDocker.H2_PROTO_NAME if self.enable_h2 else HtpDocker.H1_PROTO_NAME
 
     def new_transporter(self, agt: GrandAgent, rd: SocketRudder, sip: Ship):
         if self.secure:
