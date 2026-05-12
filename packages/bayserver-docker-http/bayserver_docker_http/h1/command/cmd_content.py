@@ -9,6 +9,19 @@ class CmdContent(H1Command):
         self.start = start
         self.length = length
 
+    def init(self, buf=None, start=None, length=None):
+        """Re-initialise a pooled CmdContent for the next rental."""
+        self.buf = buf
+        self.start = start
+        self.length = length
+
+    def reset(self):
+        # Drop the buffer reference so a pooled CmdContent doesn't pin
+        # the previous tour's bytes after Return.
+        self.buf = None
+        self.start = None
+        self.length = None
+
     def unpack(self, pkt):
         self.buf = pkt.buf
         self.start = pkt.header_len

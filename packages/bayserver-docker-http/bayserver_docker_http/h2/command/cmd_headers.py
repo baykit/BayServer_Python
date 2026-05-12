@@ -23,7 +23,7 @@ from bayserver_docker_http.h2.header_block import HeaderBlock
 
 class CmdHeaders(H2Command):
 
-    def __init__(self, stream_id, flags=None):
+    def __init__(self, stream_id=0, flags=None):
         super().__init__(H2Type.HEADERS, stream_id, flags)
         self.header_blocks = []
         self.pad_length = 0
@@ -35,6 +35,28 @@ class CmdHeaders(H2Command):
         # case where the HPACK block must be decoded only after the final
         # CONTINUATION's END_HEADERS arrives — parsing mid-block can split
         # a literal field representation.
+        self.data = None
+        self.start = 0
+        self.length = 0
+
+    def init(self, stream_id, flags=None):
+        super().init(stream_id, flags)
+        self.header_blocks.clear()
+        self.pad_length = 0
+        self.excluded = False
+        self.stream_dependency = 0
+        self.weight = 0
+        self.data = None
+        self.start = 0
+        self.length = 0
+
+    def reset(self):
+        super().reset()
+        self.header_blocks.clear()
+        self.pad_length = 0
+        self.excluded = False
+        self.stream_dependency = 0
+        self.weight = 0
         self.data = None
         self.start = 0
         self.length = 0

@@ -13,8 +13,16 @@ from bayserver_docker_http.h2.h2_type import H2Type
 class CmdPreface(H2Command):
     PREFACE_BYTES = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n".encode("us-ascii")
 
-    def __init__(self, stream_id, flags=None):
+    def __init__(self, stream_id=0, flags=None):
         super().__init__(H2Type.PREFACE, stream_id, flags)
+        self.protocol = None
+
+    def init(self, stream_id, flags=None):
+        super().init(stream_id, flags)
+        self.protocol = None
+
+    def reset(self):
+        super().reset()
         self.protocol = None
 
     def unpack(self, pkt):

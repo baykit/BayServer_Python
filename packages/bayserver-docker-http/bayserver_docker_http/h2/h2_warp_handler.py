@@ -50,9 +50,9 @@ class H2WarpHandler(H2Handler, WarpHandler):
 
     class WarpProtocolHandlerFactory(ProtocolHandlerFactory):
 
-        def create_protocol_handler(self, pkt_store):
+        def create_protocol_handler(self, pkt_store, cmd_store=None):
             warp_handler = H2WarpHandler()
-            cmd_unpacker = H2CommandUnPacker(warp_handler)
+            cmd_unpacker = H2CommandUnPacker(warp_handler, cmd_store)
             # server_mode=False on the warp side: we send the preface, we
             # never expect to receive one.
             pkt_unpacker = H2PacketUnPacker(cmd_unpacker, pkt_store, False)
@@ -60,7 +60,7 @@ class H2WarpHandler(H2Handler, WarpHandler):
             cmd_packer = CommandPacker(pkt_packer, pkt_store)
             proto_handler = H2ProtocolHandler(
                 warp_handler, pkt_unpacker, pkt_packer,
-                cmd_unpacker, cmd_packer, False)
+                cmd_unpacker, cmd_packer, False, cmd_store)
             warp_handler.init(proto_handler)
             return proto_handler
 

@@ -16,8 +16,20 @@ from bayserver_docker_http.h2.h2_packet import H2Packet
 #
 class CmdPriority(H2Command):
 
-    def __init__(self, stream_id, flags=None):
+    def __init__(self, stream_id=0, flags=None):
         super().__init__(H2Type.PRIORITY, stream_id, flags)
+        self.weight = None
+        self.excluded = None
+        self.stream_dependency = None
+
+    def init(self, stream_id, flags=None):
+        super().init(stream_id, flags)
+        self.weight = None
+        self.excluded = None
+        self.stream_dependency = None
+
+    def reset(self):
+        super().reset()
         self.weight = None
         self.excluded = None
         self.stream_dependency = None

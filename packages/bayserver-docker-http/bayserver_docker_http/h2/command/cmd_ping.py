@@ -4,11 +4,17 @@ from bayserver_docker_http.h2.h2_type import H2Type
 
 class CmdPing(H2Command):
 
-    def __init__(self, stream_id, flags=None, opaque_data=None):
+    def __init__(self, stream_id=0, flags=None, opaque_data=None):
         super().__init__(H2Type.PING, stream_id, flags)
+        # opaque_data is preserved on reset to keep a hot 8-byte buffer.
         if opaque_data is None:
             self.opaque_data = bytearray(8)
         else:
+            self.opaque_data = opaque_data
+
+    def init(self, stream_id, flags=None, opaque_data=None):
+        super().init(stream_id, flags)
+        if opaque_data is not None:
             self.opaque_data = opaque_data
 
     def unpack(self, pkt):

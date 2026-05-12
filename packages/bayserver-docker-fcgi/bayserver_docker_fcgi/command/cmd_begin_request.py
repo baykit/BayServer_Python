@@ -24,8 +24,18 @@ class CmdBeginRequest(FcgCommand):
 
     RESERVED = [CharUtil.SPACE_BYTE] * 5
 
-    def __init__(self, req_id):
+    def __init__(self, req_id=0):
         super().__init__(FcgType.BEGIN_REQUEST, req_id)
+        self.role = None
+        self.keep_conn = None
+
+    def init(self, req_id):
+        super().init(req_id)
+        self.role = None
+        self.keep_conn = None
+
+    def reset(self):
+        super().reset()
         self.role = None
         self.keep_conn = None
 

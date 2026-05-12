@@ -36,7 +36,7 @@ class CmdHeader(H1Command):
     STATE_READ_FIRST_LINE = 1
     STATE_READ_MESSAGE_HEADERS = 2
 
-    def __init__(self, is_req_header):
+    def __init__(self, is_req_header=False):
         H1Command.__init__(self, H1Type.HEADER)
         self.headers = []
         self.is_req_header = is_req_header
@@ -44,8 +44,29 @@ class CmdHeader(H1Command):
         self.uri = None
         self.version = None
         self.status = None
-        # Reusable scratch buffer for unpack_message_header. Sized lazily.
+        # Reusable scratch buffer for unpack_message_header. Sized lazily
+        # and intentionally NOT cleared in reset() so a pooled CmdHeader
+        # keeps a hot buffer across rents.
         self._parse_scratch = None
+
+    def init(self, is_req_header):
+        """Re-initialise a pooled CmdHeader for the next rental."""
+        self.is_req_header = is_req_header
+        self.method = None
+        self.uri = None
+        self.version = None
+        self.status = None
+        self.headers.clear()
+
+    def reset(self):
+        # Clear per-rental fields. _parse_scratch is intentionally
+        # preserved so the next rental skips the bytearray realloc.
+        self.is_req_header = False
+        self.method = None
+        self.uri = None
+        self.version = None
+        self.status = None
+        self.headers.clear()
 
     def __str__(self):
         return "CommandHeader[H1]"

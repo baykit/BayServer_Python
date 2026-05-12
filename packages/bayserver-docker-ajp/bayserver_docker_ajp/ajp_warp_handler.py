@@ -23,14 +23,16 @@ from bayserver_docker_ajp.command.cmd_data import CmdData
 class AjpWarpHandler(AjpHandler, WarpHandler):
     class WarpProtocolHandlerFactory:
 
-        def create_protocol_handler(self, pkt_store):
+        def create_protocol_handler(self, pkt_store, cmd_store=None):
             ib_handler = AjpWarpHandler()
-            cmd_unpacker = AjpCommandUnPacker(ib_handler)
+            cmd_unpacker = AjpCommandUnPacker(ib_handler, cmd_store)
             pkt_unpacker = AjpPacketUnPacker(pkt_store, cmd_unpacker)
             pkt_packer = PacketPacker()
             cmd_packer = CommandPacker(pkt_packer, pkt_store)
 
-            proto_handler = AjpProtocolHandler(ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker, cmd_packer, False)
+            proto_handler = AjpProtocolHandler(
+                ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker,
+                cmd_packer, False, cmd_store)
             ib_handler.init(proto_handler)
             return proto_handler
 

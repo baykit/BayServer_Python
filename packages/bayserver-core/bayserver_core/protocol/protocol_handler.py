@@ -4,6 +4,7 @@ from typing import Callable, Any
 from bayserver_core.protocol.command import Command
 from bayserver_core.protocol.command_handler import CommandHandler
 from bayserver_core.protocol.command_packer import CommandPacker
+from bayserver_core.protocol.command_store import CommandStore
 from bayserver_core.protocol.command_unpacker import CommandUnPacker
 from bayserver_core.protocol.packet_packer import PacketPacker
 from bayserver_core.protocol.packet_unpacker import PacketUnPacker
@@ -19,6 +20,12 @@ class ProtocolHandler(Reusable, metaclass=ABCMeta):
     command_unpacker: CommandUnPacker
     command_packer: CommandPacker
     command_handler: CommandHandler
+    # Per-agent Command pool. Consumed by command_unpacker (= rent on
+    # packet receive) and the InboundHandler / WarpHandler send-side
+    # paths (= rent + post + Return). Optional so legacy factories that
+    # haven't been migrated still work (they pass None and fall back to
+    # plain Command() allocation).
+    command_store: CommandStore
     server_mode: bool
     ship: Ship
 
@@ -28,12 +35,14 @@ class ProtocolHandler(Reusable, metaclass=ABCMeta):
                  command_unpacker: CommandUnPacker,
                  command_packer: CommandPacker,
                  command_handler: CommandHandler,
-                 server_mode: bool):
+                 server_mode: bool,
+                 command_store: CommandStore = None):
         self.packet_unpacker = packet_unpacker
         self.packet_packer = packet_packer
         self.command_unpacker = command_unpacker
         self.command_packer = command_packer
         self.command_handler = command_handler
+        self.command_store = command_store
         self.server_mode = server_mode
         self.ship = None
 

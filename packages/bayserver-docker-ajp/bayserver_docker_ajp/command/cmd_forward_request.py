@@ -133,6 +133,32 @@ class CmdForwardRequest(AjpCommand):
         self.headers = Headers()
         self.attributes = {}
 
+    def init(self):
+        self.method = None
+        self.protocol = None
+        self.req_uri = None
+        self.remote_addr = None
+        self.remote_host = None
+        self.server_name = None
+        self.server_port = None
+        self.is_ssl = None
+        # Reuse Headers / attributes instances: callers index in fresh
+        # per request. Clear out previous values so the pool doesn't
+        # leak state across rentals.
+        self.headers = Headers()
+        self.attributes.clear()
+
+    def reset(self):
+        self.method = None
+        self.protocol = None
+        self.req_uri = None
+        self.remote_addr = None
+        self.remote_host = None
+        self.server_name = None
+        self.server_port = None
+        self.is_ssl = None
+        self.attributes.clear()
+
 
     def __str__(self):
         return f"ForwardRequest(m={self.method} p={self.protocol} u={self.req_uri} ra={self.remote_addr} rh={self.remote_host} sn={self.server_name} sp={self.server_port} ss={self.is_ssl} h={self.headers}"

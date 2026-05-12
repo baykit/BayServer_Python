@@ -18,14 +18,16 @@ class H1ProtocolHandler(ProtocolHandler):
                  packet_packer: PacketPacker,
                  command_unpacker: H1CommandUnPacker,
                  command_packer: CommandPacker,
-                 svr_mode: bool):
+                 svr_mode: bool,
+                 cmd_store=None):
         super().__init__(
             packet_unpacker,
             packet_packer,
             command_unpacker,
             command_packer,
             h1_handler,
-            svr_mode
+            svr_mode,
+            cmd_store
         )
         self.keeping = False
 

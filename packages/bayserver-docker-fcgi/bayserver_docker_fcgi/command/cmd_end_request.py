@@ -27,8 +27,18 @@ class CmdEndRequest(FcgCommand):
 
     RESERVED = [CharUtil.SPACE_BYTE] * 3
 
-    def __init__(self, req_id):
+    def __init__(self, req_id=0):
         super().__init__(FcgType.END_REQUEST, req_id)
+        self.app_status = 0
+        self.protocol_status = CmdEndRequest.FCGI_REQUEST_COMPLETE
+
+    def init(self, req_id):
+        super().init(req_id)
+        self.app_status = 0
+        self.protocol_status = CmdEndRequest.FCGI_REQUEST_COMPLETE
+
+    def reset(self):
+        super().reset()
         self.app_status = 0
         self.protocol_status = CmdEndRequest.FCGI_REQUEST_COMPLETE
 

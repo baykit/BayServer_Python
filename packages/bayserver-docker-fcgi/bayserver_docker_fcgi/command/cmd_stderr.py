@@ -12,7 +12,7 @@ from bayserver_docker_fcgi.command.in_out_command_base import InOutCommandBase
 
 class CmdStdErr(InOutCommandBase):
 
-    def __init__(self, req_id):
+    def __init__(self, req_id=0):
         super().__init__(FcgType.STDERR, req_id)
 
     def handle(self, cmd_handler):

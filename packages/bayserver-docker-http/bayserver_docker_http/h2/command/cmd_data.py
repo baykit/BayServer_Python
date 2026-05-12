@@ -17,11 +17,23 @@ from bayserver_docker_http.h2.h2_type import H2Type
 
 class CmdData(H2Command):
 
-    def __init__(self, stream_id, flags, data=None, start=None, length=None):
+    def __init__(self, stream_id=0, flags=None, data=None, start=None, length=None):
         super().__init__(H2Type.DATA, stream_id, flags)
         self.data = data
         self.start = start
         self.length = length
+
+    def init(self, stream_id, flags=None, data=None, start=None, length=None):
+        super().init(stream_id, flags)
+        self.data = data
+        self.start = start
+        self.length = length
+
+    def reset(self):
+        super().reset()
+        self.data = None
+        self.start = None
+        self.length = None
 
     def unpack(self, pkt):
         super().unpack(pkt)

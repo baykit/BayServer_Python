@@ -1,5 +1,6 @@
 from bayserver_core.agent.grand_agent import GrandAgent
 from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
+from bayserver_core.protocol.command_store import CommandStore
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
 from bayserver_core.docker.base.warp_base import WarpBase
@@ -7,6 +8,7 @@ from bayserver_core.rudder.socket_rudder import SocketRudder
 from bayserver_core.ship.ship import Ship
 from bayserver_core.util.io_util import IOUtil
 
+from bayserver_docker_ajp.ajp_command_factory import AjpCommandFactory
 from bayserver_docker_ajp.ajp_docker import AjpDocker
 from bayserver_docker_ajp.ajp_packet_factory import AjpPacketFactory
 from bayserver_docker_ajp.ajp_warp_handler import AjpWarpHandler
@@ -39,6 +41,10 @@ class AjpWarpDocker(WarpBase, AjpDocker):
     PacketStore.register_protocol(
         AjpDocker.PROTO_NAME,
         AjpPacketFactory()
+    )
+    CommandStore.register_protocol(
+        AjpDocker.PROTO_NAME,
+        AjpCommandFactory()
     )
     ProtocolHandlerStore.register_protocol(
         AjpDocker.PROTO_NAME,

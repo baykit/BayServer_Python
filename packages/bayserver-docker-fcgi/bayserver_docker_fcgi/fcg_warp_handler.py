@@ -38,14 +38,16 @@ from bayserver_docker_fcgi.fcg_params import FcgParams
 class FcgWarpHandler(WarpHandler, FcgHandler):
     class WarpProtocolHandlerFactory(ProtocolHandlerFactory):
 
-        def create_protocol_handler(self, pkt_store):
+        def create_protocol_handler(self, pkt_store, cmd_store=None):
             ib_handler = FcgWarpHandler()
-            cmd_unpacker = FcgCommandUnPacker(ib_handler)
+            cmd_unpacker = FcgCommandUnPacker(ib_handler, cmd_store)
             pkt_unpacker = FcgPacketUnPacker(pkt_store, cmd_unpacker)
             pkt_packer = PacketPacker()
             cmd_packer = CommandPacker(pkt_packer, pkt_store)
 
-            proto_handler = FcgProtocolHandler(ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker, cmd_packer, False)
+            proto_handler = FcgProtocolHandler(
+                ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker,
+                cmd_packer, False, cmd_store)
             ib_handler.init(proto_handler)
             return proto_handler
 

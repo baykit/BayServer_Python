@@ -19,8 +19,20 @@ from bayserver_docker_http.h2.h2_packet import H2Packet
 
 class CmdGoAway(H2Command):
 
-    def __init__(self, stream_id, flags=None):
+    def __init__(self, stream_id=0, flags=None):
         super().__init__(H2Type.GOAWAY, stream_id, flags)
+        self.last_stream_id = None
+        self.error_code = None
+        self.debug_data = None
+
+    def init(self, stream_id, flags=None):
+        super().init(stream_id, flags)
+        self.last_stream_id = None
+        self.error_code = None
+        self.debug_data = None
+
+    def reset(self):
+        super().reset()
         self.last_stream_id = None
         self.error_code = None
         self.debug_data = None

@@ -34,8 +34,12 @@ class H2CommandUnPacker(CommandUnPacker):
     STATE_HALF_CLOSED_REMOTE = 2
     STATE_CLOSED = 3
 
-    def __init__(self, cmd_handler):
+    def __init__(self, cmd_handler, cmd_store=None):
         self.cmd_handler = cmd_handler
+        # Per-agent Command pool (optional). When supplied, packet_received
+        # rents a pooled Command from this store and Returns it after
+        # handle() runs; otherwise it allocates a fresh Command per frame.
+        self.cmd_store = cmd_store
         # RFC 7540 § 6.2 / § 6.10: HEADERS without END_HEADERS starts a header
         # block that must be terminated by CONTINUATION on the same stream.
         self.in_header_block = False
@@ -73,7 +77,10 @@ class H2CommandUnPacker(CommandUnPacker):
         self._validate_frame(pkt)
         self._validate_stream_state(pkt)
 
-        if t == H2Type.PREFACE:
+        if self.cmd_store is not None:
+            cmd = self.cmd_store.rent(t)
+            cmd.init(pkt.stream_id, pkt.flags)
+        elif t == H2Type.PREFACE:
             cmd = CmdPreface(pkt.stream_id, pkt.flags)
         elif t == H2Type.HEADERS:
             cmd = CmdHeaders(pkt.stream_id, pkt.flags)
@@ -103,8 +110,12 @@ class H2CommandUnPacker(CommandUnPacker):
         self._update_header_block_state(pkt)
         self._update_stream_state(pkt)
 
-        cmd.unpack(pkt)
-        return cmd.handle(self.cmd_handler)
+        try:
+            cmd.unpack(pkt)
+            return cmd.handle(self.cmd_handler)
+        finally:
+            if self.cmd_store is not None:
+                self.cmd_store.Return(cmd)
 
     @staticmethod
     def _is_known_type(t):

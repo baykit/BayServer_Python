@@ -1,7 +1,9 @@
 from bayserver_core.docker.base.port_base import PortBase
+from bayserver_core.protocol.command_store import CommandStore
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
 
+from bayserver_docker_ajp.ajp_command_factory import AjpCommandFactory
 from bayserver_docker_ajp.ajp_docker import AjpDocker
 from bayserver_docker_ajp.ajp_packet_factory import AjpPacketFactory
 from bayserver_docker_ajp.ajp_inbound_handler import AjpInboundHandler
@@ -37,6 +39,10 @@ class AjpPortDocker(PortBase, AjpDocker):
     PacketStore.register_protocol(
         AjpDocker.PROTO_NAME,
         AjpPacketFactory()
+    )
+    CommandStore.register_protocol(
+        AjpDocker.PROTO_NAME,
+        AjpCommandFactory()
     )
     ProtocolHandlerStore.register_protocol(
         AjpDocker.PROTO_NAME,

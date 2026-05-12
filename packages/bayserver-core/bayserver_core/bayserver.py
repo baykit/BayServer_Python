@@ -29,6 +29,7 @@ from bayserver_core.docker.city import City
 from bayserver_core.docker.harbor import Harbor
 from bayserver_core.common.inbound_ship_store import InboundShipStore
 from bayserver_core.docker.port import Port
+from bayserver_core.protocol.command_store import CommandStore
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
 from bayserver_core.tour.tour_store import TourStore
@@ -228,6 +229,7 @@ class BayServer:
 
             # Init stores, memory usage managers
             PacketStore.init()
+            CommandStore.init()
             ProtocolHandlerStore.init()
             InboundShipStore.init()
             TourStore.init(TourStore.MAX_TOURS)

@@ -15,6 +15,12 @@ class CmdGetBodyChunk(AjpCommand):
         super().__init__(AjpType.GET_BODY_CHUNK, False)
         self.req_len = None
 
+    def init(self):
+        self.req_len = None
+
+    def reset(self):
+        self.req_len = None
+
     def pack(self, pkt):
         acc = pkt.new_ajp_data_accessor()
         acc.put_byte(self.type)

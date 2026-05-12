@@ -38,9 +38,17 @@ class CmdSettings(H2Command):
     INIT_MAX_FRAME_SIZE = 16384
     INIT_MAX_HEADER_LIST_SIZE = -1
 
-    def __init__(self, stream_id, flags=None):
+    def __init__(self, stream_id=0, flags=None):
         super().__init__(H2Type.SETTINGS, stream_id, flags)
         self.items = []
+
+    def init(self, stream_id, flags=None):
+        super().init(stream_id, flags)
+        self.items.clear()
+
+    def reset(self):
+        super().reset()
+        self.items.clear()
 
     def unpack(self, pkt):
         super().unpack(pkt)

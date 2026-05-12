@@ -63,9 +63,17 @@ class CmdParams(FcgCommand):
 
     params: List[List[str]]
 
-    def __init__(self, req_id):
+    def __init__(self, req_id=0):
         super().__init__(FcgType.PARAMS, req_id)
         self.params = []
+
+    def init(self, req_id):
+        super().init(req_id)
+        self.params.clear()
+
+    def reset(self):
+        super().reset()
+        self.params.clear()
 
     def __str__(self):
         return f"FcgCmdParams{self.params}"

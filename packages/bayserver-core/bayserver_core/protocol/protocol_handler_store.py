@@ -4,6 +4,7 @@ from bayserver_core.agent.lifecycle_listener import LifecycleListener
 from bayserver_core.bay_log import BayLog
 
 from bayserver_core.agent.grand_agent import GrandAgent
+from bayserver_core.protocol.command_store import CommandStore
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.util.object_store import ObjectStore
 from bayserver_core.util.string_util import StringUtil
@@ -30,24 +31,30 @@ class ProtocolHandlerStore(ObjectStore):
             self.stores: List = []
 
         def add_agent(self, agt_id: int):
-            store = PacketStore.get_store(self.protocol, agt_id)
+            pkt_store = PacketStore.get_store(self.protocol, agt_id)
+            # CommandStore is optional — only protocols that registered a
+            # CommandFactory get a pool; legacy protocols pass None.
+            try:
+                cmd_store = CommandStore.get_store(self.protocol, agt_id)
+            except (KeyError, AttributeError):
+                cmd_store = None
             while len(self.stores) < agt_id:
                 self.stores.append(None)
             self.stores[agt_id - 1] = ProtocolHandlerStore(
                 self.protocol, self.server_mode,
-                self.protocol_handler_factory, store)
+                self.protocol_handler_factory, pkt_store, cmd_store)
 
         def remove_agent(self, agt_id: int):
             self.stores[agt_id - 1] = None
 
     proto_map: Dict[str, ProtocolInfo] = None
 
-    def __init__(self, proto, svr_mode, proto_hnd_factory, pkt_store):
+    def __init__(self, proto, svr_mode, proto_hnd_factory, pkt_store, cmd_store=None):
         ObjectStore.__init__(self)
         self.protocol = proto
         self.server_mode = svr_mode
         self.factory = lambda : \
-            proto_hnd_factory.create_protocol_handler(pkt_store)
+            proto_hnd_factory.create_protocol_handler(pkt_store, cmd_store)
 
 
     def print_usage(self, indent):

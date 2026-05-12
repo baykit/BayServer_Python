@@ -34,14 +34,16 @@ from bayserver_docker_ajp.command.cmd_send_headers import CmdSendHeaders
 class AjpInboundHandler(AjpHandler, InboundHandler):
     class InboundProtocolHandlerFactory(ProtocolHandlerFactory):
 
-        def create_protocol_handler(self, pkt_store):
+        def create_protocol_handler(self, pkt_store, cmd_store=None):
             ib_handler = AjpInboundHandler()
-            cmd_unpacker = AjpCommandUnPacker(ib_handler)
+            cmd_unpacker = AjpCommandUnPacker(ib_handler, cmd_store)
             pkt_unpacker = AjpPacketUnPacker(pkt_store, cmd_unpacker)
             pkt_packer = PacketPacker()
             cmd_packer = CommandPacker(pkt_packer, pkt_store)
 
-            proto_handler = AjpProtocolHandler(ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker, cmd_packer, True)
+            proto_handler = AjpProtocolHandler(
+                ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker,
+                cmd_packer, True, cmd_store)
             ib_handler.init(proto_handler)
             return proto_handler
 

@@ -2,9 +2,16 @@ from bayserver_core.protocol.command import Command
 
 class FcgCommand(Command):
 
-    def __init__(self, typ, req_id):
+    def __init__(self, typ, req_id=0):
         super().__init__(typ)
         self.req_id = req_id
+
+    def init(self, req_id):
+        """Re-initialise a pooled FcgCommand for the next rental."""
+        self.req_id = req_id
+
+    def reset(self):
+        self.req_id = 0
 
     def unpack(self, pkt):
         self.req_id = pkt.req_id

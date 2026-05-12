@@ -13,7 +13,7 @@ from bayserver_docker_fcgi.command.in_out_command_base import InOutCommandBase
 
 class CmdStdIn(InOutCommandBase):
 
-    def __init__(self, req_id, data=None, start=0, length=0):
+    def __init__(self, req_id=0, data=None, start=0, length=0):
         super().__init__(FcgType.STDIN, req_id, data, start, length)
 
     def handle(self, cmd_handler):

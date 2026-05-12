@@ -15,11 +15,21 @@ class CmdSendBodyChunk(AjpCommand):
 
     MAX_CHUNKLEN = AjpPacket.MAX_DATA_LEN - 4
 
-    def __init__(self, buf, ofs, length):
+    def __init__(self, buf=None, ofs=0, length=0):
         super().__init__(AjpType.SEND_BODY_CHUNK, False)
         self.chunk = buf
         self.offset = ofs
         self.length = length
+
+    def init(self, buf=None, ofs=0, length=0):
+        self.chunk = buf
+        self.offset = ofs
+        self.length = length
+
+    def reset(self):
+        self.chunk = None
+        self.offset = 0
+        self.length = 0
 
     def pack(self, pkt):
         if self.length > CmdSendBodyChunk.MAX_CHUNKLEN:

@@ -16,6 +16,12 @@ class CmdEndResponse(AjpCommand):
         super().__init__(AjpType.END_RESPONSE, False)
         self.reuse = None
 
+    def init(self):
+        self.reuse = None
+
+    def reset(self):
+        self.reuse = None
+
     def pack(self, pkt):
         acc = pkt.new_ajp_data_accessor()
         acc.put_byte(self.type)

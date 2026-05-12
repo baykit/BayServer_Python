@@ -4,11 +4,23 @@ from bayserver_docker_fcgi.fcg_command import FcgCommand
 
 class InOutCommandBase(FcgCommand):
 
-    def __init__(self, typ, req_id, data=None, start=0, length=0):
+    def __init__(self, typ, req_id=0, data=None, start=0, length=0):
         super().__init__(typ, req_id)
         self.data = data
         self.start = start
         self.length = length
+
+    def init(self, req_id, data=None, start=0, length=0):
+        super().init(req_id)
+        self.data = data
+        self.start = start
+        self.length = length
+
+    def reset(self):
+        super().reset()
+        self.data = None
+        self.start = 0
+        self.length = 0
 
     def unpack(self, pkt):
         super().unpack(pkt)

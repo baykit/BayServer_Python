@@ -45,14 +45,16 @@ from bayserver_docker_http.h2.header_table import HeaderTable
 class H2InboundHandler(H2Handler, InboundHandler):
     class InboundProtocolHandlerFactory:
 
-        def create_protocol_handler(self, pkt_store):
+        def create_protocol_handler(self, pkt_store, cmd_store=None):
             ib_handler = H2InboundHandler()
-            cmd_unpacker = H2CommandUnPacker(ib_handler)
+            cmd_unpacker = H2CommandUnPacker(ib_handler, cmd_store)
             pkt_unpacker = H2PacketUnPacker(cmd_unpacker, pkt_store, True)
             pkt_packer = PacketPacker()
             cmd_packer = CommandPacker(pkt_packer, pkt_store)
 
-            proto_handler = H2ProtocolHandler(ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker, cmd_packer, True)
+            proto_handler = H2ProtocolHandler(
+                ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker,
+                cmd_packer, True, cmd_store)
             ib_handler.init(proto_handler)
             return proto_handler
 

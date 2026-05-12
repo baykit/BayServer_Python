@@ -41,14 +41,16 @@ class H1InboundHandler(H1Handler, InboundHandler):
 
     class InboundProtocolHandlerFactory(ProtocolHandlerFactory):
 
-        def create_protocol_handler(self, pkt_store):
+        def create_protocol_handler(self, pkt_store, cmd_store=None):
             ib_handler = H1InboundHandler()
-            cmd_unpacker = H1CommandUnPacker(ib_handler, True)
+            cmd_unpacker = H1CommandUnPacker(ib_handler, True, cmd_store)
             pkt_unpacker = H1PacketUnPacker(cmd_unpacker, pkt_store)
             pkt_packer = PacketPacker()
             cmd_packer = CommandPacker(pkt_packer, pkt_store)
 
-            proto_handler = H1ProtocolHandler(ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker, cmd_packer, True)
+            proto_handler = H1ProtocolHandler(
+                ib_handler, pkt_unpacker, pkt_packer, cmd_unpacker,
+                cmd_packer, True, cmd_store)
             ib_handler.init(proto_handler)
             return proto_handler
 

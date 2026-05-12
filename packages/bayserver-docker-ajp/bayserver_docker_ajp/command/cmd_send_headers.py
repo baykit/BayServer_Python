@@ -54,6 +54,16 @@ class CmdSendHeaders(AjpCommand):
         self.status = HttpStatus.OK
         self.desc = None
 
+    def init(self):
+        self.headers.clear()
+        self.status = HttpStatus.OK
+        self.desc = None
+
+    def reset(self):
+        self.headers.clear()
+        self.status = HttpStatus.OK
+        self.desc = None
+
     def __str__(self):
         return f"SendHeaders: s={self.status} d={self.desc} h={self.headers}"
 

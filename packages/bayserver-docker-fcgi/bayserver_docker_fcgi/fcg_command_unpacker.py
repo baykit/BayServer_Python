@@ -10,8 +10,11 @@ from bayserver_docker_fcgi.command.cmd_stderr import CmdStdErr
 
 class FcgCommandUnPacker(CommandUnPacker):
 
-    def __init__(self, handler):
+    def __init__(self, handler, cmd_store=None):
         self.handler = handler
+        # Per-agent Command pool (optional). When supplied,
+        # packet_received rents from it and Returns after handle().
+        self.cmd_store = cmd_store
         self.reset()
 
     def reset(self):
@@ -19,26 +22,27 @@ class FcgCommandUnPacker(CommandUnPacker):
 
     def packet_received(self, pkt):
 
-        if pkt.type == FcgType.BEGIN_REQUEST:
+        if self.cmd_store is not None:
+            cmd = self.cmd_store.rent(pkt.type)
+            cmd.init(pkt.req_id)
+        elif pkt.type == FcgType.BEGIN_REQUEST:
             cmd = CmdBeginRequest(pkt.req_id)
-
         elif pkt.type == FcgType.END_REQUEST:
             cmd = CmdEndRequest(pkt.req_id)
-
         elif pkt.type == FcgType.PARAMS:
             cmd = CmdParams(pkt.req_id)
-
         elif pkt.type == FcgType.STDIN:
             cmd = CmdStdIn(pkt.req_id)
-
         elif pkt.type == FcgType.STDOUT:
             cmd = CmdStdOut(pkt.req_id)
-
         elif pkt.type == FcgType.STDERR:
             cmd = CmdStdErr(pkt.req_id)
-
         else:
             raise RuntimeError("IllegalState")
 
-        cmd.unpack(pkt)
-        cmd.handle(self.handler)
+        try:
+            cmd.unpack(pkt)
+            cmd.handle(self.handler)
+        finally:
+            if self.cmd_store is not None:
+                self.cmd_store.Return(cmd)

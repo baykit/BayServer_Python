@@ -1,11 +1,14 @@
+from bayserver_core.protocol.command_store import CommandStore
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
 from bayserver_core.docker.base.port_base import PortBase
 from bayserver_docker_http.htp_docker import HtpDocker
 from bayserver_core.util.string_util import StringUtil
 
+from bayserver_docker_http.h1.h1_command_factory import H1CommandFactory
 from bayserver_docker_http.h1.h1_inbound_handler import H1InboundHandler
 from bayserver_docker_http.h1.h1_packet_factory import H1PacketFactory
+from bayserver_docker_http.h2.h2_command_factory import H2CommandFactory
 from bayserver_docker_http.h2.h2_inbound_handler import H2InboundHandler
 from bayserver_docker_http.h2.h2_packet_factory import H2PacketFactory
 from bayserver_docker_http.h2.h2_error_code import H2ErrorCode
@@ -76,6 +79,14 @@ class HtpPortDocker(PortBase, HtpDocker):
     PacketStore.register_protocol(
         HtpDocker.H2_PROTO_NAME,
         H2PacketFactory()
+    )
+    CommandStore.register_protocol(
+        HtpDocker.H1_PROTO_NAME,
+        H1CommandFactory()
+    )
+    CommandStore.register_protocol(
+        HtpDocker.H2_PROTO_NAME,
+        H2CommandFactory()
     )
     ProtocolHandlerStore.register_protocol(
         HtpDocker.H1_PROTO_NAME,

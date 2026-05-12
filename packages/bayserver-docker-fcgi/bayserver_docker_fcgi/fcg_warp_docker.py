@@ -2,6 +2,7 @@ from bayserver_core.agent.grand_agent import GrandAgent
 from bayserver_core.agent.multiplexer.plain_transporter import PlainTransporter
 from bayserver_core.bay_log import BayLog
 
+from bayserver_core.protocol.command_store import CommandStore
 from bayserver_core.protocol.packet_store import PacketStore
 from bayserver_core.protocol.protocol_handler_store import ProtocolHandlerStore
 from bayserver_core.rudder.socket_rudder import SocketRudder
@@ -10,6 +11,7 @@ from bayserver_core.util.io_util import IOUtil
 
 from bayserver_core.docker.base.warp_base import WarpBase
 
+from bayserver_docker_fcgi.fcg_command_factory import FcgCommandFactory
 from bayserver_docker_fcgi.fcg_docker import FcgDocker
 from bayserver_docker_fcgi.fcg_packet_factory import FcgPacketFactory
 from bayserver_docker_fcgi.fcg_warp_handler import FcgWarpHandler
@@ -72,6 +74,9 @@ class FcgWarpDocker(WarpBase, FcgDocker):
     PacketStore.register_protocol(
         FcgDocker.PROTO_NAME,
         FcgPacketFactory())
+    CommandStore.register_protocol(
+        FcgDocker.PROTO_NAME,
+        FcgCommandFactory())
     ProtocolHandlerStore.register_protocol(
         FcgDocker.PROTO_NAME,
         False,

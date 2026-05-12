@@ -19,6 +19,16 @@ class CmdData(AjpCommand):
         self.start = start
         self.length = length
 
+    def init(self, data=None, start=0, length=0):
+        self.data = data
+        self.start = start
+        self.length = length
+
+    def reset(self):
+        self.data = None
+        self.start = 0
+        self.length = 0
+
     def unpack(self, pkt):
         super().unpack(pkt)
         acc = pkt.new_ajp_data_accessor()
