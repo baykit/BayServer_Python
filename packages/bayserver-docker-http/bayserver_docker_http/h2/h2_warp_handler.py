@@ -38,6 +38,13 @@ from bayserver_docker_http.h2.header_table import HeaderTable
 # reactive WINDOW_UPDATEs in handle_data top it back up.
 INITIAL_WINDOW_SIZE_OUT = 16 * 1024 * 1024
 
+# Threshold for WINDOW_UPDATE coalescing in handle_data. The h2 spec only
+# requires that the peer's window not go negative, not that we update on
+# every DATA frame. Keep this well below the 65535-byte initial window so
+# the peer always has slack. With 32 KiB, a 1 MB response (16 KiB frames)
+# sends ~32 posts instead of ~64.
+_WINDOW_UPDATE_THRESHOLD = 32 * 1024
+
 
 class H2WarpHandler(H2Handler, WarpHandler):
 
@@ -70,6 +77,16 @@ class H2WarpHandler(H2Handler, WarpHandler):
         # send_req_headers call so we don't need a notify_connect hook on
         # this handler.
         self.prelude_sent = False
+        # WINDOW_UPDATE coalescing state. Per-stream pending lives in a
+        # dict keyed by stream_id; per-connection lives directly here.
+        # See _WINDOW_UPDATE_THRESHOLD for the flush threshold.
+        self._pending_conn_window = 0
+        self._pending_stream_window = {}
+        # Pooled HPACK encode state. Single-threaded per agent so no
+        # synchronization. The list is .clear()'d per call so we don't
+        # reallocate it per outgoing HEADERS frame.
+        self._req_block_builder = HeaderBlockBuilder()
+        self._req_header_blocks = []
 
     def init(self, ph: H2ProtocolHandler):
         self.protocol_handler = ph
@@ -85,6 +102,8 @@ class H2WarpHandler(H2Handler, WarpHandler):
         super().reset()
         self.cur_stream_id = 1
         self.prelude_sent = False
+        self._pending_conn_window = 0
+        self._pending_stream_window.clear()
 
     ######################################################
     # Implements H2CommandHandler
@@ -100,17 +119,31 @@ class H2WarpHandler(H2Handler, WarpHandler):
             Tour.TOUR_ID_NOCHECK, cmd.data, cmd.start, cmd.length)
 
         # Replenish flow-control windows so the upstream backend can keep
-        # sending. Without this the connection-level + stream-level windows
-        # (default 65535 each) drain after ~65 KB of body and the backend
-        # stops sending DATA frames; multi-chunk responses (>= 100 KB) hang
-        # until timeout.
+        # sending. Coalesce per-stream and per-connection increments to a
+        # 32 KiB threshold instead of emitting one update per DATA frame
+        # — h2 only requires that the peer's window not go negative, so
+        # batching cuts WindowUpdate posts roughly in half on multi-MB
+        # responses.
         if cmd.length > 0:
-            stream_upd = CmdWindowUpdate(cmd.stream_id)
-            stream_upd.window_size_increment = cmd.length
-            conn_upd = CmdWindowUpdate(0)
-            conn_upd.window_size_increment = cmd.length
-            self.ship().post(stream_upd)
-            self.ship().post(conn_upd)
+            # Per-stream: skip when END_STREAM is set (stream is already
+            # half-closed; nginx returns STREAM_CLOSED for updates on a
+            # closed stream). Otherwise accumulate and flush on threshold.
+            if not cmd.flags.end_stream():
+                stm_pending = self._pending_stream_window.get(cmd.stream_id, 0)
+                stm_pending += cmd.length
+                if stm_pending >= _WINDOW_UPDATE_THRESHOLD:
+                    upd = CmdWindowUpdate(cmd.stream_id)
+                    upd.window_size_increment = stm_pending
+                    self.ship().post(upd)
+                    stm_pending = 0
+                self._pending_stream_window[cmd.stream_id] = stm_pending
+            # Per-connection: always accumulate, flush on threshold.
+            self._pending_conn_window += cmd.length
+            if self._pending_conn_window >= _WINDOW_UPDATE_THRESHOLD:
+                upd2 = CmdWindowUpdate(0)
+                upd2.window_size_increment = self._pending_conn_window
+                self.ship().post(upd2)
+                self._pending_conn_window = 0
 
         if not available:
             return NextSocketAction.SUSPEND
@@ -331,8 +364,11 @@ class H2WarpHandler(H2Handler, WarpHandler):
         sip = self.ship()
         new_uri = sip.docker.warp_base() + tur.req.uri[len(twn_path):]
 
-        bld = HeaderBlockBuilder()
-        header_blocks = []
+        # Reuse the pooled builder + block list (per-handler, single-
+        # threaded). The list is cleared at the start of each call.
+        bld = self._req_block_builder
+        header_blocks = self._req_header_blocks
+        header_blocks.clear()
 
         header_blocks.append(bld.build_header_block(
             HeaderTable.PSEUDO_HEADER_METHOD, tur.req.method, self.req_header_tbl))
@@ -368,7 +404,12 @@ class H2WarpHandler(H2Handler, WarpHandler):
         # in one frame.
         cmd = CmdHeaders(stream_id)
         cmd.excluded = False
-        cmd.header_blocks = header_blocks
+        # Snapshot the block list before attaching it to the command.
+        # WarpShip.cmd_buf can hold the CmdHeaders past this method's
+        # return; if we left the assignment pointing at our pooled list,
+        # the next sendReqHeaderCommand's .clear() would wipe it before
+        # the buffered command reaches pack().
+        cmd.header_blocks = list(header_blocks)
         cmd.flags.set_end_headers(True)
         if end_stream:
             cmd.flags.set_end_stream(True)
@@ -393,7 +434,12 @@ class H2WarpHandler(H2Handler, WarpHandler):
         return blocks
 
     def _end_res_content(self, tur):
+        # Capture the stream id before end_warp_tour clears WarpData.
+        stm_id = WarpData.get(tur).warp_id
         # H1WarpHandler ordering: end_warp_tour BEFORE end_res_content,
         # since the latter resets the tour and clears WarpData.get(tur).
         self.ship().end_warp_tour(tur, True)
         tur.res.end_res_content(Tour.TOUR_ID_NOCHECK)
+        # Drop the per-stream window counter so it doesn't accumulate
+        # across the connection's lifetime.
+        self._pending_stream_window.pop(stm_id, None)

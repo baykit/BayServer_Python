@@ -195,13 +195,18 @@ class InboundShip(Ship):
 
         self.check_ship_id(chk_ship_id)
 
+        # Hoist max_len + tour handler lookup out of the chunk loop.
+        # For a 1 MB body at 16 KB packet size the inner loop runs 64
+        # times; without hoisting we paid tour_handler() (= class method
+        # call + dict lookup) on every iteration.
         max_len = self.protocol_handler.max_res_packet_data_size()
+        handler = self.tour_handler()
         while length > max_len:
-            self.tour_handler().send_res_content(tur, bytes, ofs, max_len, None)
+            handler.send_res_content(tur, bytes, ofs, max_len, None)
             ofs = ofs + max_len
             length = length - max_len
         if length > 0:
-            self.tour_handler().send_res_content(tur, bytes, ofs, length, callback)
+            handler.send_res_content(tur, bytes, ofs, length, callback)
 
 
     def transfer_res_content(self, chk_ship_id, tur, file_rd: Rudder, ofs: int, length: int, callback):
