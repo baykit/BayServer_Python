@@ -5,6 +5,12 @@ import socket
 import ssl
 import traceback
 from selectors import SelectorKey
+
+# TCP_QUICKACK is Linux-specific (value 12). The constant exists as a
+# socket module attribute on Linux Python builds; on macOS / Windows the
+# attribute is absent so we fall back to the raw value -- the setsockopt
+# will fail silently if the kernel doesn't understand it.
+_TCP_QUICKACK = getattr(socket, "TCP_QUICKACK", 12)
 from typing import List
 
 from bayserver_core import bayserver as bs
@@ -402,6 +408,16 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
             return
 
         BayLog.debug("%s Accepted: skt=%s", self.agent, client_skt.fileno())
+        # TCP_NODELAY on accepted client sockets: serving small responses
+        # suffers ~40 ms Nagle/delayed-ACK stalls otherwise (small H2
+        # control frames interleaved with body bytes, short HTTP/1
+        # responses on keep-alive).
+        try:
+            if client_skt.family in (socket.AF_INET, socket.AF_INET6):
+                client_skt.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except OSError as e:
+            BayLog.debug("%s could not set TCP_NODELAY on accepted: %s",
+                         self.agent, e)
         client_rd = SocketRudder(client_skt)
         client_rd.set_non_blocking()
 
@@ -456,6 +472,23 @@ class SpiderMultiplexer(MultiplexerBase, TimerHandler, Multiplexer, Recipient):
 
 
             BayLog.debug("%s read %d bytes", self, len(st.read_buf))
+
+            # Warp upstreams (php-fpm, AJP backends) leave Nagle on; the
+            # kernel's delayed-ACK timer pairs with that to add a ~40 ms
+            # stall per response in the few-MTU body range. Re-arm
+            # TCP_QUICKACK on those sockets after each read so the next
+            # ACK fires immediately. TCP_QUICKACK is one-shot on Linux
+            # (= reverts after the next packet), hence the per-read call.
+            # Skip for inbound (client-facing) sockets — clients set
+            # TCP_NODELAY themselves and the per-read setsockopt would
+            # cost CPU at high rps.
+            if st.quick_ack:
+                try:
+                    st.rudder.key().setsockopt(
+                        socket.IPPROTO_TCP, _TCP_QUICKACK, 1)
+                except (OSError, AttributeError):
+                    pass
+
             self.agent.send_read_letter(st, len(st.read_buf), st.addr, False)
 
         except Exception as e:

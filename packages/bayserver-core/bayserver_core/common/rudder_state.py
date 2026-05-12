@@ -31,6 +31,14 @@ class RudderState:
     handshaking: bool
     addr: Any
     skip_formalities: bool
+    # If True, the spider multiplexer re-arms TCP_QUICKACK on this socket
+    # after every read so the kernel sends the ACK immediately instead of
+    # holding it on the delayed-ACK timer (~40 ms on Linux). Only useful
+    # for warp upstream connections to backends that keep Nagle on
+    # (= php-fpm and friends). Inbound (client-facing) sockets leave this
+    # at False because clients set TCP_NODELAY themselves and the per-
+    # read setsockopt would cost ~1% CPU at high rps.
+    quick_ack: bool
 
 
     def __init__(self, rd: Rudder, tp: Transporter=None, timeout_sec: int=0):
@@ -51,6 +59,7 @@ class RudderState:
 
         self.accepting = False
         self.connecting = False
+        self.quick_ack = False
         self.write_queue = []
         self.write_queue_lock = threading.Lock()
         self.reading_lock = threading.Lock()

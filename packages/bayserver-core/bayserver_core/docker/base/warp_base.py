@@ -164,6 +164,14 @@ class WarpBase(ClubBase, Warp, metaclass=ABCMeta):
                     skt = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
                 else:
                     skt = socket.socket(self.host_addr[0], socket.SOCK_STREAM, 0)
+                    # TCP_NODELAY on the warp upstream socket: small H2
+                    # control frames + interleaved body bytes otherwise
+                    # eat ~40 ms per round trip on Nagle + delayed-ACK.
+                    try:
+                        skt.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    except OSError as e:
+                        BayLog.debug("%s could not set TCP_NODELAY on warp: %s",
+                                     self, e)
                 rd = SocketRudder(skt)
                 rd.set_non_blocking()
 
@@ -182,7 +190,13 @@ class WarpBase(ClubBase, Warp, metaclass=ABCMeta):
             wsip.start_warp_tour(tour)
 
             if need_connect:
-                agt.net_multiplexer.add_rudder_state(wsip.rudder, RudderState(wsip.rudder, tp))
+                st = RudderState(wsip.rudder, tp)
+                # Backends like php-fpm leave Nagle on; without QUICKACK
+                # the proxy's delayed-ACK timer adds 40 ms per response
+                # in the few-MTU body range. Mark TCP upstreams so the
+                # multiplexer re-arms after each read. Skip unix sockets.
+                st.quick_ack = (self.host_addr[0] != socket.AF_UNIX)
+                agt.net_multiplexer.add_rudder_state(wsip.rudder, st)
                 agt.net_multiplexer.get_transporter(wsip.rudder).req_connect(wsip.rudder, self.host_addr[4])
 
         except HttpException as e:
