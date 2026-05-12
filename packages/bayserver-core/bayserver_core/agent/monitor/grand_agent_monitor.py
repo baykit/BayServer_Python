@@ -135,6 +135,11 @@ class GrandAgentMonitor:
             if not self_listen:
                 for rd in bs.BayServer.anchorable_port_map.keys():
                     chs.append(rd.key())
+                # UDP ports (H3) inherit too; the child's child_start scans
+                # cls.channels via getsockname() to dispatch into the right
+                # port docker, so unanchorable rudders must also be passed.
+                for rd in bs.BayServer.unanchorable_port_map.keys():
+                    chs.append(rd.key())
 
             p = Process(target=run_child, args=(new_argv, chs, com_ch[1], self_listen_port_idx, ))
             p.start()
