@@ -10,10 +10,21 @@ class HeaderTable:
     static_table = None
     static_size = 0
 
+    # RFC 7541 §4.1 entry overhead: every dynamic-table entry's size is
+    # name.len + value.len + 32. The default max table byte size (= 4096)
+    # caps the encoder/decoder agreement so the dynamic table doesn't
+    # grow unbounded over a long-lived H2 connection. Without enforcement
+    # idx_map.insert(0, ...) on an unbounded list is O(N) head-insert,
+    # which compounds quadratically.
+    _ENTRY_OVERHEAD = 32
+    _DEFAULT_MAX_BYTES = 4096
+
     def __init__(self):
         self.idx_map = []
         self.add_count = 0
         self.name_map = {}
+        self.cur_byte_size = 0
+        self.max_byte_size = HeaderTable._DEFAULT_MAX_BYTES
 
     def get(self, idx):
         if idx <= 0 or idx > HeaderTable.static_size + len(self.idx_map):
@@ -42,12 +53,37 @@ class HeaderTable:
         return idx_list
 
     def insert(self, name, value):
+        sz = self._entry_size(name, value)
+        # Evict oldest entries until the new one fits (RFC 7541 §4.4).
+        # idx_map stores newest-first (idx_map[0] is most recent), so the
+        # oldest entry sits at idx_map[-1].
+        while self.idx_map and self.cur_byte_size + sz > self.max_byte_size:
+            evicted = self.idx_map.pop()
+            self.cur_byte_size -= self._entry_size(evicted.name, evicted.value)
+        if sz > self.max_byte_size:
+            # RFC 7541 §4.4: an entry alone exceeding the max size empties
+            # the table and is not inserted. add_count is still bumped so
+            # encoder/decoder agree on numbering.
+            self.add_count += 1
+            return
         self.idx_map.insert(0, KeyVal(name, value))
+        self.cur_byte_size += sz
         self.add_count += 1
         self.add_to_name_map(name, self.add_count)
 
     def set_size(self, size):
-        pass
+        # SETTINGS_HEADER_TABLE_SIZE: bound the table in bytes. If the new
+        # max is below cur_byte_size, evict from the tail.
+        self.max_byte_size = size
+        while self.idx_map and self.cur_byte_size > self.max_byte_size:
+            evicted = self.idx_map.pop()
+            self.cur_byte_size -= self._entry_size(evicted.name, evicted.value)
+
+    @staticmethod
+    def _entry_size(name, value):
+        return ((len(name) if name else 0)
+                + (len(value) if value else 0)
+                + HeaderTable._ENTRY_OVERHEAD)
 
     def put(self, idx, name, value):
         if idx != len(self.idx_map) + 1:
