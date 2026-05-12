@@ -67,7 +67,18 @@ class H1InboundHandler(H1Handler, InboundHandler):
     cur_tour: Tour
     cur_tour_id: int
 
+    # Last-chunk + final CRLF terminator for Transfer-Encoding: chunked.
+    _LAST_CHUNK = b"0\r\n\r\n"
+
     def __init__(self):
+        # Whether the response in flight is being framed as HTTP/1.1
+        # "Transfer-Encoding: chunked". Set in send_res_headers() when the
+        # upstream (= warp backend, Pharos, CGI) didn't supply a
+        # Content-Length and the client speaks HTTP/1.1, so we can keep
+        # the connection alive without a known body length. Each
+        # send_res_content / send_end_tour inspects this to decide
+        # whether to wrap bytes in chunked frames.
+        self.chunked_response = False
         self.reset()
 
     def __str__(self):
@@ -97,6 +108,8 @@ class H1InboundHandler(H1Handler, InboundHandler):
     ######################################################
     def send_res_headers(self, tur):
 
+        self.chunked_response = False
+
         # determine Connection header value
         req_con = tur.req.headers.get_connection()
         if req_con != Headers.CONNECTION_KEEP_ALIVE and req_con != Headers.CONNECTION_UNKOWN:
@@ -104,12 +117,25 @@ class H1InboundHandler(H1Handler, InboundHandler):
             res_con = "Close"
         else:
             # Client supports "Keep-Alive".
-            # If Content-Length is present, use Keep-Alive; otherwise, use Close
-            # only when the payload is text (Java e422615).
             res_con = "Keep-Alive"
+            # If Content-Length is missing, we need a way to delimit the
+            # response. HTTP/1.1 supports Transfer-Encoding: chunked for
+            # this exact case; falling back to Connection: Close (= read
+            # until EOF) was the historical behaviour but kills keep-alive
+            # against any backend that doesn't pre-compute Content-Length
+            # (e.g. php-fpm via httpWarp, or Pharos's libphp output where
+            # the body length is only known after the script runs).
             if tur.res.headers.content_length() == -1:
-                if (tur.res.headers.content_type() is not None and
-                        tur.res.headers.content_type().startswith("text/")):
+                existing_te = tur.res.headers.get_fast(Headers.HDR_TRANSFER_ENCODING)
+                upstream_already_chunked = (
+                    existing_te is not None and "chunked" in existing_te.lower())
+                if tur.req.protocol == "HTTP/1.1":
+                    if not upstream_already_chunked:
+                        tur.res.headers.set_fast(
+                            Headers.HDR_TRANSFER_ENCODING, "chunked")
+                    self.chunked_response = True
+                else:
+                    # HTTP/1.0 has no chunked: fall back to connection-close.
                     res_con = "Close"
 
         tur.res.headers.set_fast(Headers.CONNECTION, res_con)
@@ -125,7 +151,24 @@ class H1InboundHandler(H1Handler, InboundHandler):
 
     def send_res_content(self, tur, bytes, ofs, length, callback):
         BayLog.debug("%s H1 send_res_content len=%d", self, length)
-        cmd = CmdContent(bytes, ofs, length)
+        if self.chunked_response and length > 0:
+            # Wrap in chunked transfer-encoding frame:
+            #   <hex-len>\r\n<data>\r\n
+            hex_len = format(length, "x").encode("ascii")
+            buf = bytearray(len(hex_len) + 2 + length + 2)
+            p = 0
+            buf[p:p + len(hex_len)] = hex_len
+            p += len(hex_len)
+            buf[p] = 0x0d
+            buf[p + 1] = 0x0a
+            p += 2
+            buf[p:p + length] = bytes[ofs:ofs + length]
+            p += length
+            buf[p] = 0x0d
+            buf[p + 1] = 0x0a
+            cmd = CmdContent(buf, 0, len(buf))
+        else:
+            cmd = CmdContent(bytes, ofs, length)
         self.protocol_handler.post(cmd, callback)
 
     def transfer_content(self, tur, file_rd, ofs, length, lis):
@@ -134,6 +177,20 @@ class H1InboundHandler(H1Handler, InboundHandler):
     def send_end_tour(self, tur, cb):
         keep_alive = tur.res.headers.get_connection() == Headers.CONNECTION_KEEP_ALIVE
         BayLog.debug("%s %s sendEndTour: tur=%s keep=%s", threading.current_thread().name, self.ship, tur, keep_alive)
+
+        # Close out the chunked stream with the last-chunk terminator
+        # ("0\r\n\r\n") before the CmdEndContent. Fire-and-forget — the
+        # actual end signal is the CmdEndContent below, which carries
+        # the keepalive callback.
+        if self.chunked_response:
+            try:
+                self.protocol_handler.post(
+                    CmdContent(H1InboundHandler._LAST_CHUNK,
+                               0, len(H1InboundHandler._LAST_CHUNK)))
+            except IOError as e:
+                BayLog.debug("%s post(last-chunk) failed: %s", self.ship, e)
+                raise
+            self.chunked_response = False
 
         sid = self.ship().ship_id
         def ensure_func():
@@ -317,6 +374,7 @@ class H1InboundHandler(H1Handler, InboundHandler):
         self.header_read = False
         self.change_state(H1InboundHandler.STATE_FINISHED)
         self.cur_tour = None
+        self.chunked_response = False
 
     def end_req_content(self, chk_tur_id, tur):
         tur.req.end_content(chk_tur_id)
